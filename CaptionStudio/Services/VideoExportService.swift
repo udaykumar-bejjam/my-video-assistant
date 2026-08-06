@@ -308,25 +308,24 @@ final class VideoExportService: ObservableObject {
                 let fontSize = (item.kind == .wordHit ? item.fontSize * 0.95 : item.fontSize)
                     * item.scale * (size.width / 390)
                 let isHit = item.kind == .wordHit
-                // Word hits: yellow punch with red outline for export stills
-                let fill = isHit
-                    ? (item.color.platformColor)
-                    : item.color.platformColor
-                let stroke = isHit
-                    ? PlatformColor(red: 1, green: 0.18, blue: 0.18, alpha: 1)
-                    : PlatformColor.clear
+                let fill = item.color.platformColor
+                #if canImport(UIKit)
+                let redStroke = UIColor(red: 1, green: 0.18, blue: 0.18, alpha: 1)
+                let yellowGlow = UIColor(red: 1, green: 0.94, blue: 0.35, alpha: 0.9)
+                #else
+                let redStroke = NSColor(srgbRed: 1, green: 0.18, blue: 0.18, alpha: 1)
+                let yellowGlow = NSColor(srgbRed: 1, green: 0.94, blue: 0.35, alpha: 0.9)
+                #endif
                 layer = Self.makeTextLayer(
                     text: item.text,
                     fontName: fontName,
                     fontSize: fontSize,
                     textColor: fill,
-                    strokeColor: stroke,
+                    strokeColor: isHit ? redStroke : .clear,
                     strokeWidth: isHit ? 3.5 : 0,
                     backgroundColor: .clear,
                     cornerRadius: 0,
-                    shadowColor: isHit
-                        ? PlatformColor(red: 1, green: 0.94, blue: 0.35, alpha: 0.9)
-                        : PlatformColor.black.withAlphaComponent(0.45),
+                    shadowColor: isHit ? yellowGlow : PlatformColor.black.withAlphaComponent(0.45),
                     shadowRadius: isHit ? 12 : 6,
                     maxWidth: size.width * 0.8
                 )

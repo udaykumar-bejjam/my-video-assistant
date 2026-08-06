@@ -446,7 +446,8 @@ OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
       "scale": 1.35,
       "rotation": -4,
       "color": "#FFEF5A",
-      "reason": "why this word + effect"
+      "secondaryColor": "#FF2D2D",
+      "reason": "punchy yellow/red pulse on this word"
     }
   ],
   "placements": [
