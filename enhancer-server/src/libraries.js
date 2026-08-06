@@ -12,6 +12,12 @@ import {
   sfxPoolForPack,
   wordHitsPerCaption,
 } from "./packs.js";
+import {
+  clampToSafeZone,
+  heuristicDistribution,
+  normalizeDistribution,
+  normalizeSafeZone,
+} from "./safezone.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -273,7 +279,7 @@ function indexAssets(libraries) {
 /**
  * Snap a placement's start/end to the asset's real length and the caption window.
  */
-export function alignPlacement(placement, asset, captions, videoDuration) {
+export function alignPlacement(placement, asset, captions, videoDuration, safeZone = null) {
   const length = Number(asset?.lengthSeconds ?? asset?.durationSeconds ?? 1.2) || 1.2;
   const caps = Array.isArray(captions) ? captions : [];
 
@@ -339,6 +345,9 @@ export function alignPlacement(placement, asset, captions, videoDuration) {
   if (!Number.isFinite(y)) y = 0.3;
   x = clamp(x, nw / 2 + 0.02, 1 - nw / 2 - 0.02);
   y = clamp(y, nh / 2 + 0.02, 1 - nh / 2 - 0.02);
+  if (placement.kind !== "sfx" && safeZone) {
+    ({ x, y } = clampToSafeZone(x, y, safeZone));
+  }
 
   return {
     kind: placement.kind,
@@ -375,12 +384,14 @@ export function buildPrompt({
   language = "en-US",
   packId = null,
   brandKit = null,
+  safeZone = null,
 }) {
   const canvas = canvasForVideoSize(videoSize);
   const catalog = compactCatalog(libraries, canvas);
   const aspect = aspectLabel(canvas);
   const pack = getPack(packId) || null;
   const hookWindow = hookWindowSeconds(pack);
+  const zone = normalizeSafeZone(safeZone, videoSize);
 
   const captionWindows = captions.map((c, index) => ({
     index,
@@ -448,6 +459,7 @@ VIDEO
 - aspect: ${aspect}
 - canvasPixels: ${canvas.width}x${canvas.height}
 - coordinateSystem: x,y normalized 0–1 on this canvas (0,0 = top-left)
+- safeZone (keep wordHit/gif/png/text centers inside): ${JSON.stringify(zone)}
 
 CAPTION WINDOWS + WORD TIMINGS
 ${JSON.stringify(captionWindows, null, 2)}
@@ -467,12 +479,14 @@ SIGNIFICANT WORD RULES
 9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
 10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
 11. Also emit supporting placements (gif/png/text/sfx) when helpful — gif density = ${pack?.gifDensity || "medium"}.
+12. Keep x,y centers inside safeZone for all visual placements.
+13. Also return distribution { title, coverText, hashtags[], hookLine } for social posting.
 
 GENERAL TIMING RULES
 1. Never invent library ids.
 2. Return ONLY valid JSON (no markdown).
 3. Never schedule past durationSeconds.
-4. Keep resources fully on-screen given normalized size × scale.
+4. Keep resources fully on-screen given normalized size × scale AND safeZone.
 5. sfx endTime = startTime + sfx.lengthSeconds exactly.
 
 OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
@@ -488,6 +502,12 @@ OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
     "sfxId": "riser",
     "fontId": "font id",
     "reason": "Opening retention hook"
+  },
+  "distribution": {
+    "title": "short social title",
+    "coverText": "COVER",
+    "hashtags": ["#shorts", "#reels"],
+    "hookLine": "opening line"
   },
   "wordHits": [
     {
@@ -550,7 +570,9 @@ export function validatePlacements(
   libraries,
   captions = [],
   videoDuration = 10,
-  packId = null
+  packId = null,
+  videoSize = null,
+  safeZone = null
 ) {
   const assets = indexAssets(libraries);
   const fonts = Object.fromEntries(libraries.fonts.items.map((i) => [i.id, i]));
@@ -558,6 +580,7 @@ export function validatePlacements(
   const sfx = Object.fromEntries(libraries.sfx.items.map((i) => [i.id, i]));
   const pack = getPack(packId || plan?.packId) || null;
   const resolvedPackId = pack?.id || packId || plan?.packId || null;
+  const zone = normalizeSafeZone(safeZone || plan?.safeZone, videoSize);
 
   const placements = [];
   const wordHits = [];
@@ -570,13 +593,13 @@ export function validatePlacements(
   for (const p of incoming) {
     if (!p) continue;
     if (p.kind === "wordHit") {
-      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration, pack);
+      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration, pack, zone);
       if (hit) wordHits.push(hit);
       continue;
     }
     const asset = assets[p.kind]?.[p.assetId];
     if (!asset) continue;
-    placements.push(alignPlacement(p, asset, captions, videoDuration));
+    placements.push(alignPlacement(p, asset, captions, videoDuration, zone));
   }
 
   const hook = ensureOpeningHook({
@@ -590,7 +613,16 @@ export function validatePlacements(
     videoDuration,
     pack,
     language: plan?.language || "en-US",
+    safeZone: zone,
   });
+
+  const language = plan?.language || "en-US";
+  const distribution = normalizeDistribution(
+    plan?.distribution,
+    captions,
+    language,
+    resolvedPackId
+  );
 
   return {
     summary: typeof plan?.summary === "string" ? plan.summary : "Enhancement plan",
@@ -598,7 +630,9 @@ export function validatePlacements(
     wordHits,
     hook: hook || plan?.hook || null,
     packId: resolvedPackId,
-    language: plan?.language,
+    distribution,
+    safeZone: zone,
+    language,
     source: plan?.source || "cursor-sdk",
     canvas: REFERENCE_CANVAS,
   };
@@ -616,6 +650,7 @@ export function ensureOpeningHook({
   videoDuration,
   pack,
   language = "en-US",
+  safeZone = null,
 }) {
   const windowSec = hookWindowSeconds(pack);
   const hasEarlyHit = wordHits.some((h) => h.startTime < windowSec);
@@ -709,7 +744,7 @@ export function ensureOpeningHook({
     const fontsMap = Object.fromEntries(fonts.map((i) => [i.id, i]));
     const effectsMap = Object.fromEntries(effects.map((i) => [i.id, i]));
     const sfxMap = Object.fromEntries(sfxLib.map((i) => [i.id, i]));
-    const hit = alignWordHit(raw, fontsMap, effectsMap, sfxMap, captions, videoDuration, pack);
+    const hit = alignWordHit(raw, fontsMap, effectsMap, sfxMap, captions, videoDuration, pack, safeZone);
     if (hit) wordHits.unshift(hit);
     hookMeta = {
       word: hit?.word || w.text,
@@ -756,7 +791,8 @@ export function ensureOpeningHook({
       sfxMap,
       captions,
       videoDuration,
-      pack
+      pack,
+      safeZone
     );
     if (hit) {
       wordHits.unshift(hit);
@@ -792,7 +828,8 @@ export function ensureOpeningHook({
       placements[0],
       riser,
       captions,
-      videoDuration
+      videoDuration,
+      safeZone
     );
     placements[0] = aligned;
   }
@@ -807,7 +844,8 @@ export function alignWordHit(
   sfxMap,
   captions,
   videoDuration,
-  pack = null
+  pack = null,
+  safeZone = null
 ) {
   const fontId = placement.fontId || placement.assetId;
   const font = fonts[fontId];
@@ -877,6 +915,9 @@ export function alignWordHit(
   if (!Number.isFinite(y)) y = 0.4;
   x = clamp(x, nw / 2 + 0.02, 1 - nw / 2 - 0.02);
   y = clamp(y, nh / 2 + 0.05, 1 - nh / 2 - 0.05);
+  if (safeZone) {
+    ({ x, y } = clampToSafeZone(x, y, safeZone));
+  }
 
   return {
     kind: "wordHit",
@@ -922,6 +963,8 @@ export function heuristicPlan({
   libraries,
   language = "en-US",
   packId = null,
+  videoSize = null,
+  safeZone = null,
 }) {
   const placements = [];
   const wordHits = [];
@@ -1100,11 +1143,14 @@ export function heuristicPlan({
       packId: pack?.id || null,
       placements,
       wordHits,
+      distribution: heuristicDistribution(captions, language, pack?.id || null),
       source: "heuristic-fallback",
     },
     libraries,
     captions,
     duration,
-    pack?.id || null
+    pack?.id || null,
+    videoSize,
+    safeZone
   );
 }

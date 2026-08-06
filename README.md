@@ -79,8 +79,15 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 4. Import or **Try Demo** → pick a **Shorts Pack** → **AI Captions** → **AI Place**  
 5. Browse **Library** / **Trim** tabs or export  
 6. **Save Draft** (Export tab or leave editor) — reopen from Home drafts list  
+7. After export: copy **title / hashtags**, optional **cover PNG**, toggle **safe zone** in preview, **normalize loudness** on Export  
 
 **AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
+
+## Distribution, safe zones & loudness
+
+- **Distribution:** enhance returns `title` / `coverText` / `hashtags` / `hookLine` — shown on Export + share sheet with one-tap copy and cover PNG export  
+- **Safe zone:** Reels/TikTok chrome guide in preview (toggle); placements clamped in enhancer + Swift aligner  
+- **Loudness:** optional peak normalize on export so dialogue + SFX stay consistent across daily posts  
 
 ## Languages, fonts & significant word hits
 

@@ -8,7 +8,8 @@ enum PlacementAligner {
         asset: MediaLibraryItem,
         kind: String,
         captions: [CaptionSegment],
-        videoDuration: TimeInterval
+        videoDuration: TimeInterval,
+        safeZone: SafeZone? = nil
     ) -> (start: TimeInterval, end: TimeInterval, x: CGFloat, y: CGFloat) {
         let length = placement.lengthSeconds ?? asset.playLength
         let caption: CaptionSegment? = {
@@ -57,8 +58,11 @@ enum PlacementAligner {
 
         let nw = (asset.normalizedWidth ?? (asset.pixelSize.width / 1080)) * placement.scale
         let nh = (asset.normalizedHeight ?? (asset.pixelSize.height / 1920)) * placement.scale
-        let x = clamp(placement.x, nw / 2 + 0.02, 1 - nw / 2 - 0.02)
-        let y = clamp(placement.y, nh / 2 + 0.02, 1 - nh / 2 - 0.02)
+        var x = clamp(placement.x, nw / 2 + 0.02, 1 - nw / 2 - 0.02)
+        var y = clamp(placement.y, nh / 2 + 0.02, 1 - nh / 2 - 0.02)
+        if let safeZone {
+            (x, y) = safeZone.clamp(x: x, y: y)
+        }
         return (start, max(start + 0.05, end), x, y)
     }
 
