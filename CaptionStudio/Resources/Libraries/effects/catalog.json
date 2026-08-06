@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "library": "effects",
+  "items": [
+    {
+      "id": "slam",
+      "name": "Slam",
+      "tags": ["impact", "hype", "power"],
+      "animation": "slam",
+      "defaultDuration": 0.9,
+      "preferredSfx": ["bass-hit", "pop"]
+    },
+    {
+      "id": "bounce",
+      "name": "Bounce",
+      "tags": ["playful", "energy"],
+      "animation": "bounce",
+      "defaultDuration": 1.0,
+      "preferredSfx": ["pop", "click"]
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom In",
+      "tags": ["reveal", "focus"],
+      "animation": "zoom",
+      "defaultDuration": 1.1,
+      "preferredSfx": ["whoosh", "riser"]
+    },
+    {
+      "id": "shake",
+      "name": "Shake",
+      "tags": ["urgent", "hype"],
+      "animation": "shake",
+      "defaultDuration": 0.85,
+      "preferredSfx": ["glitch", "bass-hit"]
+    },
+    {
+      "id": "spin",
+      "name": "Spin Pop",
+      "tags": ["fun", "surprise"],
+      "animation": "spin",
+      "defaultDuration": 1.0,
+      "preferredSfx": ["whoosh", "cheer-hit"]
+    },
+    {
+      "id": "flash",
+      "name": "Flash",
+      "tags": ["reveal", "magic"],
+      "animation": "flash",
+      "defaultDuration": 0.8,
+      "preferredSfx": ["ding", "sparkle"]
+    },
+    {
+      "id": "rise",
+      "name": "Rise Up",
+      "tags": ["emotional", "story"],
+      "animation": "rise",
+      "defaultDuration": 1.2,
+      "preferredSfx": ["riser", "whoosh"]
+    },
+    {
+      "id": "glitch",
+      "name": "Glitch",
+      "tags": ["tech", "modern"],
+      "animation": "glitch",
+      "defaultDuration": 0.9,
+      "preferredSfx": ["glitch", "click"]
+    },
+    {
+      "id": "typepop",
+      "name": "Type Pop",
+      "tags": ["dialogue", "punch"],
+      "animation": "typepop",
+      "defaultDuration": 1.0,
+      "preferredSfx": ["click", "pop"]
+    },
+    {
+      "id": "pulse",
+      "name": "Pulse",
+      "tags": ["heartbeat", "emphasis"],
+      "animation": "pulse",
+      "defaultDuration": 1.1,
+      "preferredSfx": ["bass-hit", "ding"]
+    }
+  ]
+}

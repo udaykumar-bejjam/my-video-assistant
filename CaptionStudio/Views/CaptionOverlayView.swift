@@ -159,6 +159,8 @@ struct LiveOverlayCanvas: View {
         case .text, .watermark:
             stylishOrPlainText(item)
                 .rotationEffect(.degrees(item.rotation))
+        case .wordHit:
+            WordHitView(item: item, time: editor.currentTime)
         case .gif, .png:
             if let url = editor.libraryFileURL(for: item) {
                 LibraryImage(url: url)
@@ -208,5 +210,81 @@ struct LiveOverlayCanvas: View {
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(fill)
         }
+    }
+}
+
+/// Significant word with randomised AI-chosen effect.
+struct WordHitView: View {
+    let item: OverlayItem
+    let time: TimeInterval
+
+    var body: some View {
+        let local = max(0, time - item.startTime)
+        let effect = WordHitEffect(rawValue: item.effectId ?? "bounce") ?? .bounce
+
+        Text(item.text)
+            .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.7))
+            .foregroundStyle(item.color.color)
+            .shadow(color: .black.opacity(0.55), radius: 6, y: 3)
+            .rotationEffect(.degrees(item.rotation + spinExtra(effect, local: local)))
+            .scaleEffect(scale(effect, local: local))
+            .offset(x: shakeX(effect, local: local), y: offsetY(effect, local: local))
+            .opacity(opacity(effect, local: local))
+            .blur(radius: effect == .glitch && Int(local * 20) % 3 == 0 ? 1.2 : 0)
+    }
+
+    private var resolvedFontName: String {
+        item.fontName
+            ?? "AvenirNext-Heavy"
+    }
+
+    private func scale(_ effect: WordHitEffect, local: TimeInterval) -> CGFloat {
+        switch effect {
+        case .slam:
+            return local < 0.12 ? 1.55 - CGFloat(local / 0.12) * 0.4 : 1.15
+        case .bounce:
+            let t = min(1, local / 0.35)
+            return 0.7 + CGFloat(sin(t * .pi)) * 0.45
+        case .zoom:
+            return 0.55 + min(1, CGFloat(local / 0.28)) * 0.7
+        case .pulse:
+            return 1.05 + CGFloat(sin(local * 10)) * 0.08
+        case .flash:
+            return local < 0.08 ? 1.4 : 1.1
+        default:
+            return 1.15
+        }
+    }
+
+    private func opacity(_ effect: WordHitEffect, local: TimeInterval) -> Double {
+        switch effect {
+        case .flash:
+            return local < 0.06 ? 0.35 : 1
+        case .typepop:
+            return min(1, local / 0.12)
+        default:
+            return 1
+        }
+    }
+
+    private func offsetY(_ effect: WordHitEffect, local: TimeInterval) -> CGFloat {
+        switch effect {
+        case .rise:
+            return 28 - min(28, CGFloat(local / 0.35) * 28)
+        case .bounce:
+            return -abs(sin(local * 12)) * 8
+        default:
+            return 0
+        }
+    }
+
+    private func shakeX(_ effect: WordHitEffect, local: TimeInterval) -> CGFloat {
+        guard effect == .shake || effect == .glitch else { return 0 }
+        return CGFloat(sin(local * 40)) * 5
+    }
+
+    private func spinExtra(_ effect: WordHitEffect, local: TimeInterval) -> Double {
+        guard effect == .spin else { return 0 }
+        return min(1, local / 0.35) * 360
     }
 }

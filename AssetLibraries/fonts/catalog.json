@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "library": "fonts",
+  "items": [
+    {
+      "id": "latin-heavy",
+      "name": "Latin Heavy",
+      "fontName": "AvenirNext-Heavy",
+      "scripts": ["latin", "en"],
+      "tags": ["bold", "hype", "impact"],
+      "previewText": "POWER",
+      "defaultDuration": 1.4
+    },
+    {
+      "id": "latin-bold",
+      "name": "Latin Bold",
+      "fontName": "AvenirNext-Bold",
+      "scripts": ["latin", "en"],
+      "tags": ["clean", "modern"],
+      "previewText": "Focus",
+      "defaultDuration": 1.6
+    },
+    {
+      "id": "latin-serif",
+      "name": "Latin Serif",
+      "fontName": "Georgia-Bold",
+      "scripts": ["latin", "en"],
+      "tags": ["story", "emotional"],
+      "previewText": "Story",
+      "defaultDuration": 1.8
+    },
+    {
+      "id": "latin-condensed",
+      "name": "Latin Condensed",
+      "fontName": "AvenirNextCondensed-Heavy",
+      "scripts": ["latin", "en"],
+      "tags": ["punch", "cta"],
+      "previewText": "NOW",
+      "defaultDuration": 1.3
+    },
+    {
+      "id": "latin-futura",
+      "name": "Futura Strong",
+      "fontName": "Futura-Bold",
+      "scripts": ["latin", "en"],
+      "tags": ["retro", "poster"],
+      "previewText": "GO",
+      "defaultDuration": 1.5
+    },
+    {
+      "id": "latin-rounded",
+      "name": "Rounded Soft",
+      "fontName": "AvenirNext-Medium",
+      "scripts": ["latin", "en"],
+      "tags": ["soft", "friendly"],
+      "previewText": "hey",
+      "defaultDuration": 1.7
+    },
+    {
+      "id": "hindi-bold",
+      "name": "Hindi Bold",
+      "fontName": "KohinoorDevanagari-Bold",
+      "scripts": ["devanagari", "hi", "hindi"],
+      "tags": ["hindi", "bold", "impact"],
+      "previewText": "ज़ोरदार",
+      "defaultDuration": 1.6
+    },
+    {
+      "id": "hindi-medium",
+      "name": "Hindi Medium",
+      "fontName": "KohinoorDevanagari-Medium",
+      "scripts": ["devanagari", "hi", "hindi"],
+      "tags": ["hindi", "clean"],
+      "previewText": "कहानी",
+      "defaultDuration": 1.8
+    },
+    {
+      "id": "hindi-regular",
+      "name": "Hindi Regular",
+      "fontName": "KohinoorDevanagari-Regular",
+      "scripts": ["devanagari", "hi", "hindi"],
+      "tags": ["hindi", "soft"],
+      "previewText": "शांत",
+      "defaultDuration": 1.8
+    },
+    {
+      "id": "hindi-itf",
+      "name": "Hindi Display",
+      "fontName": "ITFDevanagari-Bold",
+      "scripts": ["devanagari", "hi", "hindi"],
+      "tags": ["hindi", "display", "poster"],
+      "previewText": "धमाका",
+      "defaultDuration": 1.5
+    },
+    {
+      "id": "telugu-bold",
+      "name": "Telugu Bold",
+      "fontName": "KohinoorTelugu-Bold",
+      "scripts": ["telugu", "te"],
+      "tags": ["telugu", "bold", "impact"],
+      "previewText": "గొప్ప",
+      "defaultDuration": 1.6
+    },
+    {
+      "id": "telugu-medium",
+      "name": "Telugu Medium",
+      "fontName": "KohinoorTelugu-Medium",
+      "scripts": ["telugu", "te"],
+      "tags": ["telugu", "clean"],
+      "previewText": "కథ",
+      "defaultDuration": 1.8
+    },
+    {
+      "id": "telugu-regular",
+      "name": "Telugu Regular",
+      "fontName": "KohinoorTelugu-Regular",
+      "scripts": ["telugu", "te"],
+      "tags": ["telugu", "soft"],
+      "previewText": "నెమ్మది",
+      "defaultDuration": 1.8
+    }
+  ]
+}

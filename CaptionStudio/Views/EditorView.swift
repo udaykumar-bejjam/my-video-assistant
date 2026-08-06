@@ -74,6 +74,30 @@ struct EditorView: View {
                     .lineLimit(1)
             }
 
+            HStack(spacing: 8) {
+            #if os(macOS)
+            Picker("", selection: $editor.language) {
+                ForEach(AppLanguage.allCases) { lang in
+                    Text(lang.title).tag(lang)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 130)
+            #else
+            Menu {
+                ForEach(AppLanguage.allCases) { lang in
+                    Button(lang.title) { editor.language = lang }
+                }
+            } label: {
+                Text(editor.language == .english ? "EN" : (editor.language == .hindi ? "हि" : "తె"))
+                    .font(.custom("AvenirNext-DemiBold", size: 11))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.1), in: Capsule())
+                    .foregroundStyle(.white)
+            }
+            #endif
+
             Button {
                 Task { await editor.generateCaptions() }
             } label: {
@@ -99,6 +123,7 @@ struct EditorView: View {
             }
             .buttonStyle(.plain)
             .disabled(editor.isEnhancing || editor.project.captions.isEmpty)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

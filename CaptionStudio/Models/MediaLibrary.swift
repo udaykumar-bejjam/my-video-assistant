@@ -3,6 +3,8 @@ import SwiftUI
 
 enum MediaLibraryKind: String, CaseIterable, Identifiable, Codable {
     case textStyles = "text-styles"
+    case fonts
+    case effects
     case gifs
     case pngs
     case sfx
@@ -12,6 +14,8 @@ enum MediaLibraryKind: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .textStyles: return "Stylish Text"
+        case .fonts: return "Fonts"
+        case .effects: return "Effects"
         case .gifs: return "GIFs"
         case .pngs: return "PNGs"
         case .sfx: return "Sound FX"
@@ -21,6 +25,8 @@ enum MediaLibraryKind: String, CaseIterable, Identifiable, Codable {
     var systemImage: String {
         switch self {
         case .textStyles: return "textformat"
+        case .fonts: return "textformat.abc"
+        case .effects: return "sparkles"
         case .gifs: return "livephoto.play"
         case .pngs: return "photo"
         case .sfx: return "speaker.wave.2.fill"
@@ -33,7 +39,7 @@ enum MediaLibraryKind: String, CaseIterable, Identifiable, Codable {
 struct MediaLibraryItem: Identifiable, Hashable, Codable {
     var id: String
     var name: String
-    var tags: [String]
+    var tags: [String]?
     var file: String?
     var wav: String?
     var previewText: String?
@@ -47,10 +53,11 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
     var cornerRadius: CGFloat?
     var shadowRadius: CGFloat?
     var animation: String?
+    var scripts: [String]?
+    var preferredSfx: [String]?
     var defaultDuration: TimeInterval?
     var defaultScale: CGFloat?
     var defaultGain: Double?
-    /// Measured playback length (GIF cycle / SFX audio / text hold / PNG hold).
     var durationSeconds: TimeInterval?
     var lengthSeconds: TimeInterval?
     var width: CGFloat?
@@ -74,10 +81,13 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
         )
     }
 
+    var tagList: [String] { tags ?? [] }
+
     enum CodingKeys: String, CodingKey {
         case id, name, tags, file, wav, previewText, fontName, fontSize
         case textCase, textColor, strokeColor, strokeWidth, backgroundColor
-        case cornerRadius, shadowRadius, animation, defaultDuration, defaultScale, defaultGain
+        case cornerRadius, shadowRadius, animation, scripts, preferredSfx
+        case defaultDuration, defaultScale, defaultGain
         case durationSeconds, lengthSeconds, width, height, frameCount
         case estimatedWidth, estimatedHeight, pixelWidth, pixelHeight
         case normalizedWidth, normalizedHeight
@@ -90,7 +100,7 @@ struct MediaLibraryCatalog: Codable {
     var items: [MediaLibraryItem]
 }
 
-/// Precise placement returned by Cursor SDK enhancer (or heuristic fallback).
+/// Precise placement from Cursor SDK / heuristic — including significant word hits.
 struct EnhancementPlacement: Identifiable, Hashable, Codable {
     var id: UUID = UUID()
     var kind: String
@@ -105,6 +115,12 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     var reason: String?
     var lengthSeconds: TimeInterval?
     var captionIndex: Int?
+    var wordIndex: Int?
+    var fontId: String?
+    var effectId: String?
+    var sfxId: String?
+    var color: String?
+    var word: String?
     var assetPixelSize: AssetSize?
     var assetNormalizedSize: AssetSize?
 
@@ -115,16 +131,26 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case kind, assetId, startTime, endTime, x, y, scale, rotation, text, reason
-        case lengthSeconds, captionIndex, assetPixelSize, assetNormalizedSize
+        case lengthSeconds, captionIndex, wordIndex, fontId, effectId, sfxId, color, word
+        case assetPixelSize, assetNormalizedSize
     }
+
+    var displayText: String { word ?? text ?? "" }
 }
 
 struct EnhancementPlan: Codable {
     var summary: String
     var placements: [EnhancementPlacement]
+    var wordHits: [EnhancementPlacement]?
     var source: String?
     var model: String?
     var note: String?
+    var language: String?
+
+    /// All actionable edits the app must apply.
+    var allEdits: [EnhancementPlacement] {
+        placements + (wordHits ?? [])
+    }
 }
 
 struct SoundEffectCue: Identifiable, Equatable, Codable, Hashable {

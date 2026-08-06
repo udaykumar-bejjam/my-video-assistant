@@ -26,11 +26,13 @@ final class TranscriptionService: ObservableObject {
     @Published var progress: Double = 0
     @Published var statusMessage: String = ""
 
-    private let locale: Locale
+    var language: AppLanguage = .english
 
-    init(locale: Locale = .current) {
-        self.locale = locale
+    init(language: AppLanguage = .english) {
+        self.language = language
     }
+
+    private var locale: Locale { Locale(identifier: language.localeIdentifier) }
 
     func requestAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
         await withCheckedContinuation { continuation in
@@ -212,18 +214,12 @@ final class TranscriptionService: ObservableObject {
     /// Demo captions so the UI is usable without a real speech pass.
     func demoCaptions(for videoURL: URL) -> [CaptionSegment] {
         let duration = Self.quickDuration(of: videoURL)
-        let lines = [
-            "Hey — welcome to CaptionStudio",
-            "AI captions in one tap",
-            "Pick a style that pops",
-            "Add overlays and emojis",
-            "Export ready for social"
-        ]
+        let lines = language.demoLines
         let slice = max(duration / Double(lines.count), 1.2)
         return lines.enumerated().map { index, line in
             let start = Double(index) * slice
             let end = min(start + slice * 0.9, duration > 0 ? duration : start + 2)
-            let wordParts = line.split(separator: " ").map(String.init)
+            let wordParts = line.split(whereSeparator: { $0.isWhitespace }).map(String.init)
             let wordDur = (end - start) / Double(max(wordParts.count, 1))
             let words = wordParts.enumerated().map { wi, w in
                 CaptionWord(

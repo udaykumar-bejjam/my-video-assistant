@@ -26,6 +26,7 @@ final class EditorViewModel: ObservableObject {
     @Published var lastEnhancementNote: String?
     @Published var libraryKind: MediaLibraryKind = .textStyles
     @Published var chunkProgressLabel: String?
+    @Published var language: AppLanguage = .english
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
@@ -155,6 +156,7 @@ final class EditorViewModel: ObservableObject {
         errorMessage = nil
         defer { isTranscribing = false }
 
+        transcription.language = language
         do {
             let captions = try await transcription.transcribe(videoURL: url)
             project.captions = captions
@@ -206,6 +208,7 @@ final class EditorViewModel: ObservableObject {
                         captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
                         duration: project.duration,
                         videoSize: canvas,
+                        language: language,
                         forceHeuristic: false
                     )
                 } catch {
@@ -224,7 +227,7 @@ final class EditorViewModel: ObservableObject {
                 )
             }
 
-            let absolute = VideoChunkPlanner.absolutize(placements: plan.placements, chunk: chunk)
+            let absolute = VideoChunkPlanner.absolutize(placements: plan.allEdits, chunk: chunk)
             merged.append(contentsOf: absolute)
             if let note = plan.note { notes.append("p\(chunk.index + 1): \(note)") }
         }
@@ -232,14 +235,19 @@ final class EditorViewModel: ObservableObject {
         // Deduplicate near-identical placements at chunk boundaries.
         merged = Self.dedupe(placements: merged)
 
+        let wordHits = merged.filter { $0.kind == "wordHit" }
+        let others = merged.filter { $0.kind != "wordHit" }
+
         let plan = EnhancementPlan(
             summary: chunks.count == 1
-                ? "Placements for \(project.aspectRatio.rawValue) canvas."
-                : "Merged \(merged.count) placements across \(chunks.count) parts (\(project.aspectRatio.rawValue)).",
-            placements: merged,
+                ? "Word hits + placements for \(language.title) / \(project.aspectRatio.rawValue)."
+                : "Merged \(wordHits.count) word hits across \(chunks.count) parts (\(language.title)).",
+            placements: others,
+            wordHits: wordHits,
             source: enhancer.isHealthy ? "cursor-sdk-chunked" : "local-chunked",
             model: enhancer.usesCursorKey ? "composer-2.5" : nil,
-            note: notes.last ?? "Enhanced in \(chunks.count) part(s)"
+            note: notes.last ?? "Enhanced in \(chunks.count) part(s)",
+            language: language.localeIdentifier
         )
         apply(plan: plan)
         lastEnhancementNote = plan.summary
@@ -275,7 +283,7 @@ final class EditorViewModel: ObservableObject {
         var newOverlays: [OverlayItem] = []
         var newSFX: [SoundEffectCue] = []
 
-        for placement in plan.placements {
+        for placement in plan.allEdits {
             switch placement.kind {
             case "text":
                 if let item = makeStylishText(from: placement) {
@@ -293,21 +301,77 @@ final class EditorViewModel: ObservableObject {
                 if let cue = makeSFX(from: placement) {
                     newSFX.append(cue)
                 }
+            case "wordHit":
+                if let item = makeWordHit(from: placement) {
+                    newOverlays.append(item)
+                }
+                if let cue = makeWordHitSFX(from: placement) {
+                    newSFX.append(cue)
+                }
             default:
                 continue
             }
         }
 
-        // Keep manual emoji/shape overlays; replace previous AI-driven ones.
-        let manual = project.overlays.filter { $0.assetId == nil && $0.styleAssetId == nil && ($0.kind == .emoji || $0.kind == .shape || $0.kind == .watermark) }
+        let manual = project.overlays.filter {
+            $0.assetId == nil && $0.styleAssetId == nil && $0.fontId == nil
+                && ($0.kind == .emoji || $0.kind == .shape || $0.kind == .watermark)
+        }
         project.overlays = manual + newOverlays
         project.soundEffects = newSFX
         project.enhancementSummary = plan.summary
-        lastEnhancementNote = plan.note ?? "Applied \(newOverlays.count) overlays + \(newSFX.count) SFX (\(plan.source ?? "unknown"))"
+        let hitCount = plan.wordHits?.count ?? newOverlays.filter { $0.kind == .wordHit }.count
+        lastEnhancementNote = plan.note
+            ?? "Applied \(hitCount) word hits + \(newOverlays.count) overlays + \(newSFX.count) SFX"
         if let first = newOverlays.first {
             selectedOverlayID = first.id
             seek(to: first.startTime)
         }
+    }
+
+    private func makeWordHit(from placement: EnhancementPlacement) -> OverlayItem? {
+        let fontId = placement.fontId ?? placement.assetId
+        let font = libraries.item(kind: .fonts, id: fontId)
+            ?? libraries.items(for: .fonts).first { $0.scripts?.contains(where: { language.scriptTags.contains($0) }) == true }
+        guard let font else { return nil }
+        let effectId = placement.effectId ?? WordHitEffect.random().rawValue
+        let color = Color(hex: placement.color ?? "#FFEF5A") ?? .yellow
+        return OverlayItem(
+            kind: .wordHit,
+            text: placement.displayText.isEmpty ? (font.previewText ?? "!") : placement.displayText,
+            assetId: font.id,
+            assetFileName: nil,
+            styleAssetId: nil,
+            fontId: font.id,
+            fontName: font.fontName,
+            effectId: effectId,
+            sfxId: placement.sfxId,
+            x: placement.x,
+            y: placement.y,
+            scale: placement.scale,
+            rotation: placement.rotation,
+            startTime: placement.startTime,
+            endTime: placement.endTime,
+            color: color.codable,
+            fontSize: 48,
+            shape: .rectangle,
+            opacity: 1,
+            reason: placement.reason,
+            captionIndex: placement.captionIndex,
+            wordIndex: placement.wordIndex
+        )
+    }
+
+    private func makeWordHitSFX(from placement: EnhancementPlacement) -> SoundEffectCue? {
+        guard let sfxId = placement.sfxId,
+              libraries.item(kind: .sfx, id: sfxId) != nil
+        else { return nil }
+        return SoundEffectCue(
+            assetId: sfxId,
+            startTime: placement.startTime,
+            gain: libraries.item(kind: .sfx, id: sfxId)?.defaultGain ?? 0.85,
+            reason: "Word hit SFX for \(placement.text ?? "")"
+        )
     }
 
     private func makeStylishText(from placement: EnhancementPlacement) -> OverlayItem? {

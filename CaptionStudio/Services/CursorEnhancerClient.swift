@@ -48,6 +48,7 @@ final class CursorEnhancerClient: ObservableObject {
         captions: [CaptionSegment],
         duration: TimeInterval,
         videoSize: CGSize? = nil,
+        language: AppLanguage = .english,
         forceHeuristic: Bool = false
     ) async throws -> EnhancementPlan {
         let url = baseURL.appendingPathComponent("enhance")
@@ -59,11 +60,22 @@ final class CursorEnhancerClient: ObservableObject {
         var body: [String: Any] = [
             "duration": duration,
             "forceHeuristic": forceHeuristic,
-            "captions": captions.map { [
-                "text": $0.text,
-                "startTime": $0.startTime,
-                "endTime": $0.endTime
-            ] as [String: Any] }
+            "language": language.localeIdentifier,
+            "captions": captions.map { cap -> [String: Any] in
+                var dict: [String: Any] = [
+                    "text": cap.text,
+                    "startTime": cap.startTime,
+                    "endTime": cap.endTime
+                ]
+                if !cap.words.isEmpty {
+                    dict["words"] = cap.words.map { [
+                        "text": $0.text,
+                        "startTime": $0.startTime,
+                        "endTime": $0.endTime
+                    ] as [String: Any] }
+                }
+                return dict
+            }
         ]
         if let videoSize {
             body["videoSize"] = [

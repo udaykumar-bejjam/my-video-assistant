@@ -9,6 +9,7 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
     case watermark
     case gif
     case png
+    case wordHit
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
         case .watermark: return "Watermark"
         case .gif: return "GIF"
         case .png: return "PNG"
+        case .wordHit: return "Word Hit"
         }
     }
 
@@ -31,6 +33,7 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
         case .watermark: return "seal"
         case .gif: return "livephoto.play"
         case .png: return "photo"
+        case .wordHit: return "text.badge.star"
         }
     }
 }
@@ -39,7 +42,7 @@ enum OverlayShapeType: String, CaseIterable, Codable {
     case rectangle, circle, line, arrow
 }
 
-/// A freeform overlay (sticker / text / shape / gif / png) on the video canvas.
+/// A freeform overlay (sticker / text / shape / gif / png / word hit) on the video canvas.
 struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
     var id: UUID = UUID()
     var kind: OverlayKind
@@ -50,6 +53,10 @@ struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
     var assetFileName: String? = nil
     /// Text-style preset id for stylish text overlays.
     var styleAssetId: String? = nil
+    var fontId: String? = nil
+    var fontName: String? = nil
+    var effectId: String? = nil
+    var sfxId: String? = nil
     /// Normalized center (0...1)
     var x: CGFloat
     var y: CGFloat
@@ -62,6 +69,8 @@ struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
     var shape: OverlayShapeType
     var opacity: Double
     var reason: String? = nil
+    var captionIndex: Int? = nil
+    var wordIndex: Int? = nil
 
     static func textSticker(
         _ text: String,

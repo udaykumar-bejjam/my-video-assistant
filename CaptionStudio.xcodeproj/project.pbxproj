@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
 		A10000000000000000000017 /* AspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* AspectRatio.swift */; };
 		A10000000000000000000016 /* PlacementAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* PlacementAligner.swift */; };
@@ -31,6 +32,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* AspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectRatio.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* PlacementAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementAligner.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 				A10000000000000000000001 /* MediaLibrary.swift */,
 				A10000000000000000000002 /* ColorHex.swift */,
 				A10000000000000000000007 /* AspectRatio.swift */,
+				A10000000000000000000009 /* LanguageAndEffects.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -240,6 +243,7 @@
 				A10000000000000000000016 /* PlacementAligner.swift in Sources */,
 				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
 				A10000000000000000000017 /* AspectRatio.swift in Sources */,
+				A10000000000000000000019 /* LanguageAndEffects.swift in Sources */,
 				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

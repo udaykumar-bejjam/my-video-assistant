@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, "../..");
 export const LIBRARIES_ROOT = path.join(REPO_ROOT, "AssetLibraries");
 
-const LIBS = ["text-styles", "gifs", "pngs", "sfx"];
+const LIBS = ["text-styles", "fonts", "effects", "gifs", "pngs", "sfx"];
 
 export const REFERENCE_CANVAS = { width: 1080, height: 1920 };
 
@@ -90,6 +90,25 @@ function enrichItem(library, item) {
     out.pixelHeight = out.estimatedHeight;
     out.normalizedWidth = round4(out.estimatedWidth / REFERENCE_CANVAS.width);
     out.normalizedHeight = round4(out.estimatedHeight / REFERENCE_CANVAS.height);
+  }
+
+  if (library === "fonts") {
+    const text = out.previewText || out.name || "Aa";
+    out.lengthSeconds = out.defaultDuration ?? 1.5;
+    out.durationSeconds = out.lengthSeconds;
+    out.pixelWidth = Math.round(Math.min(700, Math.max(80, text.length * 42 * 0.6)));
+    out.pixelHeight = 64;
+    out.normalizedWidth = round4(out.pixelWidth / REFERENCE_CANVAS.width);
+    out.normalizedHeight = round4(out.pixelHeight / REFERENCE_CANVAS.height);
+  }
+
+  if (library === "effects") {
+    out.lengthSeconds = out.defaultDuration ?? 1.0;
+    out.durationSeconds = out.lengthSeconds;
+    out.pixelWidth = 0;
+    out.pixelHeight = 0;
+    out.normalizedWidth = 0;
+    out.normalizedHeight = 0;
   }
 
   return out;
@@ -203,6 +222,26 @@ export function compactCatalog(libraries, canvas = REFERENCE_CANVAS) {
       durationSeconds: i.durationSeconds,
       defaultGain: i.defaultGain,
     })),
+    fonts: libraries.fonts.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      fontName: i.fontName,
+      scripts: i.scripts,
+      tags: i.tags,
+      previewText: i.previewText,
+      lengthSeconds: i.lengthSeconds,
+      pixelWidth: i.pixelWidth,
+      pixelHeight: i.pixelHeight,
+      ...norm(i.pixelWidth, i.pixelHeight, 1),
+    })),
+    effects: libraries.effects.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      tags: i.tags,
+      animation: i.animation,
+      lengthSeconds: i.lengthSeconds,
+      preferredSfx: i.preferredSfx || [],
+    })),
   };
 }
 
@@ -212,6 +251,9 @@ function indexAssets(libraries) {
     gif: Object.fromEntries(libraries.gifs.items.map((i) => [i.id, i])),
     png: Object.fromEntries(libraries.pngs.items.map((i) => [i.id, i])),
     sfx: Object.fromEntries(libraries.sfx.items.map((i) => [i.id, i])),
+    font: Object.fromEntries(libraries.fonts.items.map((i) => [i.id, i])),
+    effect: Object.fromEntries(libraries.effects.items.map((i) => [i.id, i])),
+    wordHit: Object.fromEntries(libraries.fonts.items.map((i) => [i.id, i])),
   };
 }
 
@@ -310,9 +352,9 @@ export function alignPlacement(placement, asset, captions, videoDuration) {
 }
 
 /**
- * Build the Cursor agent prompt with FULL resource timing/size metadata.
+ * Build the Cursor agent prompt with FULL resource timing/size metadata + significant word hits.
  */
-export function buildPrompt({ captions, duration, libraries, videoSize }) {
+export function buildPrompt({ captions, duration, libraries, videoSize, language = "en-US" }) {
   const canvas = canvasForVideoSize(videoSize);
   const catalog = compactCatalog(libraries, canvas);
   const aspect = aspectLabel(canvas);
@@ -323,48 +365,86 @@ export function buildPrompt({ captions, duration, libraries, videoSize }) {
     startTime: c.startTime,
     endTime: c.endTime,
     lengthSeconds: round3(Math.max(0, (c.endTime || 0) - (c.startTime || 0))),
+    words: Array.isArray(c.words)
+      ? c.words.map((w, wi) => ({
+          index: wi,
+          text: w.text,
+          startTime: w.startTime,
+          endTime: w.endTime,
+        }))
+      : undefined,
   }));
 
-  return `You are the timing director for CaptionStudio.
+  const scriptHint =
+    language.startsWith("hi")
+      ? "Hindi/Devanagari — prefer hindi-* fonts"
+      : language.startsWith("te")
+        ? "Telugu — prefer telugu-* fonts"
+        : "English/Latin — prefer latin-* fonts";
 
-You place library resources onto a video timeline. Each resource has a MEASURED length and size.
-Your startTime/endTime MUST respect those lengths and the caption windows that are playing.
+  return `You are the creative timing director for CaptionStudio.
+
+Decide PRECISELY:
+1) which SIGNIFICANT words to punch on screen
+2) which font, randomised effect, and sound effect each word gets
+3) where (x,y) and when (start/end) every asset plays
+
+Language: ${language} (${scriptHint})
 
 VIDEO
 - durationSeconds: ${duration}
 - aspect: ${aspect}
 - canvasPixels: ${canvas.width}x${canvas.height}
-- coordinateSystem: x,y normalized 0–1 on this canvas (0,0 = top-left). Resource normalizedWidth/Height are fractions of THIS canvas at scale=1.
+- coordinateSystem: x,y normalized 0–1 on this canvas (0,0 = top-left)
 
-CAPTION WINDOWS (spoken content currently playing)
+CAPTION WINDOWS + WORD TIMINGS
 ${JSON.stringify(captionWindows, null, 2)}
 
-RESOURCE LIBRARIES (ids only from here)
-Each item includes:
-- lengthSeconds / durationSeconds = how long the resource plays (GIF cycle, SFX audio, text on-screen, PNG hold)
-- pixelWidth/pixelHeight = intrinsic asset size
-- normalizedWidth/normalizedHeight = on-canvas size at scale 1
+LIBRARIES (ids only from here)
 ${JSON.stringify(catalog, null, 2)}
 
-TIMING RULES (mandatory)
-1. Only use assetId values from the libraries. Never invent ids.
-2. Return ONLY valid JSON (no markdown).
-3. Prefer 6–14 placements; do not overlap too many visuals at once.
-4. Set captionIndex to the caption window this resource supports.
-5. startTime should equal that caption's startTime (hit with the spoken line).
-6. endTime MUST be derived from the asset length:
-   - sfx: endTime = startTime + asset.lengthSeconds (exact audio length)
-   - gif: endTime = startTime + N * asset.lengthSeconds where N is whole loops that fit in the caption window (at least 1)
-   - png: endTime = min(caption.endTime, startTime + asset.lengthSeconds)
-   - text: endTime = min(caption.endTime, startTime + asset.lengthSeconds)
-7. Never schedule past video durationSeconds.
-8. Choose x,y so the resource's normalized size stays fully on-screen (account for scale).
-9. For text, "text" is 2–5 punchy words from the caption.
-10. Match mood tags: hype→neon-punch/confetti/bass-hit; calm→soft-serif/heart; tech→mint-glow/sparkle/glitch; reveal→outline-impact/pop-burst/ding.
+SIGNIFICANT WORD RULES
+1. Pick 1–2 high-impact words per caption (names, verbs of power, emotion, numbers, CTAs). Skip filler.
+2. For each wordHit use the word's OWN startTime/endTime when words[] is present; else use caption start + short span.
+3. Randomise effectId across the effects library (do not reuse the same effect for every word).
+4. Pair each effect with an sfxId — prefer that effect's preferredSfx list.
+5. fontId MUST match the language script (${scriptHint}).
+6. assetId for wordHit = fontId (required for validation).
+7. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
+8. Also emit supporting placements (gif/png/text/sfx) as before when helpful — keep total visual clutter low.
 
-OUTPUT SCHEMA (JSON only):
+GENERAL TIMING RULES
+1. Never invent library ids.
+2. Return ONLY valid JSON (no markdown).
+3. Never schedule past durationSeconds.
+4. Keep resources fully on-screen given normalized size × scale.
+5. sfx endTime = startTime + sfx.lengthSeconds exactly.
+
+OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
 {
-  "summary": "one sentence creative + timing plan",
+  "summary": "one sentence creative plan",
+  "language": "${language}",
+  "wordHits": [
+    {
+      "kind": "wordHit",
+      "assetId": "font id",
+      "fontId": "font id",
+      "effectId": "effect id",
+      "sfxId": "sfx id",
+      "word": "exact word text",
+      "text": "exact word text",
+      "captionIndex": 0,
+      "wordIndex": 0,
+      "startTime": 0.0,
+      "endTime": 0.8,
+      "x": 0.5,
+      "y": 0.42,
+      "scale": 1.35,
+      "rotation": -4,
+      "color": "#FFEF5A",
+      "reason": "why this word + effect"
+    }
+  ],
   "placements": [
     {
       "kind": "text" | "gif" | "png" | "sfx",
@@ -377,7 +457,7 @@ OUTPUT SCHEMA (JSON only):
       "scale": 1.0,
       "rotation": 0,
       "text": "only for kind=text",
-      "reason": "why this moment + how length fits the caption"
+      "reason": "why"
     }
   ]
 }`;
@@ -394,22 +474,129 @@ export function extractJson(text) {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
+const WORD_HIT_COLORS = ["#FFEF5A", "#33F2CF", "#FF6B6B", "#FFFFFF", "#FF9F1C", "#C77DFF"];
+
 export function validatePlacements(plan, libraries, captions = [], videoDuration = 10) {
   const assets = indexAssets(libraries);
-  const placements = Array.isArray(plan?.placements) ? plan.placements : [];
-  const cleaned = [];
+  const fonts = Object.fromEntries(libraries.fonts.items.map((i) => [i.id, i]));
+  const effects = Object.fromEntries(libraries.effects.items.map((i) => [i.id, i]));
+  const sfx = Object.fromEntries(libraries.sfx.items.map((i) => [i.id, i]));
 
-  for (const p of placements) {
-    const asset = assets[p?.kind]?.[p?.assetId];
+  const placements = [];
+  const wordHits = [];
+
+  const incoming = [
+    ...(Array.isArray(plan?.placements) ? plan.placements : []),
+    ...(Array.isArray(plan?.wordHits) ? plan.wordHits : []),
+  ];
+
+  for (const p of incoming) {
+    if (!p) continue;
+    if (p.kind === "wordHit") {
+      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration);
+      if (hit) wordHits.push(hit);
+      continue;
+    }
+    const asset = assets[p.kind]?.[p.assetId];
     if (!asset) continue;
-    cleaned.push(alignPlacement(p, asset, captions, videoDuration));
+    placements.push(alignPlacement(p, asset, captions, videoDuration));
   }
 
   return {
     summary: typeof plan?.summary === "string" ? plan.summary : "Enhancement plan",
-    placements: cleaned,
+    placements,
+    wordHits,
+    language: plan?.language,
     source: plan?.source || "cursor-sdk",
     canvas: REFERENCE_CANVAS,
+  };
+}
+
+export function alignWordHit(placement, fonts, effects, sfxMap, captions, videoDuration) {
+  const fontId = placement.fontId || placement.assetId;
+  const font = fonts[fontId];
+  if (!font) return null;
+
+  const effectIds = Object.keys(effects);
+  let effectId = placement.effectId;
+  if (!effects[effectId]) {
+    effectId = effectIds[Math.floor(Math.random() * effectIds.length)];
+  }
+  const effect = effects[effectId];
+
+  let sfxId = placement.sfxId;
+  if (!sfxMap[sfxId]) {
+    const preferred = effect.preferredSfx || [];
+    sfxId = preferred.find((id) => sfxMap[id]) || Object.keys(sfxMap)[0];
+  }
+  const sfx = sfxMap[sfxId];
+
+  const caps = Array.isArray(captions) ? captions : [];
+  let caption = null;
+  if (Number.isInteger(placement.captionIndex) && caps[placement.captionIndex]) {
+    caption = caps[placement.captionIndex];
+  }
+
+  let start = Number(placement.startTime);
+  let end = Number(placement.endTime);
+  const words = caption?.words;
+
+  if (Number.isInteger(placement.wordIndex) && Array.isArray(words) && words[placement.wordIndex]) {
+    const w = words[placement.wordIndex];
+    start = w.startTime;
+    end = w.endTime;
+  } else if (caption && (!Number.isFinite(start) || start < caption.startTime)) {
+    start = caption.startTime;
+  }
+
+  if (!Number.isFinite(start)) start = 0;
+  const effectLen = effect.lengthSeconds || 1;
+  const sfxLen = sfx?.lengthSeconds || 0.3;
+  if (!Number.isFinite(end) || end <= start) {
+    end = start + effectLen;
+  }
+  end = Math.min(videoDuration, start + Math.max(end - start, Math.min(effectLen, 1.4)));
+  if (caption) end = Math.min(end, caption.endTime + 0.15);
+
+  const wordText = placement.word || placement.text || font.previewText || "!";
+  const color =
+    typeof placement.color === "string" && placement.color.startsWith("#")
+      ? placement.color
+      : WORD_HIT_COLORS[Math.floor(Math.random() * WORD_HIT_COLORS.length)];
+
+  const nw = (font.normalizedWidth || 0.2) * (Number(placement.scale) || 1.3);
+  const nh = (font.normalizedHeight || 0.08) * (Number(placement.scale) || 1.3);
+  let x = Number(placement.x);
+  let y = Number(placement.y);
+  if (!Number.isFinite(x)) x = 0.5;
+  if (!Number.isFinite(y)) y = 0.4;
+  x = clamp(x, nw / 2 + 0.02, 1 - nw / 2 - 0.02);
+  y = clamp(y, nh / 2 + 0.05, 1 - nh / 2 - 0.05);
+
+  return {
+    kind: "wordHit",
+    assetId: fontId,
+    fontId,
+    effectId,
+    sfxId,
+    word: wordText,
+    text: wordText,
+    captionIndex: caption ? caps.indexOf(caption) : placement.captionIndex,
+    wordIndex: placement.wordIndex,
+    startTime: round3(Math.max(0, start)),
+    endTime: round3(Math.max(0, end)),
+    lengthSeconds: round3(effectLen),
+    x: round4(x),
+    y: round4(y),
+    scale: clamp(Number(placement.scale) || 1.3, 0.8, 2.6),
+    rotation: Number.isFinite(Number(placement.rotation))
+      ? Number(placement.rotation)
+      : (Math.random() * 16 - 8),
+    color,
+    reason: placement.reason || `Significant word "${wordText}" with ${effectId}+${sfxId}`,
+    assetPixelSize: { width: font.pixelWidth || 200, height: font.pixelHeight || 64 },
+    // paired SFX cue length for the client
+    sfxLengthSeconds: sfxLen,
   };
 }
 
@@ -423,57 +610,97 @@ function round4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
-/** Offline heuristic — still aligns to measured asset lengths + caption windows. */
-export function heuristicPlan({ captions, duration, libraries }) {
+/** Offline heuristic — significant word hits + measured asset lengths. */
+export function heuristicPlan({ captions, duration, libraries, language = "en-US" }) {
   const placements = [];
+  const wordHits = [];
   const textLib = libraries["text-styles"].items;
   const gifLib = libraries.gifs.items;
   const pngLib = libraries.pngs.items;
   const sfxLib = libraries.sfx.items;
+  const fontLib = libraries.fonts.items;
+  const effectLib = libraries.effects.items;
 
   const pick = (items, tags) =>
-    items.find((i) => i.tags?.some((t) => tags.includes(t))) || items[0];
+    items.find((i) => (i.tags || []).some((t) => tags.includes(t))) || items[0];
+
+  const scriptFonts = fontLib.filter((f) => {
+    const scripts = f.scripts || [];
+    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
+    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
+    return scripts.some((s) => ["en", "latin"].includes(s));
+  });
+  const fonts = scriptFonts.length ? scriptFonts : fontLib;
+
+  const significantFrom = (cap) => {
+    const parts = Array.isArray(cap.words) && cap.words.length
+      ? cap.words.map((w, i) => ({ ...w, index: i }))
+      : String(cap.text || "")
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((text, i, arr) => {
+            const span = (cap.endTime - cap.startTime) / arr.length;
+            return {
+              text,
+              index: i,
+              startTime: cap.startTime + i * span,
+              endTime: cap.startTime + (i + 1) * span,
+            };
+          });
+    // Prefer longer / non-filler tokens
+    const filler = new Set([
+      "a","an","the","to","of","and","or","in","on","is","are","for","with","this","that",
+      "एक","और","की","के","को","में","से","है","हैं","का","कि",
+      "ఒక","మరియు","లో","కి","నుంచి","ఉంది","అని"
+    ]);
+    return parts
+      .filter((w) => w.text && !filler.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
+      .sort((a, b) => String(b.text).length - String(a.text).length)
+      .slice(0, 2);
+  };
 
   captions.slice(0, 8).forEach((cap, index) => {
     const lower = (cap.text || "").toLowerCase();
     const mood =
-      /(let'?s go|fire|crazy|insane|wow|hype)/.test(lower)
+      /(let'?s go|fire|crazy|insane|wow|hype|धमाका|ज़ोर|గొప్ప)/.test(lower)
         ? "hype"
-        : /(love|heart|feel|miss)/.test(lower)
+        : /(love|heart|feel|miss|प्यार|ప్రేమ)/.test(lower)
           ? "emotional"
-          : /(ai|tech|code|app|build)/.test(lower)
+          : /(ai|tech|code|app|build|एआई)/.test(lower)
             ? "tech"
-            : /(tip|how|secret|watch)/.test(lower)
+            : /(tip|how|secret|watch|टिप)/.test(lower)
               ? "reveal"
               : "default";
 
-    const textAsset =
-      mood === "hype"
-        ? pick(textLib, ["hype", "energy"])
-        : mood === "emotional"
-          ? pick(textLib, ["emotional", "calm"])
-          : mood === "tech"
-            ? pick(textLib, ["ai", "tech", "modern"])
-            : mood === "reveal"
-              ? pick(textLib, ["impact", "reveal", "cta"])
-              : textLib[index % textLib.length];
-
-    const words = (cap.text || "Wow").split(/\s+/).slice(0, 4).join(" ");
-    placements.push({
-      kind: "text",
-      assetId: textAsset.id,
-      captionIndex: index,
-      startTime: cap.startTime,
-      endTime: cap.startTime + (textAsset.lengthSeconds || 1.8),
-      x: index % 2 === 0 ? 0.5 : 0.48,
-      y: index % 3 === 0 ? 0.26 : 0.32,
-      scale: 1,
-      rotation: index % 2 === 0 ? -3 : 2,
-      text: words,
-      reason: `Text length ${textAsset.lengthSeconds}s aligned to caption ${index}`,
+    // Significant word hits with randomised effects + sfx
+    const sig = significantFrom(cap);
+    sig.forEach((word, wi) => {
+      const font = fonts[(index + wi) % fonts.length];
+      const effect = effectLib[(index * 3 + wi * 2) % effectLib.length];
+      const preferred = (effect.preferredSfx || []).map((id) => sfxLib.find((s) => s.id === id)).filter(Boolean);
+      const sfx = preferred[0] || sfxLib[(index + wi) % sfxLib.length];
+      wordHits.push({
+        kind: "wordHit",
+        assetId: font.id,
+        fontId: font.id,
+        effectId: effect.id,
+        sfxId: sfx.id,
+        word: word.text,
+        text: word.text,
+        captionIndex: index,
+        wordIndex: word.index,
+        startTime: word.startTime,
+        endTime: word.endTime,
+        x: 0.35 + (wi % 2) * 0.3,
+        y: 0.36 + (index % 3) * 0.06,
+        scale: 1.25 + (wi % 2) * 0.15,
+        rotation: wi % 2 === 0 ? -5 : 6,
+        color: WORD_HIT_COLORS[(index + wi) % WORD_HIT_COLORS.length],
+        reason: `Significant "${word.text}" → ${effect.id} + ${sfx.id}`,
+      });
     });
 
-    if (index % 2 === 0) {
+    if (index % 2 === 0 && gifLib.length) {
       const gif =
         mood === "hype"
           ? pick(gifLib, ["hype", "celebration"])
@@ -490,75 +717,54 @@ export function heuristicPlan({ captions, duration, libraries }) {
         y: 0.22 + (index % 3) * 0.08,
         scale: gif.defaultScale || 1,
         rotation: 0,
-        reason: `GIF cycle ${gif.lengthSeconds}s (${gif.pixelWidth}x${gif.pixelHeight}) on caption ${index}`,
+        reason: `GIF support for caption ${index}`,
       });
     }
 
-    if (index % 3 === 0) {
-      const png =
-        mood === "emotional"
-          ? pick(pngLib, ["love", "emotional"])
-          : mood === "tech"
-            ? pick(pngLib, ["magic", "ai"])
-            : pngLib[index % pngLib.length];
+    if (index % 3 === 0 && textLib.length) {
+      const textAsset = textLib[index % textLib.length];
       placements.push({
-        kind: "png",
-        assetId: png.id,
+        kind: "text",
+        assetId: textAsset.id,
         captionIndex: index,
         startTime: cap.startTime,
-        endTime: cap.startTime + (png.lengthSeconds || 2),
-        x: 0.18,
-        y: 0.28 + (index % 2) * 0.1,
-        scale: png.defaultScale || 1,
-        rotation: -8,
-        reason: `PNG ${png.pixelWidth}x${png.pixelHeight}, hold ${png.lengthSeconds}s`,
+        endTime: cap.startTime + (textAsset.lengthSeconds || 1.8),
+        x: 0.5,
+        y: 0.78,
+        scale: 1,
+        rotation: 0,
+        text: String(cap.text || "").split(/\s+/).slice(0, 3).join(" "),
+        reason: `Support text on caption ${index}`,
       });
     }
-
-    const sfx =
-      mood === "hype"
-        ? pick(sfxLib, ["impact", "hype"])
-        : mood === "reveal"
-          ? pick(sfxLib, ["reveal", "success"])
-          : mood === "tech"
-            ? pick(sfxLib, ["tech", "glitch"])
-            : sfxLib[index % sfxLib.length];
-    placements.push({
-      kind: "sfx",
-      assetId: sfx.id,
-      captionIndex: index,
-      startTime: cap.startTime,
-      endTime: cap.startTime + (sfx.lengthSeconds || 0.3),
-      x: 0.5,
-      y: 0.5,
-      scale: 1,
-      rotation: 0,
-      reason: `SFX exact length ${sfx.lengthSeconds}s at caption ${index}`,
-    });
   });
 
   if (duration > 1.5) {
     const riser = sfxLib.find((i) => i.id === "riser") || sfxLib[0];
-    placements.unshift({
-      kind: "sfx",
-      assetId: riser.id,
-      captionIndex: 0,
-      snapToCaption: false,
-      startTime: 0,
-      endTime: riser.lengthSeconds || 0.8,
-      x: 0.5,
-      y: 0.5,
-      scale: 1,
-      rotation: 0,
-      reason: `Cold-open riser exact ${riser.lengthSeconds}s`,
-    });
+    if (riser) {
+      placements.unshift({
+        kind: "sfx",
+        assetId: riser.id,
+        captionIndex: 0,
+        snapToCaption: false,
+        startTime: 0,
+        endTime: riser.lengthSeconds || 0.8,
+        x: 0.5,
+        y: 0.5,
+        scale: 1,
+        rotation: 0,
+        reason: `Cold-open riser exact ${riser.lengthSeconds}s`,
+      });
+    }
   }
 
   return validatePlacements(
     {
       summary:
-        "Heuristic placements snapped to measured asset lengths and caption windows (Cursor SDK offline fallback).",
+        "Heuristic: significant words with randomised fonts/effects/SFX, snapped to word timings.",
+      language,
       placements,
+      wordHits,
       source: "heuristic-fallback",
     },
     libraries,

@@ -170,6 +170,10 @@ struct LibraryTile: View {
             return String(format: "%dx%d", Int(item.pixelSize.width), Int(item.pixelSize.height))
         case .textStyles:
             return String(format: "%.1fs hold", item.playLength)
+        case .fonts:
+            return (item.scripts ?? []).prefix(2).joined(separator: " · ")
+        case .effects:
+            return item.animation ?? item.id
         }
     }
 
@@ -183,6 +187,19 @@ struct LibraryTile: View {
                 .shadow(radius: (item.shadowRadius ?? 0) > 0 ? 4 : 0)
                 .padding(6)
                 .multilineTextAlignment(.center)
+        case .fonts:
+            Text(item.previewText ?? "Aa")
+                .font(.custom(item.fontName ?? "AvenirNext-Bold", size: 18))
+                .foregroundStyle(.white)
+                .padding(6)
+        case .effects:
+            VStack(spacing: 4) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color(red: 1.0, green: 0.92, blue: 0.35))
+                Text(item.animation ?? item.id)
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         case .gifs, .pngs:
             if let file = item.file,
                let url = editor.libraries.fileURL(kind: kind, fileName: file) {

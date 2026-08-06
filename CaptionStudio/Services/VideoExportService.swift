@@ -303,19 +303,22 @@ final class VideoExportService: ObservableObject {
         for item in overlays {
             let layer: CALayer
             switch item.kind {
-            case .emoji, .text, .watermark:
+            case .emoji, .text, .watermark, .wordHit:
+                let fontName = item.fontName ?? "AvenirNext-Bold"
+                let fontSize = (item.kind == .wordHit ? item.fontSize * 0.85 : item.fontSize)
+                    * item.scale * (size.width / 390)
                 layer = Self.makeTextLayer(
                     text: item.text,
-                    fontName: "AvenirNext-Bold",
-                    fontSize: item.fontSize * item.scale * (size.width / 390),
+                    fontName: fontName,
+                    fontSize: fontSize,
                     textColor: item.color.platformColor,
-                    strokeColor: .clear,
-                    strokeWidth: 0,
+                    strokeColor: item.kind == .wordHit ? PlatformColor.black : .clear,
+                    strokeWidth: item.kind == .wordHit ? 2 : 0,
                     backgroundColor: .clear,
                     cornerRadius: 0,
-                    shadowColor: PlatformColor.black.withAlphaComponent(0.4),
-                    shadowRadius: 4,
-                    maxWidth: size.width * 0.7
+                    shadowColor: PlatformColor.black.withAlphaComponent(0.45),
+                    shadowRadius: 6,
+                    maxWidth: size.width * 0.75
                 )
             case .gif, .png:
                 if let file = item.assetFileName,
