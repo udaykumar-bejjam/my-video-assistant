@@ -34,9 +34,16 @@ struct EditorView: View {
                 .environmentObject(editor)
         }
         .confirmationDialog("Leave editor?", isPresented: $showLeaveConfirm) {
+            Button("Save Draft & Leave") {
+                do {
+                    try editor.saveDraft()
+                    editor.leaveWithoutSaving()
+                } catch {
+                    editor.errorMessage = error.localizedDescription
+                }
+            }
             Button("Discard & Leave", role: .destructive) {
-                editor.tearDownPlayer()
-                editor.project = .empty()
+                editor.leaveWithoutSaving()
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -243,6 +250,8 @@ struct EditorView: View {
             OverlayEditorView()
         case .libraries:
             LibraryBrowserView()
+        case .trim:
+            TrimAssistView()
         case .export:
             ExportPanelView()
         }
@@ -375,11 +384,20 @@ struct TimelineScrubber: View {
             )
             .tint(Color(red: 0.3, green: 0.92, blue: 0.75))
 
-            // Caption markers
+            // Caption markers + trim suggestions
             GeometryReader { geo in
                 let duration = max(editor.project.duration, 0.1)
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.08))
+                    ForEach(editor.trimSuggestions) { cut in
+                        let selected = editor.selectedTrimIDs.contains(cut.id)
+                        let x = cut.startTime / duration * geo.size.width
+                        let w = max(2, cut.duration / duration * geo.size.width)
+                        Capsule()
+                            .fill(Color(red: 1.0, green: 0.55, blue: 0.2).opacity(selected ? 0.85 : 0.35))
+                            .frame(width: w, height: 6)
+                            .offset(x: x)
+                    }
                     ForEach(editor.project.captions) { caption in
                         let x = caption.startTime / duration * geo.size.width
                         let w = max(2, caption.duration / duration * geo.size.width)

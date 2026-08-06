@@ -337,6 +337,31 @@ struct ExportPanelView: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
 
+            Button {
+                do {
+                    _ = try editor.saveDraft()
+                } catch {
+                    editor.errorMessage = error.localizedDescription
+                }
+            } label: {
+                Label("Save Draft", systemImage: "square.and.arrow.down")
+                    .font(.custom("AvenirNext-DemiBold", size: 13))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color.white.opacity(0.1), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(editor.project.videoURL == nil)
+            .padding(.horizontal, 16)
+
+            if let draftMessage = editor.draftMessage {
+                Text(draftMessage)
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.8))
+                    .padding(.horizontal, 16)
+            }
+
             Text(editor.project.duration > VideoChunkPlanner.singlePassLimit
                  ? "Long video: processed in \(VideoChunkPlanner.defaultChunkSeconds, specifier: "%.0f")s parts, then stitched frame-accurately."
                  : "Single-pass export on the selected aspect canvas. Batch export writes one file per checked aspect.")

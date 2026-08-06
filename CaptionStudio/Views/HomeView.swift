@@ -85,6 +85,12 @@ struct HomeView: View {
                     PackPickerView(compact: true)
                         .padding(.top, 18)
                         .opacity(appear ? 1 : 0)
+
+                    if !editor.projectStore.drafts.isEmpty {
+                        DraftsListView()
+                            .padding(.top, 20)
+                            .opacity(appear ? 1 : 0)
+                    }
                 }
                 .padding(.horizontal, 28)
 
@@ -111,6 +117,7 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            editor.projectStore.reload()
             withAnimation(.spring(response: 0.7, dampingFraction: 0.82)) {
                 appear = true
             }
@@ -144,6 +151,66 @@ struct HomeView: View {
         } catch {
             editor.errorMessage = error.localizedDescription
         }
+    }
+}
+
+struct DraftsListView: View {
+    @EnvironmentObject private var editor: EditorViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Drafts")
+                .font(.custom("AvenirNext-DemiBold", size: 13))
+                .foregroundStyle(.white.opacity(0.55))
+
+            ForEach(editor.projectStore.drafts.prefix(6)) { draft in
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await editor.openDraft(draft) }
+                    } label: {
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.white.opacity(0.08))
+                                .frame(width: 44, height: 58)
+                                .overlay(
+                                    Image(systemName: "film")
+                                        .foregroundStyle(.white.opacity(0.45))
+                                )
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(draft.title)
+                                    .font(.custom("AvenirNext-DemiBold", size: 14))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Text(String(format: "%.0fs · %@", draft.duration, draft.updatedAt.formatted(date: .abbreviated, time: .shortened)))
+                                    .font(.custom("AvenirNext-Medium", size: 11))
+                                    .foregroundStyle(.white.opacity(0.45))
+                            }
+                            Spacer(minLength: 0)
+                            Text(draft.languageBadge)
+                                .font(.custom("AvenirNext-Bold", size: 10))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.1), in: Capsule())
+                                .foregroundStyle(.white.opacity(0.8))
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(role: .destructive) {
+                        editor.deleteDraft(draft.id)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .padding(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
