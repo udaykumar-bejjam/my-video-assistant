@@ -126,6 +126,8 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     var color: String?
     var secondaryColor: String?
     var word: String?
+    var pairedWord: String?
+    var mood: String?
     var assetPixelSize: AssetSize?
     var assetNormalizedSize: AssetSize?
 
@@ -137,6 +139,7 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case kind, assetId, startTime, endTime, x, y, scale, rotation, text, reason
         case lengthSeconds, captionIndex, wordIndex, fontId, effectId, sfxId, color, secondaryColor, word
+        case pairedWord, mood
         case assetPixelSize, assetNormalizedSize
     }
 
