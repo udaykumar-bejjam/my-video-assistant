@@ -32,6 +32,10 @@ final class EditorViewModel: ObservableObject {
     @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
     @Published var batchExportURLs: [URL] = []
     @Published var showBrandKit = false
+    @Published var trimSuggestions: [TrimSuggestion] = []
+    @Published var selectedTrimIDs: Set<UUID> = []
+    @Published var isTrimming = false
+    @Published var draftMessage: String?
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
@@ -39,10 +43,15 @@ final class EditorViewModel: ObservableObject {
     let libraries = MediaLibraryStore()
     let packs = PackLibrary()
     let brandKit = BrandKitStore()
+    let projectStore = ProjectStore()
     let enhancer = CursorEnhancerClient()
 
     var selectedPack: ShortsPack? {
         packs.pack(id: project.packId)
+    }
+
+    var selectedTrimSuggestions: [TrimSuggestion] {
+        trimSuggestions.filter { selectedTrimIDs.contains($0.id) }
     }
 
     init() {
@@ -62,7 +71,7 @@ final class EditorViewModel: ObservableObject {
     private var sfxPlayers: [AVAudioPlayer] = []
 
     enum EditorTab: String, CaseIterable, Identifiable {
-        case captions, styles, overlays, libraries, export
+        case captions, styles, overlays, libraries, trim, export
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -70,6 +79,7 @@ final class EditorViewModel: ObservableObject {
             case .styles: return "Styles"
             case .overlays: return "Overlays"
             case .libraries: return "Library"
+            case .trim: return "Trim"
             case .export: return "Export"
             }
         }
@@ -79,6 +89,7 @@ final class EditorViewModel: ObservableObject {
             case .styles: return "paintpalette.fill"
             case .overlays: return "square.stack.3d.up.fill"
             case .libraries: return "square.grid.2x2.fill"
+            case .trim: return "scissors"
             case .export: return "square.and.arrow.up.fill"
             }
         }
@@ -140,6 +151,8 @@ final class EditorViewModel: ObservableObject {
         project.chunkCount = VideoChunkPlanner.chunks(duration: project.duration).count
         // Persist language on the project (B3 language lock).
         project.language = language
+        trimSuggestions = []
+        selectedTrimIDs = []
         refreshWatermarkOverlay()
 
         let item = AVPlayerItem(asset: asset)
@@ -196,6 +209,7 @@ final class EditorViewModel: ObservableObject {
             project.captions = captions
             selectedCaptionID = captions.first?.id
             editorTab = .styles
+            refreshTrimSuggestions()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -341,6 +355,170 @@ final class EditorViewModel: ObservableObject {
             reason: "Brand kit watermark"
         )
         project.overlays.append(mark)
+    }
+
+    // MARK: - Drafts
+
+    @discardableResult
+    func saveDraft() throws -> SavedProject {
+        project.language = language
+        let saved = try projectStore.save(project: project)
+        // Point at the durable draft copy so later saves are stable.
+        project.videoURL = try projectStore.load(id: saved.id).1
+        project.id = saved.id
+        draftMessage = "Saved “\(saved.title)”"
+        return saved
+    }
+
+    func openDraft(_ saved: SavedProject) async {
+        do {
+            let (draft, videoURL) = try projectStore.load(id: saved.id)
+            tearDownPlayer()
+            project = draft.toProject(videoURL: videoURL)
+            language = draft.language
+            selectedPreset = packs.pack(id: draft.packId)?.captionPreset ?? selectedPreset
+            lastEnhancementNote = draft.enhancementSummary
+            refreshTrimSuggestions()
+            refreshWatermarkOverlay()
+
+            let asset = AVURLAsset(url: videoURL)
+            let item = AVPlayerItem(asset: asset)
+            let newPlayer = AVPlayer(playerItem: item)
+            player = newPlayer
+            currentTime = 0
+            isPlaying = false
+
+            let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
+            timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+                Task { @MainActor in
+                    self?.currentTime = CMTimeGetSeconds(time)
+                }
+            }
+            endObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.isPlaying = false
+                    self?.seek(to: 0)
+                }
+            }
+            draftMessage = "Opened “\(draft.title)”"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteDraft(_ id: UUID) {
+        do {
+            try projectStore.delete(id: id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func leaveWithoutSaving() {
+        tearDownPlayer()
+        let packId = project.packId
+        project = .empty()
+        project.packId = packId
+        if let pack = selectedPack {
+            applyPackSideEffects(pack)
+        }
+        language = brandKit.kit.appLanguage
+        trimSuggestions = []
+        selectedTrimIDs = []
+        draftMessage = nil
+    }
+
+    // MARK: - Trim assist
+
+    func refreshTrimSuggestions() {
+        let suggestions = TrimService.suggestions(
+            captions: project.captions,
+            duration: project.duration,
+            language: language
+        )
+        trimSuggestions = suggestions
+        selectedTrimIDs = Set(suggestions.map(\.id))
+    }
+
+    func toggleTrimSuggestion(_ id: UUID) {
+        if selectedTrimIDs.contains(id) {
+            selectedTrimIDs.remove(id)
+        } else {
+            selectedTrimIDs.insert(id)
+        }
+    }
+
+    func applySelectedTrims() async {
+        guard let url = project.videoURL else {
+            errorMessage = "Import a video first."
+            return
+        }
+        let cuts = selectedTrimSuggestions
+        guard !cuts.isEmpty else {
+            errorMessage = "Select at least one trim suggestion."
+            return
+        }
+
+        isTrimming = true
+        chunkProgressLabel = "Applying trims…"
+        defer {
+            isTrimming = false
+            chunkProgressLabel = nil
+        }
+
+        let keeps = TrimService.keepRanges(duration: project.duration, removing: cuts)
+        guard !keeps.isEmpty else {
+            errorMessage = "Trim would remove the entire video."
+            return
+        }
+
+        do {
+            let trimmedURL = try await VideoTrimComposer.writeTrimmedVideo(
+                sourceURL: url,
+                keepRanges: keeps
+            )
+            project.captions = TrimService.shiftCaptions(project.captions, through: keeps)
+            project.overlays = TrimService.shiftOverlays(project.overlays, through: keeps)
+            project.soundEffects = TrimService.shiftSFX(project.soundEffects, through: keeps)
+            project.duration = TrimService.trimmedDuration(keeps: keeps)
+            project.chunkCount = VideoChunkPlanner.chunks(duration: project.duration).count
+            refreshWatermarkOverlay()
+
+            // Reload player on trimmed media
+            tearDownPlayer()
+            project.videoURL = trimmedURL
+            let asset = AVURLAsset(url: trimmedURL)
+            let item = AVPlayerItem(asset: asset)
+            let newPlayer = AVPlayer(playerItem: item)
+            player = newPlayer
+            currentTime = 0
+            isPlaying = false
+            let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
+            timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+                Task { @MainActor in
+                    self?.currentTime = CMTimeGetSeconds(time)
+                }
+            }
+            endObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.isPlaying = false
+                    self?.seek(to: 0)
+                }
+            }
+
+            refreshTrimSuggestions()
+            draftMessage = "Applied \(cuts.count) trim(s) — \(String(format: "%.1fs", project.duration))"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private static func dedupe(placements: [EnhancementPlacement]) -> [EnhancementPlacement] {

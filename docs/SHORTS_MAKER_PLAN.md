@@ -135,6 +135,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ## Phase B — Daily workflow speed
 
 ### B1. Project history / drafts
+**Status:** Shipped (Application Support Drafts + Home list + Save Draft / leave save)
+
 **What:** Save/load projects (video bookmark, captions, overlays, SFX, aspect, language, pack).
 
 **Storage:**
@@ -189,6 +191,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### B4. Silence / filler trim assist
+**Status:** Shipped (v1 suggestions + confirm; applies composition trim + cue shift)
+
 **What:** Suggest cuts for long pauses and filler (`um`, `uh`, Hindi/Telugu fillers).
 
 **Approach (v1 — non-destructive):**
