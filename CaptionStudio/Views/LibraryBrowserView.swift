@@ -214,7 +214,7 @@ struct LibraryTile: View {
                 Image(systemName: "waveform")
                     .font(.system(size: 22))
                     .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8))
-                Text(item.tags.prefix(2).joined(separator: " · "))
+                Text(item.tagList.prefix(2).joined(separator: " · "))
                     .font(.custom("AvenirNext-Medium", size: 9))
                     .foregroundStyle(.white.opacity(0.4))
             }
