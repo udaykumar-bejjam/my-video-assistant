@@ -70,6 +70,8 @@
 		A10000000000000000000030 /* VideoTrimComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrimComposer.swift; sourceTree = "<group>"; };
 		A10000000000000000000032 /* TrimAssistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrimAssistView.swift; sourceTree = "<group>"; };
 		A10000000000000000000050 /* BrollPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrollPlanner.swift; sourceTree = "<group>"; };
+		A10000000000000000000060 /* AnimatedGIFDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFDecoder.swift; sourceTree = "<group>"; };
+		A10000000000000000000062 /* AnimatedGIFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFView.swift; sourceTree = "<group>"; };
 		A10000000000000000000040 /* SafeZoneAndDistribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeZoneAndDistribution.swift; sourceTree = "<group>"; };
 		A10000000000000000000042 /* CoverExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverExportService.swift; sourceTree = "<group>"; };
 		A10000000000000000000044 /* AudioNormalizeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizeService.swift; sourceTree = "<group>"; };
