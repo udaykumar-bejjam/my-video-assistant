@@ -190,17 +190,50 @@ struct ExportPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
 
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Aspect ratio")
+                    .font(.custom("AvenirNext-Medium", size: 12))
+                    .foregroundStyle(.white.opacity(0.5))
+                HStack(spacing: 8) {
+                    ForEach(AspectRatioPreset.allCases) { aspect in
+                        Button {
+                            editor.setAspectRatio(aspect)
+                        } label: {
+                            Label(aspect.rawValue, systemImage: aspect.systemImage)
+                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    editor.project.aspectRatio == aspect
+                                    ? Color(red: 0.15, green: 0.9, blue: 0.72)
+                                    : Color.white.opacity(0.08),
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .foregroundStyle(editor.project.aspectRatio == aspect ? .black : .white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+
             VStack(alignment: .leading, spacing: 8) {
+                summaryRow("Canvas", "\(Int(editor.project.aspectRatio.canvasSize.width))×\(Int(editor.project.aspectRatio.canvasSize.height))")
                 summaryRow("Captions", "\(editor.project.captions.count)")
                 summaryRow("Overlays", "\(editor.project.overlays.count)")
                 summaryRow("Sound FX", "\(editor.project.soundEffects.count)")
-                summaryRow("Style", editor.selectedPreset.rawValue)
+                summaryRow("Parts", "\(max(1, editor.project.chunkCount))")
                 summaryRow("Duration", String(format: "%.1fs", editor.project.duration))
                 if let note = editor.lastEnhancementNote {
                     Text(note)
                         .font(.custom("AvenirNext-Medium", size: 11))
                         .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.8))
                         .padding(.top, 4)
+                }
+                if let chunk = editor.chunkProgressLabel {
+                    Text(chunk)
+                        .font(.custom("AvenirNext-Medium", size: 11))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
             }
             .padding(14)
@@ -209,9 +242,10 @@ struct ExportPanelView: View {
 
             if editor.isExporting {
                 VStack(spacing: 8) {
-                    ProgressView(value: editor.exporter.progress)
+                    ProgressView(value: max(editor.exporter.progress, editor.stitcher.progress))
                         .tint(Color(red: 0.3, green: 0.92, blue: 0.75))
-                    Text(editor.exporter.statusMessage)
+                    Text(editor.chunkProgressLabel
+                         ?? (editor.stitcher.statusMessage.isEmpty ? editor.exporter.statusMessage : editor.stitcher.statusMessage))
                         .font(.custom("AvenirNext-Medium", size: 12))
                         .foregroundStyle(.white.opacity(0.5))
                 }
@@ -222,7 +256,11 @@ struct ExportPanelView: View {
                 Task { await editor.exportVideo() }
             } label: {
                 Label(
-                    editor.isExporting ? "Exporting…" : "Export MP4",
+                    editor.isExporting
+                    ? "Working…"
+                    : (editor.project.chunkCount > 1
+                       ? "Export \(editor.project.chunkCount) parts + stitch"
+                       : "Export MP4"),
                     systemImage: "square.and.arrow.up"
                 )
                 .font(.custom("AvenirNext-DemiBold", size: 16))
@@ -235,9 +273,19 @@ struct ExportPanelView: View {
             .disabled(editor.isExporting || editor.project.videoURL == nil)
             .padding(.horizontal, 16)
 
+            Text(editor.project.duration > VideoChunkPlanner.singlePassLimit
+                 ? "Long video: processed in \(VideoChunkPlanner.defaultChunkSeconds, specifier: "%.0f")s parts, then stitched frame-accurately."
+                 : "Single-pass export on the selected aspect canvas.")
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.4))
+                .padding(.horizontal, 16)
+
             Spacer()
         }
         .padding(.top, 8)
+        .onAppear {
+            editor.project.chunkCount = VideoChunkPlanner.chunks(duration: editor.project.duration).count
+        }
     }
 
     private func summaryRow(_ title: String, _ value: String) -> some View {

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
+		A10000000000000000000017 /* AspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* AspectRatio.swift */; };
 		A10000000000000000000016 /* PlacementAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* PlacementAligner.swift */; };
 		A10000000000000000000011 /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* MediaLibrary.swift */; };
 		A10000000000000000000012 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ColorHex.swift */; };
@@ -29,6 +31,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* AspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectRatio.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* PlacementAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementAligner.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
@@ -99,6 +103,7 @@
 				142E6A9EEF23416C8AD79128 /* Overlay.swift */,
 				A10000000000000000000001 /* MediaLibrary.swift */,
 				A10000000000000000000002 /* ColorHex.swift */,
+				A10000000000000000000007 /* AspectRatio.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -111,6 +116,7 @@
 				A10000000000000000000003 /* MediaLibraryStore.swift */,
 				A10000000000000000000004 /* CursorEnhancerClient.swift */,
 				A10000000000000000000006 /* PlacementAligner.swift */,
+				A10000000000000000000008 /* VideoStitchService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -232,6 +238,10 @@
 				A10000000000000000000013 /* MediaLibraryStore.swift in Sources */,
 				A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */,
 				A10000000000000000000016 /* PlacementAligner.swift in Sources */,
+				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
+				A10000000000000000000017 /* AspectRatio.swift in Sources */,
+				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
+				A10000000000000000000017 /* AspectRatio.swift in Sources */,
 				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

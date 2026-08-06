@@ -115,11 +115,14 @@ struct VideoProject: Identifiable, Equatable {
     var title: String
     var videoURL: URL?
     var duration: TimeInterval
+    var aspectRatio: AspectRatioPreset
+    var sourceSize: CGSize
     var captions: [CaptionSegment]
     var captionStyle: CaptionStyle
     var overlays: [OverlayItem]
     var soundEffects: [SoundEffectCue]
     var enhancementSummary: String?
+    var chunkCount: Int
     var createdAt: Date
 
     static func empty(title: String = "Untitled") -> VideoProject {
@@ -127,11 +130,14 @@ struct VideoProject: Identifiable, Equatable {
             title: title,
             videoURL: nil,
             duration: 0,
+            aspectRatio: .portrait9x16,
+            sourceSize: .zero,
             captions: [],
             captionStyle: .default,
             overlays: [],
             soundEffects: [],
             enhancementSummary: nil,
+            chunkCount: 1,
             createdAt: .now
         )
     }

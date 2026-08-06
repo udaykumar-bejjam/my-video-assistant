@@ -66,6 +66,16 @@ npm run enhance -- examples/sample-captions.json
 
 **AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
 
+## Aspect ratios & long videos
+
+- **9:16** (1080×1920) and **16:9** (1920×1080) canvases — auto-inferred from the source, overridable in Export
+- Source video is **center-cropped to fill** the chosen canvas
+- Videos longer than **60s** are processed in **45s parts**:
+  1. Enhance each part (with 1.5s caption context at boundaries)
+  2. Export each part with local 0-based timelines
+  3. **Stitch** parts with frame-accurate `AVMutableComposition` cuts
+- Placements are deduped at chunk boundaries so assets don’t double up
+
 ## Timing-aware placements
 
 Every library item carries measured metadata that Cursor (and the aligner) must respect:

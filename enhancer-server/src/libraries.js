@@ -9,8 +9,21 @@ export const LIBRARIES_ROOT = path.join(REPO_ROOT, "AssetLibraries");
 
 const LIBS = ["text-styles", "gifs", "pngs", "sfx"];
 
-/** Reference canvas used to convert pixel sizes → normalized fractions. */
 export const REFERENCE_CANVAS = { width: 1080, height: 1920 };
+
+export function canvasForVideoSize(videoSize) {
+  if (videoSize?.width && videoSize?.height) {
+    return { width: Number(videoSize.width), height: Number(videoSize.height) };
+  }
+  return REFERENCE_CANVAS;
+}
+
+export function aspectLabel(size) {
+  const r = size.width / size.height;
+  if (Math.abs(r - 16 / 9) < 0.08) return "16:9";
+  if (Math.abs(r - 9 / 16) < 0.08) return "9:16";
+  return `${size.width}x${size.height}`;
+}
 
 export function loadLibraries() {
   const libraries = {};
@@ -140,7 +153,12 @@ function probeAudioDuration(filePath) {
 }
 
 /** Compact but COMPLETE resource metadata for the Cursor prompt. */
-export function compactCatalog(libraries) {
+export function compactCatalog(libraries, canvas = REFERENCE_CANVAS) {
+  const norm = (w, h, scale = 1) => ({
+    normalizedWidth: round4(((w || 128) * scale) / canvas.width),
+    normalizedHeight: round4(((h || 128) * scale) / canvas.height),
+  });
+
   return {
     "text-styles": libraries["text-styles"].items.map((i) => ({
       id: i.id,
@@ -151,8 +169,7 @@ export function compactCatalog(libraries) {
       durationSeconds: i.durationSeconds,
       pixelWidth: i.pixelWidth,
       pixelHeight: i.pixelHeight,
-      normalizedWidth: i.normalizedWidth,
-      normalizedHeight: i.normalizedHeight,
+      ...norm(i.pixelWidth, i.pixelHeight, 1),
       fontSize: i.fontSize,
     })),
     gifs: libraries.gifs.items.map((i) => ({
@@ -164,8 +181,7 @@ export function compactCatalog(libraries) {
       frameCount: i.frameCount,
       pixelWidth: i.pixelWidth,
       pixelHeight: i.pixelHeight,
-      normalizedWidth: i.normalizedWidth,
-      normalizedHeight: i.normalizedHeight,
+      ...norm(i.pixelWidth, i.pixelHeight, i.defaultScale || 1),
       defaultScale: i.defaultScale || 1,
     })),
     pngs: libraries.pngs.items.map((i) => ({
@@ -176,8 +192,7 @@ export function compactCatalog(libraries) {
       durationSeconds: i.durationSeconds,
       pixelWidth: i.pixelWidth,
       pixelHeight: i.pixelHeight,
-      normalizedWidth: i.normalizedWidth,
-      normalizedHeight: i.normalizedHeight,
+      ...norm(i.pixelWidth, i.pixelHeight, i.defaultScale || 1),
       defaultScale: i.defaultScale || 1,
     })),
     sfx: libraries.sfx.items.map((i) => ({
@@ -298,8 +313,9 @@ export function alignPlacement(placement, asset, captions, videoDuration) {
  * Build the Cursor agent prompt with FULL resource timing/size metadata.
  */
 export function buildPrompt({ captions, duration, libraries, videoSize }) {
-  const catalog = compactCatalog(libraries);
-  const canvas = videoSize || REFERENCE_CANVAS;
+  const canvas = canvasForVideoSize(videoSize);
+  const catalog = compactCatalog(libraries, canvas);
+  const aspect = aspectLabel(canvas);
 
   const captionWindows = captions.map((c, index) => ({
     index,
@@ -316,8 +332,9 @@ Your startTime/endTime MUST respect those lengths and the caption windows that a
 
 VIDEO
 - durationSeconds: ${duration}
+- aspect: ${aspect}
 - canvasPixels: ${canvas.width}x${canvas.height}
-- coordinateSystem: x,y normalized 0–1 (0,0 = top-left). Resource normalizedWidth/Height are fractions of this canvas at scale=1.
+- coordinateSystem: x,y normalized 0–1 on this canvas (0,0 = top-left). Resource normalizedWidth/Height are fractions of THIS canvas at scale=1.
 
 CAPTION WINDOWS (spoken content currently playing)
 ${JSON.stringify(captionWindows, null, 2)}

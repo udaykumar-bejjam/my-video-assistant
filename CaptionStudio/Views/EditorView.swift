@@ -61,10 +61,17 @@ struct EditorView: View {
 
             Spacer()
 
-            if editor.isTranscribing || editor.isEnhancing {
+            if editor.isTranscribing || editor.isEnhancing || editor.isExporting {
                 ProgressView()
                     .tint(Color(red: 0.4, green: 0.95, blue: 0.8))
                     .scaleEffect(0.85)
+            }
+
+            if let chunk = editor.chunkProgressLabel {
+                Text(chunk)
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
             }
 
             Button {
@@ -201,9 +208,18 @@ struct VideoPreviewPane: View {
 
     var body: some View {
         GeometryReader { geo in
-            let aspect: CGFloat = 9 / 16
-            let height = geo.size.height
-            let width = min(geo.size.width, height * aspect)
+            let aspect = editor.project.aspectRatio.aspectValue
+            let maxW = geo.size.width
+            let maxH = geo.size.height
+            let width: CGFloat
+            let height: CGFloat
+            if maxW / maxH > aspect {
+                height = maxH
+                width = height * aspect
+            } else {
+                width = maxW
+                height = width / aspect
+            }
 
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -221,6 +237,16 @@ struct VideoPreviewPane: View {
                 }
 
                 VStack {
+                    HStack {
+                        Text(editor.project.aspectRatio.rawValue)
+                            .font(.custom("AvenirNext-Bold", size: 10))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.black.opacity(0.45), in: Capsule())
+                        Spacer()
+                    }
+                    .padding(12)
                     Spacer()
                     HStack {
                         Button {
@@ -238,10 +264,11 @@ struct VideoPreviewPane: View {
                     .padding(14)
                 }
             }
-            .frame(width: width, height: width / aspect)
+            .frame(width: width, height: height)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minHeight: 280)
+        .animation(.easeInOut(duration: 0.25), value: editor.project.aspectRatio)
     }
 }
 

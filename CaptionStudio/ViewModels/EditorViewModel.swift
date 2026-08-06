@@ -25,9 +25,11 @@ final class EditorViewModel: ObservableObject {
     @Published var editorTab: EditorTab = .captions
     @Published var lastEnhancementNote: String?
     @Published var libraryKind: MediaLibraryKind = .textStyles
+    @Published var chunkProgressLabel: String?
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
+    let stitcher = VideoStitchService()
     let libraries = MediaLibraryStore()
     let enhancer = CursorEnhancerClient()
 
@@ -87,13 +89,23 @@ final class EditorViewModel: ObservableObject {
         project.soundEffects = []
         project.enhancementSummary = nil
         project.captionStyle = selectedPreset.style
+        project.chunkCount = 1
         lastEnhancementNote = nil
+        chunkProgressLabel = nil
         Task { await enhancer.checkHealth() }
 
         let asset = AVURLAsset(url: localURL)
         if let duration = try? await asset.load(.duration) {
             project.duration = CMTimeGetSeconds(duration)
         }
+        if let track = try? await asset.loadTracks(withMediaType: .video).first {
+            let natural = (try? await track.load(.naturalSize)) ?? .zero
+            let transform = (try? await track.load(.preferredTransform)) ?? .identity
+            let oriented = VideoExportService.orientedSizePublic(natural, transform: transform)
+            project.sourceSize = oriented
+            project.aspectRatio = AspectRatioPreset.inferred(from: oriented)
+        }
+        project.chunkCount = VideoChunkPlanner.chunks(duration: project.duration).count
 
         let item = AVPlayerItem(asset: asset)
         let newPlayer = AVPlayer(playerItem: item)
@@ -153,7 +165,7 @@ final class EditorViewModel: ObservableObject {
         }
     }
 
-    /// Ask Cursor SDK (via enhancer server) where to place stylish text / GIFs / PNGs / SFX.
+    /// Ask Cursor SDK where to place assets — long videos are enhanced part-by-part then merged.
     func enhanceWithCursorSDK() async {
         guard !project.captions.isEmpty else {
             errorMessage = "Generate captions first so the agent knows where to place assets."
@@ -161,35 +173,102 @@ final class EditorViewModel: ObservableObject {
         }
         isEnhancing = true
         errorMessage = nil
-        defer { isEnhancing = false }
+        chunkProgressLabel = nil
+        defer {
+            isEnhancing = false
+            chunkProgressLabel = nil
+        }
 
         await enhancer.checkHealth()
+        let chunks = VideoChunkPlanner.chunks(duration: project.duration)
+        project.chunkCount = chunks.count
+        let canvas = project.aspectRatio.canvasSize
 
-        let plan: EnhancementPlan
-        if enhancer.isHealthy {
-            do {
-                plan = try await enhancer.enhance(
-                    captions: project.captions,
-                    duration: project.duration
-                )
-            } catch {
+        var merged: [EnhancementPlacement] = []
+        var notes: [String] = []
+
+        for chunk in chunks {
+            chunkProgressLabel = chunks.count == 1
+                ? "Placing on \(project.aspectRatio.rawValue)…"
+                : "Part \(chunk.index + 1)/\(chunks.count) (\(formatClock(chunk.startTime))–\(formatClock(chunk.endTime)))"
+
+            let sliceCaptions = VideoChunkPlanner.captions(
+                project.captions,
+                overlapping: chunk,
+                useContext: true
+            )
+            guard !sliceCaptions.isEmpty || chunks.count == 1 else { continue }
+
+            let plan: EnhancementPlan
+            if enhancer.isHealthy {
+                do {
+                    plan = try await enhancer.enhance(
+                        captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
+                        duration: project.duration,
+                        videoSize: canvas,
+                        forceHeuristic: false
+                    )
+                } catch {
+                    plan = enhancer.localHeuristicPlan(
+                        captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
+                        duration: project.duration,
+                        libraries: libraries
+                    )
+                    notes.append(error.localizedDescription)
+                }
+            } else {
                 plan = enhancer.localHeuristicPlan(
-                    captions: project.captions,
+                    captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
                     duration: project.duration,
                     libraries: libraries
                 )
-                lastEnhancementNote = "\(error.localizedDescription) — \(plan.note ?? "")"
             }
-        } else {
-            plan = enhancer.localHeuristicPlan(
-                captions: project.captions,
-                duration: project.duration,
-                libraries: libraries
-            )
+
+            let absolute = VideoChunkPlanner.absolutize(placements: plan.placements, chunk: chunk)
+            merged.append(contentsOf: absolute)
+            if let note = plan.note { notes.append("p\(chunk.index + 1): \(note)") }
         }
 
+        // Deduplicate near-identical placements at chunk boundaries.
+        merged = Self.dedupe(placements: merged)
+
+        let plan = EnhancementPlan(
+            summary: chunks.count == 1
+                ? "Placements for \(project.aspectRatio.rawValue) canvas."
+                : "Merged \(merged.count) placements across \(chunks.count) parts (\(project.aspectRatio.rawValue)).",
+            placements: merged,
+            source: enhancer.isHealthy ? "cursor-sdk-chunked" : "local-chunked",
+            model: enhancer.usesCursorKey ? "composer-2.5" : nil,
+            note: notes.last ?? "Enhanced in \(chunks.count) part(s)"
+        )
         apply(plan: plan)
+        lastEnhancementNote = plan.summary
         editorTab = .libraries
+    }
+
+    private static func dedupe(placements: [EnhancementPlacement]) -> [EnhancementPlacement] {
+        var kept: [EnhancementPlacement] = []
+        for p in placements.sorted(by: { $0.startTime < $1.startTime }) {
+            let duplicate = kept.contains {
+                $0.kind == p.kind
+                    && $0.assetId == p.assetId
+                    && abs($0.startTime - p.startTime) < 0.12
+                    && abs($0.x - p.x) < 0.05
+                    && abs($0.y - p.y) < 0.05
+            }
+            if !duplicate { kept.append(p) }
+        }
+        return kept
+    }
+
+    private func formatClock(_ t: TimeInterval) -> String {
+        let m = Int(t) / 60
+        let s = Int(t) % 60
+        return String(format: "%d:%02d", m, s)
+    }
+
+    func setAspectRatio(_ aspect: AspectRatioPreset) {
+        project.aspectRatio = aspect
     }
 
     func apply(plan: EnhancementPlan) {
@@ -469,17 +548,57 @@ final class EditorViewModel: ObservableObject {
         }
         isExporting = true
         errorMessage = nil
-        defer { isExporting = false }
+        chunkProgressLabel = nil
+        defer {
+            isExporting = false
+            chunkProgressLabel = nil
+        }
 
         do {
-            let result = try await exporter.export(
-                videoURL: url,
-                captions: project.captions,
-                style: project.captionStyle,
-                overlays: project.overlays,
-                soundEffects: project.soundEffects,
-                libraryRoot: libraries.rootURL
-            )
+            let chunks = VideoChunkPlanner.chunks(duration: project.duration)
+            project.chunkCount = chunks.count
+            let result: URL
+
+            if chunks.count == 1 {
+                chunkProgressLabel = "Exporting \(project.aspectRatio.rawValue)…"
+                result = try await exporter.export(
+                    videoURL: url,
+                    captions: project.captions,
+                    style: project.captionStyle,
+                    overlays: project.overlays,
+                    soundEffects: project.soundEffects,
+                    libraryRoot: libraries.rootURL,
+                    aspect: project.aspectRatio
+                )
+            } else {
+                let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
+                    let caps = VideoChunkPlanner.captions(project.captions, overlapping: chunk, useContext: false)
+                    let overlays = project.overlays.filter {
+                        $0.endTime > chunk.startTime && $0.startTime < chunk.endTime
+                    }
+                    let sfx = project.soundEffects.filter {
+                        $0.startTime >= chunk.startTime && $0.startTime < chunk.endTime
+                    }
+                    return .init(
+                        chunk: chunk,
+                        captions: caps,
+                        overlays: overlays,
+                        soundEffects: sfx
+                    )
+                }
+                chunkProgressLabel = "Exporting \(chunks.count) parts → stitch…"
+                // Bind stitcher progress into exporter progress for the UI meter.
+                result = try await stitcher.exportChunked(
+                    videoURL: url,
+                    aspect: project.aspectRatio,
+                    style: project.captionStyle,
+                    segments: segments,
+                    libraryRoot: libraries.rootURL
+                )
+                exporter.progress = stitcher.progress
+                exporter.statusMessage = stitcher.statusMessage
+            }
+
             exportURL = result
             showExporter = true
         } catch {

@@ -36,13 +36,15 @@ final class VideoExportService: ObservableObject {
         overlays: [OverlayItem],
         soundEffects: [SoundEffectCue] = [],
         libraryRoot: URL? = nil,
+        aspect: AspectRatioPreset = .portrait9x16,
+        sourceTimeRange: CMTimeRange? = nil,
         outputURL: URL? = nil
     ) async throws -> URL {
         progress = 0.02
         statusMessage = "Building composition…"
 
         let asset = AVURLAsset(url: videoURL)
-        let duration = try await asset.load(.duration)
+        let fullDuration = try await asset.load(.duration)
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         guard let videoTrack = videoTracks.first else {
             throw ExportError.compositionFailed("No video track found.")
@@ -50,7 +52,21 @@ final class VideoExportService: ObservableObject {
 
         let naturalSize = try await videoTrack.load(.naturalSize)
         let preferredTransform = try await videoTrack.load(.preferredTransform)
-        let renderSize = Self.orientedSize(naturalSize, transform: preferredTransform)
+        let oriented = Self.orientedSize(naturalSize, transform: preferredTransform)
+        let renderSize = aspect.canvasSize
+
+        let insertRange: CMTimeRange = {
+            if let sourceTimeRange, sourceTimeRange.duration.seconds > 0 {
+                let start = max(0, CMTimeGetSeconds(sourceTimeRange.start))
+                let end = min(CMTimeGetSeconds(fullDuration), start + CMTimeGetSeconds(sourceTimeRange.duration))
+                return CMTimeRange(
+                    start: CMTime(seconds: start, preferredTimescale: 600),
+                    duration: CMTime(seconds: max(0.01, end - start), preferredTimescale: 600)
+                )
+            }
+            return CMTimeRange(start: .zero, duration: fullDuration)
+        }()
+        let compositionDuration = insertRange.duration
 
         let composition = AVMutableComposition()
         guard
@@ -62,52 +78,49 @@ final class VideoExportService: ObservableObject {
             throw ExportError.compositionFailed("Could not create video track.")
         }
 
-        try compVideo.insertTimeRange(
-            CMTimeRange(start: .zero, duration: duration),
-            of: videoTrack,
-            at: .zero
-        )
-        compVideo.preferredTransform = preferredTransform
+        try compVideo.insertTimeRange(insertRange, of: videoTrack, at: .zero)
 
         if let audioTrack = try await asset.loadTracks(withMediaType: .audio).first,
            let compAudio = composition.addMutableTrack(
             withMediaType: .audio,
             preferredTrackID: kCMPersistentTrackID_Invalid
            ) {
-            try? compAudio.insertTimeRange(
-                CMTimeRange(start: .zero, duration: duration),
-                of: audioTrack,
-                at: .zero
-            )
+            try? compAudio.insertTimeRange(insertRange, of: audioTrack, at: .zero)
         }
 
-        // Mix in library SFX cues.
+        // Mix in library SFX cues (already shifted to local 0-based timeline when chunked).
         try await mixSoundEffects(
             into: composition,
             cues: soundEffects,
             libraryRoot: libraryRoot,
-            timelineDuration: duration
+            timelineDuration: compositionDuration
         )
 
         progress = 0.15
-        statusMessage = "Rendering captions…"
+        statusMessage = "Rendering \(aspect.rawValue) canvas…"
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = renderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
 
         let instruction = AVMutableVideoCompositionInstruction()
-        instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
+        instruction.timeRange = CMTimeRange(start: .zero, duration: compositionDuration)
 
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compVideo)
-        layerInstruction.setTransform(preferredTransform, at: .zero)
+        let (_, fitTransform) = AspectFit.transform(
+            sourceOrientedSize: oriented,
+            sourcePreferredTransform: preferredTransform,
+            targetSize: renderSize
+        )
+        layerInstruction.setTransform(fitTransform, at: .zero)
         instruction.layerInstructions = [layerInstruction]
         videoComposition.instructions = [instruction]
 
-        // Core Animation overlay pipeline
+        // Core Animation overlay pipeline on the target aspect canvas
         let parentLayer = CALayer()
         parentLayer.frame = CGRect(origin: .zero, size: renderSize)
         parentLayer.isGeometryFlipped = true
+        parentLayer.backgroundColor = PlatformColor.black.cgColor
 
         let videoLayer = CALayer()
         videoLayer.frame = parentLayer.bounds
@@ -122,7 +135,7 @@ final class VideoExportService: ObservableObject {
             captions: captions,
             style: style,
             size: renderSize,
-            duration: CMTimeGetSeconds(duration)
+            duration: CMTimeGetSeconds(compositionDuration)
         )
         addOverlayLayers(
             to: overlayRoot,
@@ -152,9 +165,8 @@ final class VideoExportService: ObservableObject {
         session.shouldOptimizeForNetworkUse = true
 
         progress = 0.25
-        statusMessage = "Encoding video…"
+        statusMessage = "Encoding \(aspect.rawValue)…"
 
-        // Poll progress while exporting
         let progressTask = Task {
             while !Task.isCancelled {
                 progress = 0.25 + Double(session.progress) * 0.7
@@ -183,6 +195,10 @@ final class VideoExportService: ObservableObject {
         progress = 1
         statusMessage = "Export complete"
         return dest
+    }
+
+    static func orientedSizePublic(_ size: CGSize, transform: CGAffineTransform) -> CGSize {
+        orientedSize(size, transform: transform)
     }
 
     // MARK: - Layers
