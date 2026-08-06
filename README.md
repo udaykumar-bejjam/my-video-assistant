@@ -100,11 +100,11 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 2. Start the enhancer (`npm start` above)  
 3. Run on iPhone / simulator / My Mac  
 4. Import or **Try Demo** → pick a **Shorts Pack** → **AI Captions** → **AI Place**  
-5. Browse **Library** / **Trim** tabs or export  
+5. Browse **Layers** (timeline lanes under the scrubber + start/end controls) / **Library** / **Trim** tabs or export  
 6. **Save Draft** (Export tab or leave editor) — reopen from Home drafts list  
 7. After export: copy **title / hashtags**, optional **cover PNG**, toggle **safe zone** in preview, **normalize loudness** on Export  
 
-**AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
+**AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic. Placed word hits, stickers, text, and SFX appear as **timeline layers** you can select, retime, scale, or delete.
 
 ## Distribution, safe zones & loudness
 
