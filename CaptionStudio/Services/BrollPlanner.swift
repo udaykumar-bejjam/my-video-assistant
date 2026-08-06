@@ -66,6 +66,8 @@ enum BrollPlanner {
                     lengthSeconds: length,
                     captionIndex: item.hit.captionIndex,
                     wordIndex: item.hit.wordIndex,
+                    pairedWord: item.hit.word ?? item.hit.text,
+                    mood: item.category.rawValue,
                     assetPixelSize: .init(
                         width: picked.asset.pixelSize.width,
                         height: picked.asset.pixelSize.height
