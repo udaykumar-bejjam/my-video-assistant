@@ -48,9 +48,21 @@ function pickByTags(lib, tags) {
   return hit || lib[0];
 }
 
+/** Prefer animated GIFs for punchy moods when a tagged GIF exists. */
+function prefersAnimatedGif(category) {
+  return category === "power" || category === "emotion" || category === "reveal";
+}
+
 function pickStickerAssets(gifLib, pngLib, category, index) {
   const tags = tagsForCategory(category);
-  // Alternate GIF / PNG so we use both libraries.
+  // Phase 2: power / emotion / reveal → GIF first; numbers / CTA still alternate.
+  if (prefersAnimatedGif(category)) {
+    const gif = pickByTags(gifLib, tags);
+    if (gif) return { kind: "gif", asset: gif };
+    const png = pickByTags(pngLib, tags);
+    if (png) return { kind: "png", asset: png };
+    return null;
+  }
   if (index % 2 === 0) {
     const gif = pickByTags(gifLib, tags);
     if (gif) return { kind: "gif", asset: gif };
@@ -126,6 +138,7 @@ export function ensureBrollStickers({
       assetId: asset.id,
       captionIndex: hit.captionIndex ?? 0,
       wordIndex: hit.wordIndex,
+      snapToCaption: false,
       startTime: at,
       endTime: Math.min(videoDuration, at + length),
       x: corner.x,

@@ -31,7 +31,7 @@ Without `CURSOR_API_KEY`, the enhancer returns the **same JSON schema** via a mo
 | Library | Path | Contents |
 |---------|------|----------|
 | Stylish text | `AssetLibraries/text-styles/` | Neon Punch, Mint Glow, Outline Impact, … |
-| GIFs | `AssetLibraries/gifs/` | pop-burst, confetti, pulse-ring, … |
+| GIFs | `AssetLibraries/gifs/` | pop-burst, confetti, heart-pulse, slam-stomp, … (11 loops) |
 | PNGs | `AssetLibraries/pngs/` | starburst, flame, bolt, heart, … |
 | Sound FX | `AssetLibraries/sfx/` | whoosh, pop, ding, bass-hit, riser, … |
 | Shorts Packs | `AssetLibraries/packs/` | Hook, Story, Tip, Hype, Tutorial recipes |
@@ -91,6 +91,8 @@ Pick a pack on Home / editor chrome / Export:
 Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias` / `sfxBias` / GIF density). The enhancer also guarantees an opening **hook** word hit + SFX, and auto-drops **B-roll stickers** (GIF/PNG) on strong words from the EN/HI/TE lexicon (power / reveal / emotion / numbers / CTA), capped per 15s.
 
 **Animated GIFs (Phase 1):** Library GIFs play in preview (scrub-synced) and burn into export as looping frame sequences with transparency preserved.
+
+**Animated GIFs (Phase 2):** Expanded transparent GIF library (11 loops) with mood tags; B-roll prefers GIF over PNG for power / emotion / reveal when a tagged GIF exists.
 
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  

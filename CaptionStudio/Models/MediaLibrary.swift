@@ -71,6 +71,8 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
     var pixelHeight: CGFloat?
     var normalizedWidth: CGFloat?
     var normalizedHeight: CGFloat?
+    var hasAlpha: Bool?
+    var loop: Bool?
 
     var playLength: TimeInterval {
         lengthSeconds ?? durationSeconds ?? defaultDuration ?? 1.2
@@ -92,7 +94,7 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
         case defaultDuration, defaultScale, defaultGain
         case durationSeconds, lengthSeconds, width, height, frameCount
         case estimatedWidth, estimatedHeight, pixelWidth, pixelHeight
-        case normalizedWidth, normalizedHeight
+        case normalizedWidth, normalizedHeight, hasAlpha, loop
     }
 }
 
@@ -124,6 +126,8 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     var color: String?
     var secondaryColor: String?
     var word: String?
+    var pairedWord: String?
+    var mood: String?
     var assetPixelSize: AssetSize?
     var assetNormalizedSize: AssetSize?
 
@@ -135,6 +139,7 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case kind, assetId, startTime, endTime, x, y, scale, rotation, text, reason
         case lengthSeconds, captionIndex, wordIndex, fontId, effectId, sfxId, color, secondaryColor, word
+        case pairedWord, mood
         case assetPixelSize, assetNormalizedSize
     }
 

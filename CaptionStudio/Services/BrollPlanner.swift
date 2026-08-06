@@ -66,6 +66,8 @@ enum BrollPlanner {
                     lengthSeconds: length,
                     captionIndex: item.hit.captionIndex,
                     wordIndex: item.hit.wordIndex,
+                    pairedWord: item.hit.word ?? item.hit.text,
+                    mood: item.category.rawValue,
                     assetPixelSize: .init(
                         width: picked.asset.pixelSize.width,
                         height: picked.asset.pixelSize.height
@@ -110,6 +112,14 @@ enum BrollPlanner {
         }.count
     }
 
+    /// Prefer animated GIFs for punchy moods when a tagged GIF exists (Phase 2).
+    private static func prefersAnimatedGif(_ category: StrongWordLexicon.Category) -> Bool {
+        switch category {
+        case .power, .emotion, .reveal: return true
+        case .numbers, .cta: return false
+        }
+    }
+
     private static func pickSticker(
         gifs: [MediaLibraryItem],
         pngs: [MediaLibraryItem],
@@ -117,6 +127,11 @@ enum BrollPlanner {
         index: Int
     ) -> (kind: String, asset: MediaLibraryItem)? {
         let tags = StrongWordLexicon.tags(for: category)
+        if prefersAnimatedGif(category) {
+            if let gif = pickByTags(gifs, tags: tags) { return ("gif", gif) }
+            if let png = pickByTags(pngs, tags: tags) { return ("png", png) }
+            return nil
+        }
         if index.isMultiple(of: 2) {
             if let gif = pickByTags(gifs, tags: tags) { return ("gif", gif) }
             if let png = pickByTags(pngs, tags: tags) { return ("png", png) }
@@ -192,11 +207,11 @@ enum StrongWordLexicon {
 
     static func tags(for category: Category) -> [String] {
         switch category {
-        case .power: return ["power", "impact", "hype", "energy", "hot", "celebration"]
-        case .reveal: return ["reveal", "focus", "highlight", "new", "premium"]
-        case .emotion: return ["love", "emotional", "celebration", "cheer", "like"]
+        case .power: return ["power", "impact", "hype", "energy", "hot", "celebration", "win", "boom", "fire", "slam"]
+        case .reveal: return ["reveal", "focus", "highlight", "new", "premium", "sparkle", "wow", "shine"]
+        case .emotion: return ["love", "emotion", "emotional", "celebration", "cheer", "like", "heart", "pulse"]
         case .numbers: return ["point", "highlight", "focus", "ui", "label"]
-        case .cta: return ["cta", "direction", "point", "product", "premium"]
+        case .cta: return ["cta", "direction", "point", "product", "premium", "arrow"]
         }
     }
 

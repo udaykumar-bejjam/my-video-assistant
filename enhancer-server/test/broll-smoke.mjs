@@ -99,8 +99,23 @@ for (const t of times) {
 }
 assert(maxInWindow <= 4, `density ≤4 per ~15s (got ${maxInWindow})`);
 
+// Phase 2: power / emotion / reveal stickers should mostly be animated GIFs.
+const gifBiasMoods = new Set(["power", "emotion", "reveal"]);
+const moodStickers = stickers.filter((s) => gifBiasMoods.has(s.mood));
+const gifMoodStickers = moodStickers.filter((s) => s.kind === "gif");
+const gifBiasRate =
+  moodStickers.length === 0 ? 1 : gifMoodStickers.length / moodStickers.length;
+assert(
+  moodStickers.length >= 2,
+  `power/emotion/reveal stickers ≥2 (got ${moodStickers.length})`
+);
+assert(
+  gifBiasRate >= 0.7,
+  `GIF bias ≥70% for power/emotion/reveal (got ${(gifBiasRate * 100).toFixed(0)}% = ${gifMoodStickers.length}/${moodStickers.length})`
+);
+
 console.log(
-  `\nstrongHits=${strongHits.map((h) => h.word || h.text).join(",")} stickers=${stickers.length} rate=${(rate * 100).toFixed(0)}%`
+  `\nstrongHits=${strongHits.map((h) => h.word || h.text).join(",")} stickers=${stickers.length} rate=${(rate * 100).toFixed(0)}% gifBias=${(gifBiasRate * 100).toFixed(0)}%`
 );
 console.log(`${failures ? "FAILED" : "OK"} — ${failures} failure(s)`);
 process.exit(failures ? 1 : 0);

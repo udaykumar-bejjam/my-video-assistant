@@ -362,6 +362,8 @@ export function alignPlacement(placement, asset, captions, videoDuration, safeZo
     text: typeof placement.text === "string" ? placement.text.slice(0, 48) : undefined,
     reason: typeof placement.reason === "string" ? placement.reason : undefined,
     captionIndex: caption ? caps.indexOf(caption) : undefined,
+    pairedWord: typeof placement.pairedWord === "string" ? placement.pairedWord : undefined,
+    mood: typeof placement.mood === "string" ? placement.mood : undefined,
     assetPixelSize:
       asset?.pixelWidth && asset?.pixelHeight
         ? { width: asset.pixelWidth, height: asset.pixelHeight }
@@ -479,7 +481,7 @@ SIGNIFICANT WORD RULES
 9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
 10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
 11. Also emit supporting placements (gif/png/text/sfx) when helpful — gif density = ${pack?.gifDensity || "medium"}.
-12. B-ROLL: for every strong wordHit (power / reveal / emotion / numbers / CTA lexicon), also emit a gif OR png timed to that word's startTime, placed in a safe corner (x≈0.18/0.72, y≈0.2/0.55), tags matching the mood. Cap ≈3 stickers per 15s. Pair sticker with sfx (wordHit.sfxId counts).
+12. B-ROLL: for every strong wordHit (power / reveal / emotion / numbers / CTA lexicon), also emit a gif OR png timed to that word's startTime, placed in a safe corner (x≈0.18/0.72, y≈0.2/0.55), tags matching the mood. Prefer gif (animated) over png for power / emotion / reveal when a matching gif exists. Cap ≈3 stickers per 15s. Pair sticker with sfx (wordHit.sfxId counts).
 13. Keep x,y centers inside safeZone for all visual placements.
 14. Also return distribution { title, coverText, hashtags[], hookLine } for social posting.
 
