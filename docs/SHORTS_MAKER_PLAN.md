@@ -19,6 +19,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | Long-video chunk → enhance → stitch | Done |
 | MP4 export + share | Done |
 | Shorts Packs + opening hooks + batch export | Done |
+| Auto B-roll / sticker moments on strong words | Done |
 | Drafts / brand kit / language lock / trim assist | Done |
 | Distribution copy + cover / safe zones / loudness | Done |
 
@@ -102,6 +103,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### A3. Auto B-roll / sticker moments
+**Status:** Shipped (lexicon + `ensureBrollStickers` in enhancer + Swift local heuristic)
+
 **What:** On strong words, auto-drop GIF/PNG + SFX without scrubbing.
 
 **Trigger lexicon (per language):** power, reveal, emotion, numbers, CTA  

@@ -71,7 +71,7 @@ Pick a pack on Home / editor chrome / Export:
 | Hype | Max energy (punch / color-pulse / stomp) |
 | Tutorial | Step clarity (zoom / typepop) |
 
-Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias` / `sfxBias` / GIF density). The enhancer also guarantees an opening **hook** word hit + SFX.
+Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias` / `sfxBias` / GIF density). The enhancer also guarantees an opening **hook** word hit + SFX, and auto-drops **B-roll stickers** (GIF/PNG) on strong words from the EN/HI/TE lexicon (power / reveal / emotion / numbers / CTA), capped per 15s.
 
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  
