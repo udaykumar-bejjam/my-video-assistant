@@ -38,6 +38,23 @@ Without `CURSOR_API_KEY`, the enhancer returns the **same JSON schema** via a mo
 
 Catalogs are JSON (`catalog.json`). The same trees are copied into `CaptionStudio/Resources/Libraries` for the app bundle.
 
+## Download (macOS)
+
+GitHub Actions builds an ad-hoc signed **CaptionStudio.app** zip:
+
+1. Open [Releases](https://github.com/udaykumar-bejjam/my-video-assistant/releases) and download `CaptionStudio-macOS.zip`, **or**
+2. Run workflow **Build macOS app** under [Actions](https://github.com/udaykumar-bejjam/my-video-assistant/actions/workflows/build-macos.yml) → download the artifact.
+
+Install: unzip → drag to Applications → **right-click → Open** (Gatekeeper).  
+Optional: `xattr -dr com.apple.quarantine /Applications/CaptionStudio.app`
+
+Local build on a Mac:
+
+```bash
+./scripts/build-macos.sh
+# → build/dist/CaptionStudio-macOS.zip
+```
+
 ## Run the Cursor SDK enhancer
 
 ```bash
