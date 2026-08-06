@@ -33,6 +33,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ## Phase A — One-tap Shorts Pack (highest leverage)
 
 ### A1. Shorts Pack templates
+**Status:** Shipped (app + enhancer)
+
 **What:** Preset creative recipes: `Hook`, `Story`, `Tip`, `Hype`, `Tutorial`.  
 **User flow:** Import → pick pack → AI Captions (if needed) → AI Place with pack rules → preview → export 9:16.
 
@@ -64,6 +66,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### A2. Hook detector (first 1–3s)
+**Status:** Shipped with A1 (`ensureOpeningHook` in enhancer + local Swift fallback)
+
 **What:** Force a retention hook at the open.
 
 **Logic:**

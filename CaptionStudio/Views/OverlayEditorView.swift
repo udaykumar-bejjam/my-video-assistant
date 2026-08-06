@@ -217,8 +217,14 @@ struct ExportPanelView: View {
             }
             .padding(.horizontal, 16)
 
+            PackPickerView(compact: true)
+                .padding(.horizontal, 16)
+
             VStack(alignment: .leading, spacing: 8) {
                 summaryRow("Canvas", "\(Int(editor.project.aspectRatio.canvasSize.width))×\(Int(editor.project.aspectRatio.canvasSize.height))")
+                if let pack = editor.selectedPack {
+                    summaryRow("Pack", pack.name)
+                }
                 summaryRow("Captions", "\(editor.project.captions.count)")
                 summaryRow("Overlays", "\(editor.project.overlays.count)")
                 summaryRow("Sound FX", "\(editor.project.soundEffects.count)")

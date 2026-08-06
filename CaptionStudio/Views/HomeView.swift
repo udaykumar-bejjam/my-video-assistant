@@ -81,6 +81,10 @@ struct HomeView: View {
                     .padding(.top, 10)
                     .opacity(appear ? 1 : 0)
                     .offset(y: appear ? 0 : 10)
+
+                    PackPickerView(compact: true)
+                        .padding(.top, 18)
+                        .opacity(appear ? 1 : 0)
                 }
                 .padding(.horizontal, 28)
 

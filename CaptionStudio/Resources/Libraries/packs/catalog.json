@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "library": "packs",
+  "items": [
+    {
+      "id": "hook",
+      "name": "Hook",
+      "subtitle": "Stop the scroll in 3 seconds",
+      "systemImage": "bolt.fill",
+      "aspect": "9:16",
+      "captionStyle": "upperPunch",
+      "effectBias": ["punch", "slam", "stomp", "shake", "color-pulse"],
+      "sfxBias": ["riser", "bass-hit", "whoosh", "pop"],
+      "gifTags": ["hype", "impact", "reveal"],
+      "wordHitsPerCaption": 2,
+      "requireHookInFirstSeconds": 3,
+      "gifDensity": "high",
+      "accentColor": "#FFEF5A"
+    },
+    {
+      "id": "story",
+      "name": "Story",
+      "subtitle": "Emotional arc with soft punches",
+      "systemImage": "book.fill",
+      "aspect": "9:16",
+      "captionStyle": "softShadow",
+      "effectBias": ["rise", "pulse", "flash", "bounce", "typepop"],
+      "sfxBias": ["riser", "whoosh", "ding", "click"],
+      "gifTags": ["focus", "product", "playful"],
+      "wordHitsPerCaption": 1,
+      "requireHookInFirstSeconds": 3,
+      "gifDensity": "low",
+      "accentColor": "#33F2CF"
+    },
+    {
+      "id": "tip",
+      "name": "Tip",
+      "subtitle": "Clear teachable moments",
+      "systemImage": "lightbulb.fill",
+      "aspect": "9:16",
+      "captionStyle": "boxed",
+      "effectBias": ["typepop", "zoom", "flash", "pulse", "bounce"],
+      "sfxBias": ["ding", "click", "pop", "whoosh"],
+      "gifTags": ["focus", "ui", "highlight"],
+      "wordHitsPerCaption": 1,
+      "requireHookInFirstSeconds": 2.5,
+      "gifDensity": "medium",
+      "accentColor": "#FF9F1C"
+    },
+    {
+      "id": "hype",
+      "name": "Hype",
+      "subtitle": "Maximum energy & punch",
+      "systemImage": "flame.fill",
+      "aspect": "9:16",
+      "captionStyle": "upperPunch",
+      "effectBias": ["punch", "color-pulse", "stomp", "slam", "fire-pulse", "shake"],
+      "sfxBias": ["bass-hit", "riser", "whoosh", "cheer-hit"],
+      "gifTags": ["hype", "celebration", "impact"],
+      "wordHitsPerCaption": 2,
+      "requireHookInFirstSeconds": 3,
+      "gifDensity": "high",
+      "accentColor": "#FF2D2D"
+    },
+    {
+      "id": "tutorial",
+      "name": "Tutorial",
+      "subtitle": "Step-by-step clarity",
+      "systemImage": "list.number",
+      "aspect": "9:16",
+      "captionStyle": "outline",
+      "effectBias": ["zoom", "typepop", "flash", "pulse", "glitch"],
+      "sfxBias": ["click", "ding", "whoosh", "pop"],
+      "gifTags": ["tech", "focus", "ui"],
+      "wordHitsPerCaption": 1,
+      "requireHookInFirstSeconds": 2,
+      "gifDensity": "medium",
+      "accentColor": "#C77DFF"
+    }
+  ]
+}

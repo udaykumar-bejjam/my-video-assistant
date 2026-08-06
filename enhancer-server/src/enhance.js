@@ -18,6 +18,7 @@ export async function enhanceWithCursor({
   forceHeuristic = false,
   videoSize = null,
   language = "en-US",
+  packId = null,
 }) {
   const libraries = loadLibraries();
   const normalizedCaptions = (captions || []).map((c) => ({
@@ -34,12 +35,14 @@ export async function enhanceWithCursor({
   }));
   const videoDuration = Number(duration) || 10;
   const lang = language || "en-US";
+  const pack = packId || null;
   const payload = {
     captions: normalizedCaptions,
     duration: videoDuration,
     libraries,
     videoSize,
     language: lang,
+    packId: pack,
   };
 
   if (forceHeuristic || !process.env.CURSOR_API_KEY) {
@@ -47,8 +50,8 @@ export async function enhanceWithCursor({
       ...heuristicPlan(payload),
       model: null,
       note: forceHeuristic
-        ? "Forced heuristic (word hits + fonts/effects/SFX)"
-        : "CURSOR_API_KEY missing — heuristic chose significant words, fonts, effects, SFX",
+        ? `Forced heuristic${pack ? ` (pack:${pack})` : ""} (word hits + fonts/effects/SFX)`
+        : `CURSOR_API_KEY missing — heuristic${pack ? ` pack:${pack}` : ""} chose significant words, fonts, effects, SFX`,
     };
   }
 
@@ -69,17 +72,23 @@ export async function enhanceWithCursor({
 
     const parsed = extractJson(result.result);
     const plan = validatePlacements(
-      { ...parsed, language: parsed.language || lang, source: "cursor-sdk" },
+      {
+        ...parsed,
+        language: parsed.language || lang,
+        packId: parsed.packId || pack,
+        source: "cursor-sdk",
+      },
       libraries,
       normalizedCaptions,
-      videoDuration
+      videoDuration,
+      pack
     );
     return {
       ...plan,
       model: result.model?.id || "composer-2.5",
       usage: result.usage,
       durationMs: result.durationMs,
-      note: "Cursor SDK response applied precisely (wordHits + placements)",
+      note: `Cursor SDK response applied precisely (wordHits + placements${pack ? `, pack:${pack}` : ""})`,
     };
   } catch (error) {
     const fallback = heuristicPlan(payload);

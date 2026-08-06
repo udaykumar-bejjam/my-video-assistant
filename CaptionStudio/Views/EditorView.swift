@@ -98,6 +98,30 @@ struct EditorView: View {
             }
             #endif
 
+            Menu {
+                Button("None") { editor.selectPack(nil) }
+                ForEach(editor.packs.packs) { pack in
+                    Button {
+                        editor.selectPack(pack.id)
+                    } label: {
+                        Label(pack.name, systemImage: pack.icon)
+                    }
+                }
+            } label: {
+                Label(
+                    editor.selectedPack?.name ?? "Pack",
+                    systemImage: editor.selectedPack?.icon ?? "square.stack.3d.up.fill"
+                )
+                .font(.custom("AvenirNext-DemiBold", size: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    (editor.selectedPack?.accent ?? Color.white.opacity(0.12)).opacity(editor.selectedPack == nil ? 1 : 0.95),
+                    in: Capsule()
+                )
+                .foregroundStyle(editor.selectedPack == nil ? .white : .black)
+            }
+
             Button {
                 Task { await editor.generateCaptions() }
             } label: {

@@ -145,6 +145,8 @@ struct EnhancementPlan: Codable {
     var summary: String
     var placements: [EnhancementPlacement]
     var wordHits: [EnhancementPlacement]?
+    var hook: EnhancementHook?
+    var packId: String?
     var source: String?
     var model: String?
     var note: String?

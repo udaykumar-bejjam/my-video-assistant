@@ -131,6 +131,8 @@ struct VideoProject: Identifiable, Equatable {
     var overlays: [OverlayItem]
     var soundEffects: [SoundEffectCue]
     var enhancementSummary: String?
+    /// Selected Shorts Pack id (`hook`, `hype`, …) — drives enhance biases + default aspect.
+    var packId: String?
     var chunkCount: Int
     var createdAt: Date
 
@@ -146,6 +148,7 @@ struct VideoProject: Identifiable, Equatable {
             overlays: [],
             soundEffects: [],
             enhancementSummary: nil,
+            packId: nil,
             chunkCount: 1,
             createdAt: .now
         )

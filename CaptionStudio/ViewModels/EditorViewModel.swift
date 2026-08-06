@@ -32,7 +32,12 @@ final class EditorViewModel: ObservableObject {
     let exporter = VideoExportService()
     let stitcher = VideoStitchService()
     let libraries = MediaLibraryStore()
+    let packs = PackLibrary()
     let enhancer = CursorEnhancerClient()
+
+    var selectedPack: ShortsPack? {
+        packs.pack(id: project.packId)
+    }
 
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
@@ -89,7 +94,12 @@ final class EditorViewModel: ObservableObject {
         project.overlays = []
         project.soundEffects = []
         project.enhancementSummary = nil
-        project.captionStyle = selectedPreset.style
+        // Keep pack selection across re-imports in the same session; apply its style/aspect if set.
+        if let pack = selectedPack {
+            applyPackSideEffects(pack)
+        } else {
+            project.captionStyle = selectedPreset.style
+        }
         project.chunkCount = 1
         lastEnhancementNote = nil
         chunkProgressLabel = nil
@@ -104,7 +114,10 @@ final class EditorViewModel: ObservableObject {
             let transform = (try? await track.load(.preferredTransform)) ?? .identity
             let oriented = VideoExportService.orientedSizePublic(natural, transform: transform)
             project.sourceSize = oriented
-            project.aspectRatio = AspectRatioPreset.inferred(from: oriented)
+            // Pack aspect wins when a Shorts Pack is selected; otherwise infer from source.
+            if selectedPack == nil {
+                project.aspectRatio = AspectRatioPreset.inferred(from: oriented)
+            }
         }
         project.chunkCount = VideoChunkPlanner.chunks(duration: project.duration).count
 
@@ -201,6 +214,7 @@ final class EditorViewModel: ObservableObject {
             )
             guard !sliceCaptions.isEmpty || chunks.count == 1 else { continue }
 
+            let packId = project.packId
             let plan: EnhancementPlan
             if enhancer.isHealthy {
                 do {
@@ -209,13 +223,16 @@ final class EditorViewModel: ObservableObject {
                         duration: project.duration,
                         videoSize: canvas,
                         language: language,
+                        packId: packId,
                         forceHeuristic: false
                     )
                 } catch {
                     plan = enhancer.localHeuristicPlan(
                         captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
                         duration: project.duration,
-                        libraries: libraries
+                        libraries: libraries,
+                        language: language,
+                        pack: selectedPack
                     )
                     notes.append(error.localizedDescription)
                 }
@@ -223,7 +240,9 @@ final class EditorViewModel: ObservableObject {
                 plan = enhancer.localHeuristicPlan(
                     captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
                     duration: project.duration,
-                    libraries: libraries
+                    libraries: libraries,
+                    language: language,
+                    pack: selectedPack
                 )
             }
 
@@ -238,12 +257,14 @@ final class EditorViewModel: ObservableObject {
         let wordHits = merged.filter { $0.kind == "wordHit" }
         let others = merged.filter { $0.kind != "wordHit" }
 
+        let packLabel = selectedPack.map { " / pack:\($0.name)" } ?? ""
         let plan = EnhancementPlan(
             summary: chunks.count == 1
-                ? "Word hits + placements for \(language.title) / \(project.aspectRatio.rawValue)."
-                : "Merged \(wordHits.count) word hits across \(chunks.count) parts (\(language.title)).",
+                ? "Word hits + placements for \(language.title) / \(project.aspectRatio.rawValue)\(packLabel)."
+                : "Merged \(wordHits.count) word hits across \(chunks.count) parts (\(language.title)\(packLabel)).",
             placements: others,
             wordHits: wordHits,
+            packId: project.packId,
             source: enhancer.isHealthy ? "cursor-sdk-chunked" : "local-chunked",
             model: enhancer.usesCursorKey ? "composer-2.5" : nil,
             note: notes.last ?? "Enhanced in \(chunks.count) part(s)",
@@ -252,6 +273,19 @@ final class EditorViewModel: ObservableObject {
         apply(plan: plan)
         lastEnhancementNote = plan.summary
         editorTab = .libraries
+    }
+
+    /// Pick a Shorts Pack — sets aspect, caption style, and packId for enhance.
+    func selectPack(_ packId: String?) {
+        project.packId = packId
+        if let pack = packs.pack(id: packId) {
+            applyPackSideEffects(pack)
+        }
+    }
+
+    private func applyPackSideEffects(_ pack: ShortsPack) {
+        setAspectRatio(pack.aspectPreset)
+        applyPreset(pack.captionPreset)
     }
 
     private static func dedupe(placements: [EnhancementPlacement]) -> [EnhancementPlacement] {

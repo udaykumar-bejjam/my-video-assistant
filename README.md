@@ -34,6 +34,7 @@ Without `CURSOR_API_KEY`, the enhancer returns the **same JSON schema** via a mo
 | GIFs | `AssetLibraries/gifs/` | pop-burst, confetti, pulse-ring, … |
 | PNGs | `AssetLibraries/pngs/` | starburst, flame, bolt, heart, … |
 | Sound FX | `AssetLibraries/sfx/` | whoosh, pop, ding, bass-hit, riser, … |
+| Shorts Packs | `AssetLibraries/packs/` | Hook, Story, Tip, Hype, Tutorial recipes |
 
 Catalogs are JSON (`catalog.json`). The same trees are copied into `CaptionStudio/Resources/Libraries` for the app bundle.
 
@@ -48,15 +49,29 @@ npm start                          # http://127.0.0.1:8787
 
 - `GET /health` — SDK status  
 - `GET /libraries` — catalogs  
-- `POST /enhance` — `{ captions, duration }` → placement plan  
+- `POST /enhance` — `{ captions, duration, packId? }` → placement plan  
 
 CLI smoke test (offline heuristic):
 
 ```bash
 npm run enhance -- examples/sample-captions.json
+# with a Shorts Pack:
+npm run enhance -- examples/sample-captions-hype.json
 ```
 
-## Run the Mac / iOS app
+## Shorts Packs (one-tap recipes)
+
+Pick a pack on Home / editor chrome / Export:
+
+| Pack | Feel |
+|------|------|
+| Hook | Stop-the-scroll punches in first 3s |
+| Story | Softer emotional emphasis |
+| Tip | Clear teachable moments |
+| Hype | Max energy (punch / color-pulse / stomp) |
+| Tutorial | Step clarity (zoom / typepop) |
+
+Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias` / `sfxBias` / GIF density). The enhancer also guarantees an opening **hook** word hit + SFX.
 
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  

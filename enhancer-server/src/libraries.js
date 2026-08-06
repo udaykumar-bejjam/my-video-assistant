@@ -2,6 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import {
+  effectPoolForPack,
+  getPack,
+  gifEveryN,
+  hookWindowSeconds,
+  loadPacks,
+  pickGifForPack,
+  sfxPoolForPack,
+  wordHitsPerCaption,
+} from "./packs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -33,6 +43,7 @@ export function loadLibraries() {
     catalog.items = catalog.items.map((item) => enrichItem(name, item));
     libraries[name] = catalog;
   }
+  libraries.packs = loadPacks();
   return libraries;
 }
 
@@ -356,10 +367,19 @@ export function alignPlacement(placement, asset, captions, videoDuration) {
 /**
  * Build the Cursor agent prompt with FULL resource timing/size metadata + significant word hits.
  */
-export function buildPrompt({ captions, duration, libraries, videoSize, language = "en-US" }) {
+export function buildPrompt({
+  captions,
+  duration,
+  libraries,
+  videoSize,
+  language = "en-US",
+  packId = null,
+}) {
   const canvas = canvasForVideoSize(videoSize);
   const catalog = compactCatalog(libraries, canvas);
   const aspect = aspectLabel(canvas);
+  const pack = getPack(packId) || null;
+  const hookWindow = hookWindowSeconds(pack);
 
   const captionWindows = captions.map((c, index) => ({
     index,
@@ -384,6 +404,24 @@ export function buildPrompt({ captions, duration, libraries, videoSize, language
         ? "Telugu — prefer telugu-* fonts"
         : "English/Latin — prefer latin-* fonts";
 
+  const packBlock = pack
+    ? `
+SHORTS PACK (must honor)
+- packId: ${pack.id}
+- name: ${pack.name}
+- effectBias (prefer these effectIds): ${JSON.stringify(pack.effectBias || [])}
+- sfxBias (prefer these sfxIds): ${JSON.stringify(pack.sfxBias || [])}
+- gifTags: ${JSON.stringify(pack.gifTags || [])}
+- wordHitsPerCaption: ${wordHitsPerCaption(pack)}
+- requireHookInFirstSeconds: ${hookWindow}
+- gifDensity: ${pack.gifDensity || "medium"}
+- captionStyle hint: ${pack.captionStyle || "upperPunch"}
+`
+    : `
+SHORTS PACK
+- none selected — use default punchy effects
+`;
+
   return `You are the creative timing director for CaptionStudio.
 
 Decide PRECISELY:
@@ -392,7 +430,7 @@ Decide PRECISELY:
 3) where (x,y) and when (start/end) every asset plays
 
 Language: ${language} (${scriptHint})
-
+${packBlock}
 VIDEO
 - durationSeconds: ${duration}
 - aspect: ${aspect}
@@ -406,16 +444,17 @@ LIBRARIES (ids only from here)
 ${JSON.stringify(catalog, null, 2)}
 
 SIGNIFICANT WORD RULES
-1. Pick 1–2 high-impact words per caption (names, verbs of power, emotion, numbers, CTAs). Skip filler.
+1. Pick ${pack ? wordHitsPerCaption(pack) : "1–2"} high-impact words per caption (names, verbs of power, emotion, numbers, CTAs). Skip filler.
 2. For each wordHit use the word's OWN startTime/endTime when words[] is present; else use caption start + short span.
-3. Prefer PUNCHY colourful effects — punch, color-pulse, fire-pulse, stomp, slam, shake, neon-pulse — not plain bold.
-4. Randomise effectId; do not reuse the same effect for every word.
+3. Prefer PUNCHY colourful effects${pack?.effectBias?.length ? ` from effectBias ${JSON.stringify(pack.effectBias)}` : " — punch, color-pulse, fire-pulse, stomp, slam, shake, neon-pulse"} — not plain bold.
+4. Randomise effectId within the allowed pool; do not reuse the same effect for every word.
 5. Set color to the effect's first palette colour (yellow/red for punch & color-pulse). Optionally set secondaryColor.
-6. Pair each effect with an sfxId — prefer that effect's preferredSfx list.
+6. Pair each effect with an sfxId — prefer pack sfxBias then that effect's preferredSfx list.
 7. fontId MUST match the language script (${scriptHint}).
 8. assetId for wordHit = fontId (required for validation).
 9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
-10. Also emit supporting placements (gif/png/text/sfx) when helpful — keep clutter low.
+10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
+11. Also emit supporting placements (gif/png/text/sfx) when helpful — gif density = ${pack?.gifDensity || "medium"}.
 
 GENERAL TIMING RULES
 1. Never invent library ids.
@@ -428,6 +467,16 @@ OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
 {
   "summary": "one sentence creative plan",
   "language": "${language}",
+  "packId": ${pack ? `"${pack.id}"` : "null"},
+  "hook": {
+    "word": "opening word",
+    "startTime": 0.4,
+    "endTime": 1.1,
+    "effectId": "punch",
+    "sfxId": "riser",
+    "fontId": "font id",
+    "reason": "Opening retention hook"
+  },
   "wordHits": [
     {
       "kind": "wordHit",
@@ -484,11 +533,19 @@ const PUNCHY_EFFECT_IDS = [
   "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch",
 ];
 
-export function validatePlacements(plan, libraries, captions = [], videoDuration = 10) {
+export function validatePlacements(
+  plan,
+  libraries,
+  captions = [],
+  videoDuration = 10,
+  packId = null
+) {
   const assets = indexAssets(libraries);
   const fonts = Object.fromEntries(libraries.fonts.items.map((i) => [i.id, i]));
   const effects = Object.fromEntries(libraries.effects.items.map((i) => [i.id, i]));
   const sfx = Object.fromEntries(libraries.sfx.items.map((i) => [i.id, i]));
+  const pack = getPack(packId || plan?.packId) || null;
+  const resolvedPackId = pack?.id || packId || plan?.packId || null;
 
   const placements = [];
   const wordHits = [];
@@ -501,7 +558,7 @@ export function validatePlacements(plan, libraries, captions = [], videoDuration
   for (const p of incoming) {
     if (!p) continue;
     if (p.kind === "wordHit") {
-      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration);
+      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration, pack);
       if (hit) wordHits.push(hit);
       continue;
     }
@@ -510,34 +567,261 @@ export function validatePlacements(plan, libraries, captions = [], videoDuration
     placements.push(alignPlacement(p, asset, captions, videoDuration));
   }
 
+  const hook = ensureOpeningHook({
+    plan,
+    wordHits,
+    placements,
+    fonts: libraries.fonts.items,
+    effects: libraries.effects.items,
+    sfxLib: libraries.sfx.items,
+    captions,
+    videoDuration,
+    pack,
+    language: plan?.language || "en-US",
+  });
+
   return {
     summary: typeof plan?.summary === "string" ? plan.summary : "Enhancement plan",
     placements,
     wordHits,
+    hook: hook || plan?.hook || null,
+    packId: resolvedPackId,
     language: plan?.language,
     source: plan?.source || "cursor-sdk",
     canvas: REFERENCE_CANVAS,
   };
 }
 
-export function alignWordHit(placement, fonts, effects, sfxMap, captions, videoDuration) {
+/** Guarantee a visual+audio hook inside the pack's opening window. */
+export function ensureOpeningHook({
+  plan,
+  wordHits,
+  placements,
+  fonts,
+  effects,
+  sfxLib,
+  captions,
+  videoDuration,
+  pack,
+  language = "en-US",
+}) {
+  const windowSec = hookWindowSeconds(pack);
+  const hasEarlyHit = wordHits.some((h) => h.startTime < windowSec);
+  const hasEarlySfx = placements.some(
+    (p) => p.kind === "sfx" && p.startTime < windowSec
+  );
+
+  let hookMeta = plan?.hook && typeof plan.hook === "object" ? { ...plan.hook } : null;
+
+  if (hasEarlyHit && hasEarlySfx) {
+    const early = wordHits.find((h) => h.startTime < windowSec);
+    return (
+      hookMeta || {
+        word: early?.word,
+        startTime: early?.startTime,
+        endTime: early?.endTime,
+        effectId: early?.effectId,
+        sfxId: early?.sfxId,
+        fontId: early?.fontId,
+        reason: "Opening retention hook",
+      }
+    );
+  }
+
+  // Prefer an early spoken word; else synthesize a localized WAIT sticker.
+  const earlyWords = [];
+  captions.forEach((cap, captionIndex) => {
+    const parts =
+      Array.isArray(cap.words) && cap.words.length
+        ? cap.words.map((w, i) => ({ ...w, index: i, captionIndex }))
+        : String(cap.text || "")
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((text, i, arr) => {
+              const span = (cap.endTime - cap.startTime) / Math.max(arr.length, 1);
+              return {
+                text,
+                index: i,
+                captionIndex,
+                startTime: cap.startTime + i * span,
+                endTime: cap.startTime + (i + 1) * span,
+              };
+            });
+    for (const w of parts) {
+      if (w.startTime < windowSec) earlyWords.push(w);
+    }
+  });
+
+  const scriptFonts = fonts.filter((f) => {
+    const scripts = f.scripts || [];
+    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
+    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
+    return scripts.some((s) => ["en", "latin"].includes(s));
+  });
+  const fontPool = scriptFonts.length ? scriptFonts : fonts;
+  const effectPool = effectPoolForPack(effects, pack);
+  const sfxPool = sfxPoolForPack(sfxLib, pack);
+  const riser =
+    sfxPool.find((s) => s.id === "riser") ||
+    sfxPool.find((s) => s.id === "bass-hit") ||
+    sfxPool[0];
+  const effect =
+    effectPool.find((e) => e.id === "punch") ||
+    effectPool.find((e) => (pack?.effectBias || []).includes(e.id)) ||
+    effectPool[0];
+  const font = fontPool[0];
+
+  if (!hasEarlyHit && earlyWords.length && font && effect) {
+    const w = earlyWords.sort((a, b) => String(b.text).length - String(a.text).length)[0];
+    const palette = effect.colors || WORD_HIT_COLORS;
+    const raw = {
+      kind: "wordHit",
+      assetId: font.id,
+      fontId: font.id,
+      effectId: effect.id,
+      sfxId: riser?.id,
+      word: w.text,
+      text: w.text,
+      captionIndex: w.captionIndex,
+      wordIndex: w.index,
+      startTime: w.startTime,
+      endTime: w.endTime,
+      x: 0.5,
+      y: 0.38,
+      scale: 1.45,
+      rotation: -4,
+      color: palette[0],
+      secondaryColor: palette[1] || palette[0],
+      reason: `Pack hook on "${w.text}"`,
+    };
+    const fontsMap = Object.fromEntries(fonts.map((i) => [i.id, i]));
+    const effectsMap = Object.fromEntries(effects.map((i) => [i.id, i]));
+    const sfxMap = Object.fromEntries(sfxLib.map((i) => [i.id, i]));
+    const hit = alignWordHit(raw, fontsMap, effectsMap, sfxMap, captions, videoDuration, pack);
+    if (hit) wordHits.unshift(hit);
+    hookMeta = {
+      word: hit?.word || w.text,
+      startTime: hit?.startTime ?? w.startTime,
+      endTime: hit?.endTime ?? w.endTime,
+      effectId: hit?.effectId || effect.id,
+      sfxId: hit?.sfxId || riser?.id,
+      fontId: hit?.fontId || font.id,
+      reason: "Opening retention hook",
+    };
+  } else if (!hasEarlyHit && font && effect) {
+    // Fallback stylish WAIT word-hit in the opening window
+    const waitWord = language.startsWith("hi")
+      ? "रुको"
+      : language.startsWith("te")
+        ? "ఆగు"
+        : "WAIT";
+    const palette = effect.colors || WORD_HIT_COLORS;
+    const fontsMap = Object.fromEntries(fonts.map((i) => [i.id, i]));
+    const effectsMap = Object.fromEntries(effects.map((i) => [i.id, i]));
+    const sfxMap = Object.fromEntries(sfxLib.map((i) => [i.id, i]));
+    const hit = alignWordHit(
+      {
+        kind: "wordHit",
+        assetId: font.id,
+        fontId: font.id,
+        effectId: effect.id,
+        sfxId: riser?.id,
+        word: waitWord,
+        text: waitWord,
+        captionIndex: 0,
+        startTime: 0.2,
+        endTime: Math.min(videoDuration, 1.2),
+        x: 0.5,
+        y: 0.36,
+        scale: 1.5,
+        rotation: -5,
+        color: palette[0],
+        secondaryColor: palette[1] || palette[0],
+        reason: "Synthetic WAIT hook",
+      },
+      fontsMap,
+      effectsMap,
+      sfxMap,
+      captions,
+      videoDuration,
+      pack
+    );
+    if (hit) {
+      wordHits.unshift(hit);
+      hookMeta = {
+        word: waitWord,
+        startTime: hit.startTime,
+        endTime: hit.endTime,
+        effectId: hit.effectId,
+        sfxId: hit.sfxId,
+        fontId: hit.fontId,
+        reason: "Synthetic opening retention hook",
+      };
+    }
+  }
+
+  if (!hasEarlySfx && riser) {
+    placements.unshift({
+      kind: "sfx",
+      assetId: riser.id,
+      captionIndex: 0,
+      snapToCaption: false,
+      startTime: 0,
+      endTime: riser.lengthSeconds || 0.8,
+      x: 0.5,
+      y: 0.5,
+      scale: 1,
+      rotation: 0,
+      reason: `Pack opening ${riser.id} ${riser.lengthSeconds || 0.8}s`,
+      lengthSeconds: riser.lengthSeconds,
+    });
+    // Re-align through alignPlacement path for consistency
+    const aligned = alignPlacement(
+      placements[0],
+      riser,
+      captions,
+      videoDuration
+    );
+    placements[0] = aligned;
+  }
+
+  return hookMeta;
+}
+
+export function alignWordHit(
+  placement,
+  fonts,
+  effects,
+  sfxMap,
+  captions,
+  videoDuration,
+  pack = null
+) {
   const fontId = placement.fontId || placement.assetId;
   const font = fonts[fontId];
   if (!font) return null;
 
   const effectIds = Object.keys(effects);
+  const bias = (pack?.effectBias || []).filter((id) => effects[id]);
   let effectId = placement.effectId;
   if (!effects[effectId]) {
     const punchy = PUNCHY_EFFECT_IDS.filter((id) => effects[id]);
-    const pool = punchy.length ? punchy : effectIds;
+    const pool = bias.length ? bias : punchy.length ? punchy : effectIds;
     effectId = pool[Math.floor(Math.random() * pool.length)];
+  } else if (bias.length && !bias.includes(effectId)) {
+    // Prefer pack bias when AI omitted a valid bias pick
+    // Keep AI choice as-is when it already picked something valid
   }
   const effect = effects[effectId];
 
+  const sfxBias = (pack?.sfxBias || []).filter((id) => sfxMap[id]);
   let sfxId = placement.sfxId;
   if (!sfxMap[sfxId]) {
     const preferred = effect.preferredSfx || [];
-    sfxId = preferred.find((id) => sfxMap[id]) || Object.keys(sfxMap)[0];
+    sfxId =
+      sfxBias[0] ||
+      preferred.find((id) => sfxMap[id]) ||
+      Object.keys(sfxMap)[0];
   }
   const sfx = sfxMap[sfxId];
 
@@ -623,7 +907,13 @@ function round4(n) {
 }
 
 /** Offline heuristic — significant word hits + measured asset lengths. */
-export function heuristicPlan({ captions, duration, libraries, language = "en-US" }) {
+export function heuristicPlan({
+  captions,
+  duration,
+  libraries,
+  language = "en-US",
+  packId = null,
+}) {
   const placements = [];
   const wordHits = [];
   const textLib = libraries["text-styles"].items;
@@ -632,9 +922,11 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
   const sfxLib = libraries.sfx.items;
   const fontLib = libraries.fonts.items;
   const effectLib = libraries.effects.items;
-
-  const pick = (items, tags) =>
-    items.find((i) => (i.tags || []).some((t) => tags.includes(t))) || items[0];
+  const pack = getPack(packId);
+  const hitsPerCap = wordHitsPerCaption(pack);
+  const everyN = gifEveryN(pack);
+  const effectPoolBase = effectPoolForPack(effectLib, pack);
+  const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
 
   const scriptFonts = fontLib.filter((f) => {
     const scripts = f.scripts || [];
@@ -668,7 +960,7 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
     return parts
       .filter((w) => w.text && !filler.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
       .sort((a, b) => String(b.text).length - String(a.text).length)
-      .slice(0, 2);
+      .slice(0, hitsPerCap);
   };
 
   captions.slice(0, 8).forEach((cap, index) => {
@@ -684,16 +976,20 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
               ? "reveal"
               : "default";
 
-    // Significant word hits with randomised effects + sfx
+    // Significant word hits with pack-biased effects + sfx
     const sig = significantFrom(cap);
     sig.forEach((word, wi) => {
       const font = fonts[(index + wi) % fonts.length];
-      // Bias toward punchy / colour-pulse effects
-      const punchy = effectLib.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
-      const effectPool = punchy.length ? punchy : effectLib;
+      const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
+      const effectPool = punchy.length ? punchy : effectPoolBase;
       const effect = effectPool[(index * 3 + wi * 2) % effectPool.length];
-      const preferred = (effect.preferredSfx || []).map((id) => sfxLib.find((s) => s.id === id)).filter(Boolean);
-      const sfx = preferred[0] || sfxLib[(index + wi) % sfxLib.length];
+      const preferred = (effect.preferredSfx || [])
+        .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
+        .filter(Boolean);
+      const sfx =
+        preferred[0] ||
+        sfxPoolBase[(index + wi) % sfxPoolBase.length] ||
+        sfxLib[(index + wi) % sfxLib.length];
       const palette = effect.colors || WORD_HIT_COLORS;
       wordHits.push({
         kind: "wordHit",
@@ -713,17 +1009,20 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
         rotation: wi % 2 === 0 ? -5 : 6,
         color: palette[0],
         secondaryColor: palette[1] || palette[0],
-        reason: `Punchy "${word.text}" → ${effect.id} (${palette[0]}/${palette[1] || palette[0]}) + ${sfx.id}`,
+        reason: `Pack${pack ? `:${pack.id}` : ""} "${word.text}" → ${effect.id} + ${sfx.id}`,
       });
     });
 
-    if (index % 2 === 0 && gifLib.length) {
-      const gif =
+    if (index % everyN === 0 && gifLib.length) {
+      const moodTags =
         mood === "hype"
-          ? pick(gifLib, ["hype", "celebration"])
+          ? ["hype", "celebration"]
           : mood === "tech"
-            ? pick(gifLib, ["tech", "focus"])
-            : gifLib[index % gifLib.length];
+            ? ["tech", "focus"]
+            : mood === "reveal"
+              ? ["reveal", "focus"]
+              : [];
+      const gif = pickGifForPack(gifLib, pack, moodTags) || gifLib[index % gifLib.length];
       placements.push({
         kind: "gif",
         assetId: gif.id,
@@ -734,7 +1033,7 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
         y: 0.22 + (index % 3) * 0.08,
         scale: gif.defaultScale || 1,
         rotation: 0,
-        reason: `GIF support for caption ${index}`,
+        reason: `GIF support for caption ${index}${pack ? ` (${pack.id})` : ""}`,
       });
     }
 
@@ -754,10 +1053,18 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
         reason: `Support text on caption ${index}`,
       });
     }
+
+    // Quiet unused var for lint parity with prior png usage
+    void pngLib;
   });
 
+  // Opening SFX — prefer pack bias (ensureOpeningHook also enforces)
   if (duration > 1.5) {
-    const riser = sfxLib.find((i) => i.id === "riser") || sfxLib[0];
+    const riser =
+      sfxPoolBase.find((i) => i.id === "riser") ||
+      sfxPoolBase.find((i) => i.id === "bass-hit") ||
+      sfxLib.find((i) => i.id === "riser") ||
+      sfxLib[0];
     if (riser) {
       placements.unshift({
         kind: "sfx",
@@ -770,22 +1077,25 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
         y: 0.5,
         scale: 1,
         rotation: 0,
-        reason: `Cold-open riser exact ${riser.lengthSeconds}s`,
+        reason: `Cold-open ${riser.id} exact ${riser.lengthSeconds}s`,
       });
     }
   }
 
   return validatePlacements(
     {
-      summary:
-        "Heuristic: significant words with randomised fonts/effects/SFX, snapped to word timings.",
+      summary: pack
+        ? `Heuristic pack "${pack.name}": word hits + overlays snapped to timings.`
+        : "Heuristic: significant words with randomised fonts/effects/SFX, snapped to word timings.",
       language,
+      packId: pack?.id || null,
       placements,
       wordHits,
       source: "heuristic-fallback",
     },
     libraries,
     captions,
-    duration
+    duration,
+    pack?.id || null
   );
 }

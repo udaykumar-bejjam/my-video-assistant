@@ -1,0 +1,35 @@
+{
+  "captions": [
+    {
+      "text": "Hey — welcome to CaptionStudio",
+      "startTime": 0.0,
+      "endTime": 1.6,
+      "words": [
+        { "text": "Hey", "startTime": 0.0, "endTime": 0.3 },
+        { "text": "welcome", "startTime": 0.4, "endTime": 0.8 },
+        { "text": "to", "startTime": 0.85, "endTime": 1.0 },
+        { "text": "CaptionStudio", "startTime": 1.05, "endTime": 1.6 }
+      ]
+    },
+    {
+      "text": "AI captions in one tap",
+      "startTime": 1.6,
+      "endTime": 3.2,
+      "words": [
+        { "text": "AI", "startTime": 1.6, "endTime": 1.9 },
+        { "text": "captions", "startTime": 2.0, "endTime": 2.5 },
+        { "text": "in", "startTime": 2.55, "endTime": 2.7 },
+        { "text": "one", "startTime": 2.75, "endTime": 2.95 },
+        { "text": "tap", "startTime": 3.0, "endTime": 3.2 }
+      ]
+    },
+    { "text": "Pick a style that pops", "startTime": 3.2, "endTime": 4.8 },
+    { "text": "Add overlays and emojis", "startTime": 4.8, "endTime": 6.4 },
+    { "text": "Export ready for social", "startTime": 6.4, "endTime": 8.0 }
+  ],
+  "duration": 8,
+  "forceHeuristic": true,
+  "packId": "hype",
+  "language": "en-US",
+  "videoSize": { "width": 1080, "height": 1920 }
+}

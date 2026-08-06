@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "enhance": "node src/cli.js"
+    "enhance": "node src/cli.js",
+    "test:packs": "node test/packs-smoke.mjs"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.26",
