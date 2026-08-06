@@ -13,6 +13,7 @@
     "enhance": "node src/cli.js",
     "test:packs": "node test/packs-smoke.mjs",
     "test:broll": "node test/broll-smoke.mjs",
+    "test:distribution": "node test/distribution-safezone-smoke.mjs",
     "test:trim": "node test/trim-logic-smoke.mjs"
   },
   "dependencies": {

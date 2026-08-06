@@ -28,6 +28,9 @@
 		A10000000000000000000031 /* VideoTrimComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* VideoTrimComposer.swift */; };
 		A10000000000000000000033 /* TrimAssistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000032 /* TrimAssistView.swift */; };
 		A10000000000000000000051 /* BrollPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000050 /* BrollPlanner.swift */; };
+		A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* SafeZoneAndDistribution.swift */; };
+		A10000000000000000000043 /* CoverExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000042 /* CoverExportService.swift */; };
+		A10000000000000000000045 /* AudioNormalizeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000044 /* AudioNormalizeService.swift */; };
 		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
 		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
 		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
@@ -65,6 +68,9 @@
 		A10000000000000000000030 /* VideoTrimComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrimComposer.swift; sourceTree = "<group>"; };
 		A10000000000000000000032 /* TrimAssistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrimAssistView.swift; sourceTree = "<group>"; };
 		A10000000000000000000050 /* BrollPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrollPlanner.swift; sourceTree = "<group>"; };
+		A10000000000000000000040 /* SafeZoneAndDistribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeZoneAndDistribution.swift; sourceTree = "<group>"; };
+		A10000000000000000000042 /* CoverExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverExportService.swift; sourceTree = "<group>"; };
+		A10000000000000000000044 /* AudioNormalizeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizeService.swift; sourceTree = "<group>"; };
 		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
 		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
@@ -133,6 +139,7 @@
 				A10000000000000000000009 /* LanguageAndEffects.swift */,
 				A1000000000000000000000B /* ShortsPack.swift */,
 				A1000000000000000000002A /* SavedProject.swift */,
+				A10000000000000000000040 /* SafeZoneAndDistribution.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -152,6 +159,8 @@
 				A1000000000000000000002E /* TrimService.swift */,
 				A10000000000000000000030 /* VideoTrimComposer.swift */,
 				A10000000000000000000050 /* BrollPlanner.swift */,
+				A10000000000000000000042 /* CoverExportService.swift */,
+				A10000000000000000000044 /* AudioNormalizeService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -293,6 +302,9 @@
 				A10000000000000000000031 /* VideoTrimComposer.swift in Sources */,
 				A10000000000000000000033 /* TrimAssistView.swift in Sources */,
 				A10000000000000000000051 /* BrollPlanner.swift in Sources */,
+				A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */,
+				A10000000000000000000043 /* CoverExportService.swift in Sources */,
+				A10000000000000000000045 /* AudioNormalizeService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

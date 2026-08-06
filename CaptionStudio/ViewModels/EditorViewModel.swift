@@ -36,6 +36,10 @@ final class EditorViewModel: ObservableObject {
     @Published var selectedTrimIDs: Set<UUID> = []
     @Published var isTrimming = false
     @Published var draftMessage: String?
+    @Published var showSafeZone = true
+    @Published var distribution: DistributionPackage?
+    @Published var coverURL: URL?
+    @Published var normalizeLoudness = true
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
@@ -48,6 +52,10 @@ final class EditorViewModel: ObservableObject {
 
     var selectedPack: ShortsPack? {
         packs.pack(id: project.packId)
+    }
+
+    var activeSafeZone: SafeZone {
+        SafeZone.forAspect(project.aspectRatio)
     }
 
     var selectedTrimSuggestions: [TrimSuggestion] {
@@ -236,6 +244,7 @@ final class EditorViewModel: ObservableObject {
 
         var merged: [EnhancementPlacement] = []
         var notes: [String] = []
+        var latestDistribution: DistributionPackage?
 
         for chunk in chunks {
             chunkProgressLabel = chunks.count == 1
@@ -250,6 +259,7 @@ final class EditorViewModel: ObservableObject {
             guard !sliceCaptions.isEmpty || chunks.count == 1 else { continue }
 
             let packId = project.packId
+            let zone = activeSafeZone
             let plan: EnhancementPlan
             if enhancer.isHealthy {
                 do {
@@ -260,6 +270,7 @@ final class EditorViewModel: ObservableObject {
                         language: language,
                         packId: packId,
                         brandKit: brandKit.kit,
+                        safeZone: zone,
                         forceHeuristic: false
                     )
                 } catch {
@@ -268,7 +279,8 @@ final class EditorViewModel: ObservableObject {
                         duration: project.duration,
                         libraries: libraries,
                         language: language,
-                        pack: selectedPack
+                        pack: selectedPack,
+                        safeZone: zone
                     )
                     notes.append(error.localizedDescription)
                 }
@@ -278,13 +290,17 @@ final class EditorViewModel: ObservableObject {
                     duration: project.duration,
                     libraries: libraries,
                     language: language,
-                    pack: selectedPack
+                    pack: selectedPack,
+                    safeZone: zone
                 )
             }
 
             let absolute = VideoChunkPlanner.absolutize(placements: plan.allEdits, chunk: chunk)
             merged.append(contentsOf: absolute)
             if let note = plan.note { notes.append("p\(chunk.index + 1): \(note)") }
+            if latestDistribution == nil {
+                latestDistribution = plan.distribution
+            }
         }
 
         // Deduplicate near-identical placements at chunk boundaries.
@@ -301,6 +317,12 @@ final class EditorViewModel: ObservableObject {
             placements: others,
             wordHits: wordHits,
             packId: project.packId,
+            distribution: latestDistribution ?? DistributionPackage.heuristic(
+                captions: project.captions,
+                language: language,
+                packName: selectedPack?.name
+            ),
+            safeZone: activeSafeZone,
             source: enhancer.isHealthy ? "cursor-sdk-chunked" : "local-chunked",
             model: enhancer.usesCursorKey ? "composer-2.5" : nil,
             note: notes.last ?? "Enhanced in \(chunks.count) part(s)",
@@ -590,6 +612,11 @@ final class EditorViewModel: ObservableObject {
         if let packId = plan.packId, project.packId == nil {
             project.packId = packId
         }
+        distribution = plan.distribution ?? DistributionPackage.heuristic(
+            captions: project.captions,
+            language: language,
+            packName: selectedPack?.name
+        )
         refreshWatermarkOverlay()
         let hitCount = plan.wordHits?.count ?? newOverlays.filter { $0.kind == .wordHit }.count
         lastEnhancementNote = plan.note
@@ -612,6 +639,7 @@ final class EditorViewModel: ObservableObject {
             ?? effectColors?.first
             ?? "#FFEF5A"
         let color = Color(hex: primaryHex) ?? (effect?.palette.first ?? .yellow)
+        let (cx, cy) = activeSafeZone.clamp(x: placement.x, y: placement.y)
         return OverlayItem(
             kind: .wordHit,
             text: placement.displayText.isEmpty ? (font.previewText ?? "!") : placement.displayText,
@@ -622,8 +650,8 @@ final class EditorViewModel: ObservableObject {
             fontName: font.fontName,
             effectId: effectId,
             sfxId: placement.sfxId,
-            x: placement.x,
-            y: placement.y,
+            x: cx,
+            y: cy,
             scale: max(placement.scale, 1.25),
             rotation: placement.rotation,
             startTime: placement.startTime,
@@ -657,7 +685,8 @@ final class EditorViewModel: ObservableObject {
             asset: style,
             kind: "text",
             captions: project.captions,
-            videoDuration: project.duration
+            videoDuration: project.duration,
+            safeZone: activeSafeZone
         )
         let color = Color(hex: style.textColor ?? "#FFFFFF") ?? .white
         return OverlayItem(
@@ -693,7 +722,8 @@ final class EditorViewModel: ObservableObject {
             asset: asset,
             kind: kind == .gif ? "gif" : "png",
             captions: project.captions,
-            videoDuration: project.duration
+            videoDuration: project.duration,
+            safeZone: activeSafeZone
         )
         return OverlayItem(
             kind: kind,
@@ -723,7 +753,8 @@ final class EditorViewModel: ObservableObject {
             asset: asset,
             kind: "sfx",
             captions: project.captions,
-            videoDuration: project.duration
+            videoDuration: project.duration,
+            safeZone: activeSafeZone
         )
         return SoundEffectCue(
             assetId: asset.id,
@@ -943,7 +974,9 @@ final class EditorViewModel: ObservableObject {
                             )
                         },
                         libraryRoot: libraries.rootURL,
-                        aspect: aspect
+                        aspect: aspect,
+                        normalizeLoudness: normalizeLoudness,
+                        brandSfxGain: brandKit.kit.defaultSfxGain
                     )
                 } else {
                     let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
@@ -975,7 +1008,9 @@ final class EditorViewModel: ObservableObject {
                         aspect: aspect,
                         style: project.captionStyle,
                         segments: segments,
-                        libraryRoot: libraries.rootURL
+                        libraryRoot: libraries.rootURL,
+                        normalizeLoudness: normalizeLoudness,
+                        brandSfxGain: brandKit.kit.defaultSfxGain
                     )
                     exporter.progress = stitcher.progress
                     exporter.statusMessage = stitcher.statusMessage
@@ -997,9 +1032,49 @@ final class EditorViewModel: ObservableObject {
 
             batchExportURLs = results
             exportURL = results.first
+            if distribution == nil, !project.captions.isEmpty {
+                distribution = DistributionPackage.heuristic(
+                    captions: project.captions,
+                    language: language,
+                    packName: selectedPack?.name
+                )
+            }
             showExporter = true
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func exportCoverImage() async {
+        guard let url = project.videoURL else {
+            errorMessage = "Import a video first."
+            return
+        }
+        let package = distribution ?? DistributionPackage.heuristic(
+            captions: project.captions,
+            language: language,
+            packName: selectedPack?.name
+        )
+        do {
+            coverURL = try await CoverExportService.exportCoverPNG(
+                videoURL: url,
+                coverText: package.coverText,
+                aspect: project.aspectRatio,
+                brandColor: brandKit.kit.primarySwiftUIColor.codable
+            )
+            distribution = package
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func ensureDistribution() {
+        if distribution == nil, !project.captions.isEmpty {
+            distribution = DistributionPackage.heuristic(
+                captions: project.captions,
+                language: language,
+                packName: selectedPack?.name
+            )
         }
     }
 

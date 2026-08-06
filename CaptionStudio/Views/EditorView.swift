@@ -25,8 +25,10 @@ struct EditorView: View {
         .sheet(isPresented: $editor.showExporter) {
             if !editor.batchExportURLs.isEmpty {
                 ExportShareView(urls: editor.batchExportURLs)
+                    .environmentObject(editor)
             } else if let url = editor.exportURL {
                 ExportShareView(urls: [url])
+                    .environmentObject(editor)
             }
         }
         .sheet(isPresented: $editor.showBrandKit) {
@@ -298,6 +300,11 @@ struct VideoPreviewPane: View {
                         .overlay {
                             LiveOverlayCanvas()
                         }
+                        .overlay {
+                            if editor.showSafeZone {
+                                SafeZoneGuideView(zone: editor.activeSafeZone)
+                            }
+                        }
                 }
 
                 VStack {
@@ -309,6 +316,17 @@ struct VideoPreviewPane: View {
                             .padding(.vertical, 4)
                             .background(.black.opacity(0.45), in: Capsule())
                         Spacer()
+                        Button {
+                            editor.showSafeZone.toggle()
+                        } label: {
+                            Text(editor.showSafeZone ? "Safe zone" : "Safe off")
+                                .font(.custom("AvenirNext-Bold", size: 10))
+                                .foregroundStyle(editor.showSafeZone ? Color(red: 1.0, green: 0.92, blue: 0.35) : .white.opacity(0.55))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.black.opacity(0.45), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(12)
                     Spacer()
@@ -369,6 +387,42 @@ struct VideoPlayerRepresentable: NSViewRepresentable {
     }
 }
 #endif
+
+struct SafeZoneGuideView: View {
+    let zone: SafeZone
+
+    var body: some View {
+        GeometryReader { geo in
+            let rect = CGRect(
+                x: zone.xMin * geo.size.width,
+                y: zone.yMin * geo.size.height,
+                width: zone.rect.width * geo.size.width,
+                height: zone.rect.height * geo.size.height
+            )
+            ZStack {
+                // Dim outside safe area
+                Rectangle()
+                    .fill(Color.black.opacity(0.28))
+                    .mask(
+                        ZStack {
+                            Rectangle().fill(Color.white)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.black)
+                                .frame(width: rect.width, height: rect.height)
+                                .position(x: rect.midX, y: rect.midY)
+                                .blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
+                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color(red: 1.0, green: 0.92, blue: 0.35).opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+}
 
 struct TimelineScrubber: View {
     @EnvironmentObject private var editor: EditorViewModel

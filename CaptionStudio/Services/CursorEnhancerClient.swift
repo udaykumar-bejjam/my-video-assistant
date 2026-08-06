@@ -51,6 +51,7 @@ final class CursorEnhancerClient: ObservableObject {
         language: AppLanguage = .english,
         packId: String? = nil,
         brandKit: BrandKit? = nil,
+        safeZone: SafeZone? = nil,
         forceHeuristic: Bool = false
     ) async throws -> EnhancementPlan {
         let url = baseURL.appendingPathComponent("enhance")
@@ -87,6 +88,14 @@ final class CursorEnhancerClient: ObservableObject {
         }
         if let packId {
             body["packId"] = packId
+        }
+        if let safeZone {
+            body["safeZone"] = [
+                "xMin": safeZone.xMin,
+                "xMax": safeZone.xMax,
+                "yMin": safeZone.yMin,
+                "yMax": safeZone.yMax
+            ]
         }
         if let brandKit {
             var kitBody: [String: Any] = [
@@ -127,7 +136,8 @@ final class CursorEnhancerClient: ObservableObject {
         duration: TimeInterval,
         libraries: MediaLibraryStore,
         language: AppLanguage = .english,
-        pack: ShortsPack? = nil
+        pack: ShortsPack? = nil,
+        safeZone: SafeZone? = nil
     ) -> EnhancementPlan {
         var placements: [EnhancementPlacement] = []
         var wordHits: [EnhancementPlacement] = []
@@ -199,7 +209,7 @@ final class CursorEnhancerClient: ObservableObject {
                     captionIndex: index
                 )
                 let aligned = PlacementAligner.align(
-                    raw, asset: text, kind: "text", captions: captions, videoDuration: duration
+                    raw, asset: text, kind: "text", captions: captions, videoDuration: duration, safeZone: safeZone
                 )
                 placements.append(
                     EnhancementPlacement(
@@ -302,13 +312,20 @@ final class CursorEnhancerClient: ObservableObject {
                   )
             else { return placement }
             let end = min(duration, placement.startTime + asset.playLength)
+            var x = placement.x
+            var y = placement.y
+            if let safeZone {
+                let clamped = safeZone.clamp(x: x, y: y)
+                x = clamped.0
+                y = clamped.1
+            }
             return EnhancementPlacement(
                 kind: placement.kind,
                 assetId: placement.assetId,
                 startTime: placement.startTime,
                 endTime: end,
-                x: placement.x,
-                y: placement.y,
+                x: x,
+                y: y,
                 scale: placement.scale,
                 rotation: placement.rotation,
                 text: placement.text,
@@ -320,12 +337,28 @@ final class CursorEnhancerClient: ObservableObject {
             )
         }
 
+        if let safeZone {
+            wordHits = wordHits.map { hit in
+                var copy = hit
+                let clamped = safeZone.clamp(x: hit.x, y: hit.y)
+                copy.x = clamped.0
+                copy.y = clamped.1
+                return copy
+            }
+        }
+
         return EnhancementPlan(
             summary: pack.map { "On-device pack \"\($0.name)\" word hits + B-roll stickers." }
                 ?? "On-device placements with auto B-roll stickers on strong words.",
             placements: placements,
             wordHits: wordHits,
             packId: pack?.id,
+            distribution: DistributionPackage.heuristic(
+                captions: captions,
+                language: language,
+                packName: pack?.name
+            ),
+            safeZone: safeZone,
             source: "swift-local-fallback",
             model: nil,
             note: "Enhancer unreachable — local aligner used library + pack + B-roll biases",

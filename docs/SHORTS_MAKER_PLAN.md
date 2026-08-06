@@ -21,6 +21,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | Shorts Packs + opening hooks + batch export | Done |
 | Auto B-roll / sticker moments on strong words | Done |
 | Drafts / brand kit / language lock / trim assist | Done |
+| Distribution copy + cover / safe zones / loudness | Done |
 
 ---
 
@@ -218,6 +219,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ## Phase C — Growth & polish
 
 ### C1. Title + hashtags + cover text
+**Status:** Shipped (enhance `distribution` + post-export copy/cover sheet)
+
 **What:** From transcript, Cursor SDK returns:
 
 ```json
@@ -238,6 +241,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### C2. Safe-zone guide
+**Status:** Shipped (preview guide + enhancer/aligner clamp)
+
 **What:** Overlay guides for TikTok/Reels UI chrome (bottom caption bar, right buttons, top status).
 
 **Implementation:**
@@ -250,6 +255,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### C3. Loudness normalize
+**Status:** Shipped (peak RMS + `AVMutableAudioMix` on export)
+
 **What:** Consistent dialogue + SFX levels across daily posts.
 
 **v1:**  
