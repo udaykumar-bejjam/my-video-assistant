@@ -133,6 +133,8 @@ struct VideoProject: Identifiable, Equatable {
     var enhancementSummary: String?
     /// Selected Shorts Pack id (`hook`, `hype`, …) — drives enhance biases + default aspect.
     var packId: String?
+    /// Sticky speech/enhance language for this project.
+    var language: AppLanguage
     var chunkCount: Int
     var createdAt: Date
 
@@ -149,6 +151,7 @@ struct VideoProject: Identifiable, Equatable {
             soundEffects: [],
             enhancementSummary: nil,
             packId: nil,
+            language: .english,
             chunkCount: 1,
             createdAt: .now
         )

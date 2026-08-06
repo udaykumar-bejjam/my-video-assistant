@@ -27,16 +27,32 @@ final class EditorViewModel: ObservableObject {
     @Published var libraryKind: MediaLibraryKind = .textStyles
     @Published var chunkProgressLabel: String?
     @Published var language: AppLanguage = .english
+    @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
+    @Published var batchExportURLs: [URL] = []
+    @Published var showBrandKit = false
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
     let stitcher = VideoStitchService()
     let libraries = MediaLibraryStore()
     let packs = PackLibrary()
+    let brandKit = BrandKitStore()
     let enhancer = CursorEnhancerClient()
 
     var selectedPack: ShortsPack? {
         packs.pack(id: project.packId)
+    }
+
+    init() {
+        language = brandKit.kit.appLanguage
+        if let defaultPack = brandKit.kit.defaultPackId {
+            project.packId = defaultPack
+            if let pack = packs.pack(id: defaultPack) {
+                selectedPreset = pack.captionPreset
+                project.captionStyle = pack.captionPreset.style
+                project.aspectRatio = pack.aspectPreset
+            }
+        }
     }
 
     private var timeObserver: Any?
@@ -120,6 +136,9 @@ final class EditorViewModel: ObservableObject {
             }
         }
         project.chunkCount = VideoChunkPlanner.chunks(duration: project.duration).count
+        // Persist language on the project (B3 language lock).
+        project.language = language
+        refreshWatermarkOverlay()
 
         let item = AVPlayerItem(asset: asset)
         let newPlayer = AVPlayer(playerItem: item)
@@ -224,6 +243,7 @@ final class EditorViewModel: ObservableObject {
                         videoSize: canvas,
                         language: language,
                         packId: packId,
+                        brandKit: brandKit.kit,
                         forceHeuristic: false
                     )
                 } catch {
@@ -286,6 +306,39 @@ final class EditorViewModel: ObservableObject {
     private func applyPackSideEffects(_ pack: ShortsPack) {
         setAspectRatio(pack.aspectPreset)
         applyPreset(pack.captionPreset)
+        refreshWatermarkOverlay()
+    }
+
+    func applyBrandKitToProject() {
+        language = brandKit.kit.appLanguage
+        if let packId = brandKit.kit.defaultPackId, packs.pack(id: packId) != nil {
+            selectPack(packId)
+        }
+        refreshWatermarkOverlay()
+    }
+
+    func refreshWatermarkOverlay() {
+        project.overlays.removeAll { $0.kind == .watermark }
+        let kit = brandKit.kit
+        guard kit.watermarkEnabled, !kit.watermarkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        let mark = OverlayItem(
+            kind: .watermark,
+            text: kit.watermarkText,
+            x: kit.watermarkX,
+            y: kit.watermarkY,
+            scale: 1,
+            rotation: 0,
+            startTime: 0,
+            endTime: max(project.duration, 0.1),
+            color: kit.primarySwiftUIColor.codable,
+            fontSize: 18,
+            shape: .rectangle,
+            opacity: 0.85,
+            reason: "Brand kit watermark"
+        )
+        project.overlays.append(mark)
     }
 
     private static func dedupe(placements: [EnhancementPlacement]) -> [EnhancementPlacement] {
@@ -354,6 +407,10 @@ final class EditorViewModel: ObservableObject {
         project.overlays = manual + newOverlays
         project.soundEffects = newSFX
         project.enhancementSummary = plan.summary
+        if let packId = plan.packId, project.packId == nil {
+            project.packId = packId
+        }
+        refreshWatermarkOverlay()
         let hitCount = plan.wordHits?.count ?? newOverlays.filter { $0.kind == .wordHit }.count
         lastEnhancementNote = plan.note
             ?? "Applied \(hitCount) word hits + \(newOverlays.count) overlays + \(newSFX.count) SFX"
@@ -644,7 +701,26 @@ final class EditorViewModel: ObservableObject {
 
     // MARK: - Export
 
+    func toggleBatchAspect(_ aspect: AspectRatioPreset) {
+        if batchExportAspects.contains(aspect) {
+            if batchExportAspects.count > 1 {
+                batchExportAspects.remove(aspect)
+            }
+        } else {
+            batchExportAspects.insert(aspect)
+        }
+    }
+
     func exportVideo() async {
+        await exportVideo(aspects: [project.aspectRatio])
+    }
+
+    func exportBatch() async {
+        let aspects = AspectRatioPreset.allCases.filter { batchExportAspects.contains($0) }
+        await exportVideo(aspects: aspects.isEmpty ? [project.aspectRatio] : aspects)
+    }
+
+    private func exportVideo(aspects: [AspectRatioPreset]) async {
         guard let url = project.videoURL else {
             errorMessage = "Import a video first."
             return
@@ -652,60 +728,122 @@ final class EditorViewModel: ObservableObject {
         isExporting = true
         errorMessage = nil
         chunkProgressLabel = nil
+        batchExportURLs = []
         defer {
             isExporting = false
             chunkProgressLabel = nil
         }
 
-        do {
-            let chunks = VideoChunkPlanner.chunks(duration: project.duration)
-            project.chunkCount = chunks.count
-            let result: URL
+        refreshWatermarkOverlay()
 
-            if chunks.count == 1 {
-                chunkProgressLabel = "Exporting \(project.aspectRatio.rawValue)…"
-                result = try await exporter.export(
-                    videoURL: url,
-                    captions: project.captions,
-                    style: project.captionStyle,
-                    overlays: project.overlays,
-                    soundEffects: project.soundEffects,
-                    libraryRoot: libraries.rootURL,
-                    aspect: project.aspectRatio
-                )
-            } else {
-                let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
-                    let caps = VideoChunkPlanner.captions(project.captions, overlapping: chunk, useContext: false)
-                    let overlays = project.overlays.filter {
-                        $0.endTime > chunk.startTime && $0.startTime < chunk.endTime
-                    }
-                    let sfx = project.soundEffects.filter {
-                        $0.startTime >= chunk.startTime && $0.startTime < chunk.endTime
-                    }
-                    return .init(
-                        chunk: chunk,
-                        captions: caps,
+        do {
+            var results: [URL] = []
+            for aspect in aspects {
+                let overlays = Self.remapOverlays(project.overlays, from: project.aspectRatio, to: aspect)
+                let chunks = VideoChunkPlanner.chunks(duration: project.duration)
+                project.chunkCount = chunks.count
+                let result: URL
+
+                if chunks.count == 1 {
+                    chunkProgressLabel = aspects.count > 1
+                        ? "Exporting \(aspect.rawValue)…"
+                        : "Exporting \(aspect.rawValue)…"
+                    result = try await exporter.export(
+                        videoURL: url,
+                        captions: project.captions,
+                        style: project.captionStyle,
                         overlays: overlays,
-                        soundEffects: sfx
+                        soundEffects: project.soundEffects.map {
+                            SoundEffectCue(
+                                id: $0.id,
+                                assetId: $0.assetId,
+                                startTime: $0.startTime,
+                                gain: $0.gain * brandKit.kit.defaultSfxGain,
+                                reason: $0.reason
+                            )
+                        },
+                        libraryRoot: libraries.rootURL,
+                        aspect: aspect
                     )
+                } else {
+                    let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
+                        let caps = VideoChunkPlanner.captions(project.captions, overlapping: chunk, useContext: false)
+                        let chunkOverlays = overlays.filter {
+                            $0.endTime > chunk.startTime && $0.startTime < chunk.endTime
+                        }
+                        let sfx = project.soundEffects.filter {
+                            $0.startTime >= chunk.startTime && $0.startTime < chunk.endTime
+                        }.map {
+                            SoundEffectCue(
+                                id: $0.id,
+                                assetId: $0.assetId,
+                                startTime: $0.startTime,
+                                gain: $0.gain * brandKit.kit.defaultSfxGain,
+                                reason: $0.reason
+                            )
+                        }
+                        return .init(
+                            chunk: chunk,
+                            captions: caps,
+                            overlays: chunkOverlays,
+                            soundEffects: sfx
+                        )
+                    }
+                    chunkProgressLabel = "Exporting \(aspect.rawValue): \(chunks.count) parts → stitch…"
+                    result = try await stitcher.exportChunked(
+                        videoURL: url,
+                        aspect: aspect,
+                        style: project.captionStyle,
+                        segments: segments,
+                        libraryRoot: libraries.rootURL
+                    )
+                    exporter.progress = stitcher.progress
+                    exporter.statusMessage = stitcher.statusMessage
                 }
-                chunkProgressLabel = "Exporting \(chunks.count) parts → stitch…"
-                // Bind stitcher progress into exporter progress for the UI meter.
-                result = try await stitcher.exportChunked(
-                    videoURL: url,
-                    aspect: project.aspectRatio,
-                    style: project.captionStyle,
-                    segments: segments,
-                    libraryRoot: libraries.rootURL
-                )
-                exporter.progress = stitcher.progress
-                exporter.statusMessage = stitcher.statusMessage
+
+                // Rename with aspect suffix for batch clarity
+                if aspects.count > 1 {
+                    let tagged = result.deletingLastPathComponent()
+                        .appendingPathComponent(
+                            "CaptionStudio-\(aspect.rawValue.replacingOccurrences(of: ":", with: "x"))-\(UUID().uuidString).mp4"
+                        )
+                    try? FileManager.default.removeItem(at: tagged)
+                    try FileManager.default.moveItem(at: result, to: tagged)
+                    results.append(tagged)
+                } else {
+                    results.append(result)
+                }
             }
 
-            exportURL = result
+            batchExportURLs = results
+            exportURL = results.first
             showExporter = true
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Light Y remap when exporting the same timeline to a different aspect canvas.
+    private static func remapOverlays(
+        _ overlays: [OverlayItem],
+        from: AspectRatioPreset,
+        to: AspectRatioPreset
+    ) -> [OverlayItem] {
+        guard from != to else { return overlays }
+        return overlays.map { item in
+            var copy = item
+            if from == .portrait9x16 && to == .landscape16x9 {
+                // Pull center-ish overlays slightly toward vertical middle for landscape.
+                copy.y = 0.35 + (item.y - 0.35) * 0.7
+            } else if from == .landscape16x9 && to == .portrait9x16 {
+                copy.y = 0.35 + (item.y - 0.35) / 0.7
+            }
+            copy.y = min(0.92, max(0.08, copy.y))
+            if copy.kind == .watermark {
+                // Keep watermark near bottom edge regardless of aspect remap.
+                copy.y = item.y
+            }
+            return copy
         }
     }
 

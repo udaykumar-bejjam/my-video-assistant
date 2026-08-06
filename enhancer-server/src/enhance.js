@@ -19,6 +19,7 @@ export async function enhanceWithCursor({
   videoSize = null,
   language = "en-US",
   packId = null,
+  brandKit = null,
 }) {
   const libraries = loadLibraries();
   const normalizedCaptions = (captions || []).map((c) => ({
@@ -35,7 +36,7 @@ export async function enhanceWithCursor({
   }));
   const videoDuration = Number(duration) || 10;
   const lang = language || "en-US";
-  const pack = packId || null;
+  const pack = packId || brandKit?.defaultPackId || null;
   const payload = {
     captions: normalizedCaptions,
     duration: videoDuration,
@@ -43,6 +44,7 @@ export async function enhanceWithCursor({
     videoSize,
     language: lang,
     packId: pack,
+    brandKit,
   };
 
   if (forceHeuristic || !process.env.CURSOR_API_KEY) {

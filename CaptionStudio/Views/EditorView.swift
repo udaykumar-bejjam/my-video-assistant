@@ -23,9 +23,15 @@ struct EditorView: View {
             editorChrome
         }
         .sheet(isPresented: $editor.showExporter) {
-            if let url = editor.exportURL {
-                ExportShareView(url: url)
+            if !editor.batchExportURLs.isEmpty {
+                ExportShareView(urls: editor.batchExportURLs)
+            } else if let url = editor.exportURL {
+                ExportShareView(urls: [url])
             }
+        }
+        .sheet(isPresented: $editor.showBrandKit) {
+            BrandKitSettingsView()
+                .environmentObject(editor)
         }
         .confirmationDialog("Leave editor?", isPresented: $showLeaveConfirm) {
             Button("Discard & Leave", role: .destructive) {

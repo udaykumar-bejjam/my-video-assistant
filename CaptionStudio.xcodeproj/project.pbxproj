@@ -20,6 +20,8 @@
 		A1000000000000000000001B /* ShortsPack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* ShortsPack.swift */; };
 		A1000000000000000000001C /* PackLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* PackLibrary.swift */; };
 		A1000000000000000000001D /* PackPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* PackPickerView.swift */; };
+		A1000000000000000000001E /* BrandKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000E /* BrandKitStore.swift */; };
+		A1000000000000000000001F /* BrandKitSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* BrandKitSettingsView.swift */; };
 		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
 		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
 		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
@@ -49,6 +51,8 @@
 		A1000000000000000000000B /* ShortsPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortsPack.swift; sourceTree = "<group>"; };
 		A1000000000000000000000C /* PackLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackLibrary.swift; sourceTree = "<group>"; };
 		A1000000000000000000000D /* PackPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackPickerView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000E /* BrandKitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandKitStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000000F /* BrandKitSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandKitSettingsView.swift; sourceTree = "<group>"; };
 		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
 		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
@@ -130,6 +134,7 @@
 				A10000000000000000000006 /* PlacementAligner.swift */,
 				A10000000000000000000008 /* VideoStitchService.swift */,
 				A1000000000000000000000C /* PackLibrary.swift */,
+				A1000000000000000000000E /* BrandKitStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -153,6 +158,7 @@
 				A10000000000000000000005 /* LibraryBrowserView.swift */,
 				A1000000000000000000000A /* WordHitView.swift */,
 				A1000000000000000000000D /* PackPickerView.swift */,
+				A1000000000000000000000F /* BrandKitSettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -261,6 +267,8 @@
 				A1000000000000000000001B /* ShortsPack.swift in Sources */,
 				A1000000000000000000001C /* PackLibrary.swift in Sources */,
 				A1000000000000000000001D /* PackPickerView.swift in Sources */,
+				A1000000000000000000001E /* BrandKitStore.swift in Sources */,
+				A1000000000000000000001F /* BrandKitSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

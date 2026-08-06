@@ -220,6 +220,32 @@ struct ExportPanelView: View {
             PackPickerView(compact: true)
                 .padding(.horizontal, 16)
 
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Batch export")
+                    .font(.custom("AvenirNext-Medium", size: 12))
+                    .foregroundStyle(.white.opacity(0.5))
+                HStack(spacing: 8) {
+                    ForEach(AspectRatioPreset.allCases) { aspect in
+                        let on = editor.batchExportAspects.contains(aspect)
+                        Button {
+                            editor.toggleBatchAspect(aspect)
+                        } label: {
+                            Label(aspect.rawValue, systemImage: on ? "checkmark.square.fill" : "square")
+                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    on ? Color(red: 1.0, green: 0.92, blue: 0.35) : Color.white.opacity(0.08),
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .foregroundStyle(on ? .black : .white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+
             VStack(alignment: .leading, spacing: 8) {
                 summaryRow("Canvas", "\(Int(editor.project.aspectRatio.canvasSize.width))×\(Int(editor.project.aspectRatio.canvasSize.height))")
                 if let pack = editor.selectedPack {
@@ -279,9 +305,41 @@ struct ExportPanelView: View {
             .disabled(editor.isExporting || editor.project.videoURL == nil)
             .padding(.horizontal, 16)
 
+            Button {
+                Task { await editor.exportBatch() }
+            } label: {
+                Label(
+                    editor.isExporting
+                    ? "Working…"
+                    : "Export all selected (\(editor.batchExportAspects.count))",
+                    systemImage: "square.stack.3d.up.fill"
+                )
+                .font(.custom("AvenirNext-DemiBold", size: 14))
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color(red: 1.0, green: 0.92, blue: 0.35), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(editor.isExporting || editor.project.videoURL == nil || editor.batchExportAspects.isEmpty)
+            .padding(.horizontal, 16)
+
+            Button {
+                editor.showBrandKit = true
+            } label: {
+                Label("Brand Kit", systemImage: "paintbrush.pointed.fill")
+                    .font(.custom("AvenirNext-DemiBold", size: 13))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color.white.opacity(0.1), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+
             Text(editor.project.duration > VideoChunkPlanner.singlePassLimit
                  ? "Long video: processed in \(VideoChunkPlanner.defaultChunkSeconds, specifier: "%.0f")s parts, then stitched frame-accurately."
-                 : "Single-pass export on the selected aspect canvas.")
+                 : "Single-pass export on the selected aspect canvas. Batch export writes one file per checked aspect.")
                 .font(.custom("AvenirNext-Medium", size: 11))
                 .foregroundStyle(.white.opacity(0.4))
                 .padding(.horizontal, 16)
@@ -291,6 +349,9 @@ struct ExportPanelView: View {
         .padding(.top, 8)
         .onAppear {
             editor.project.chunkCount = VideoChunkPlanner.chunks(duration: editor.project.duration).count
+            if editor.batchExportAspects.isEmpty {
+                editor.batchExportAspects = [editor.project.aspectRatio]
+            }
         }
     }
 
@@ -308,8 +369,16 @@ struct ExportPanelView: View {
 }
 
 struct ExportShareView: View {
-    let url: URL
+    let urls: [URL]
     @Environment(\.dismiss) private var dismiss
+
+    init(url: URL) {
+        self.urls = [url]
+    }
+
+    init(urls: [URL]) {
+        self.urls = urls
+    }
 
     var body: some View {
         NavigationStack {
@@ -319,25 +388,29 @@ struct ExportShareView: View {
                     .foregroundStyle(Color(red: 0.3, green: 0.92, blue: 0.75))
                     .padding(.top, 24)
 
-                Text("Ready to share")
+                Text(urls.count > 1 ? "Ready to share (\(urls.count))" : "Ready to share")
                     .font(.custom("AvenirNext-Heavy", size: 24))
                     .foregroundStyle(.white)
 
-                Text(url.lastPathComponent)
-                    .font(.custom("AvenirNext-Medium", size: 13))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                ForEach(urls, id: \.self) { url in
+                    VStack(spacing: 8) {
+                        Text(url.lastPathComponent)
+                            .font(.custom("AvenirNext-Medium", size: 13))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
 
-                ShareLink(item: url) {
-                    Label("Share Video", systemImage: "square.and.arrow.up")
-                        .font(.custom("AvenirNext-DemiBold", size: 16))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(red: 0.15, green: 0.9, blue: 0.72), in: Capsule())
+                        ShareLink(item: url) {
+                            Label(urls.count > 1 ? "Share \(url.lastPathComponent)" : "Share Video", systemImage: "square.and.arrow.up")
+                                .font(.custom("AvenirNext-DemiBold", size: 15))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color(red: 0.15, green: 0.9, blue: 0.72), in: Capsule())
+                        }
+                        .padding(.horizontal, 24)
+                    }
                 }
-                .padding(.horizontal, 24)
 
                 Spacer()
             }

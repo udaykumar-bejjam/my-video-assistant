@@ -50,6 +50,7 @@ final class CursorEnhancerClient: ObservableObject {
         videoSize: CGSize? = nil,
         language: AppLanguage = .english,
         packId: String? = nil,
+        brandKit: BrandKit? = nil,
         forceHeuristic: Bool = false
     ) async throws -> EnhancementPlan {
         let url = baseURL.appendingPathComponent("enhance")
@@ -86,6 +87,22 @@ final class CursorEnhancerClient: ObservableObject {
         }
         if let packId {
             body["packId"] = packId
+        }
+        if let brandKit {
+            var kitBody: [String: Any] = [
+                "primaryFontId": brandKit.primaryFontId,
+                "hindiFontId": brandKit.hindiFontId,
+                "teluguFontId": brandKit.teluguFontId,
+                "primaryColor": brandKit.primaryColor,
+                "secondaryColor": brandKit.secondaryColor,
+                "defaultLanguage": brandKit.defaultLanguage,
+                "defaultSfxGain": brandKit.defaultSfxGain,
+                "preferBrandKit": true
+            ]
+            if let defaultPackId = brandKit.defaultPackId {
+                kitBody["defaultPackId"] = defaultPackId
+            }
+            body["brandKit"] = kitBody
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

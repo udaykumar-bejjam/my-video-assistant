@@ -115,6 +115,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### A4. Batch export presets
+**Status:** Shipped
+
 **What:** From one timeline, export:
 - `reels` → 9:16 1080×1920  
 - `youtube` → 16:9 1920×1080  

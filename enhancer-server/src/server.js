@@ -32,7 +32,7 @@ app.get("/libraries", (_req, res) => {
  */
 app.post("/enhance", async (req, res) => {
   try {
-    const { captions, duration, forceHeuristic, videoSize, language, packId } = req.body || {};
+    const { captions, duration, forceHeuristic, videoSize, language, packId, brandKit } = req.body || {};
     if (!Array.isArray(captions)) {
       res.status(400).json({ error: "captions array required" });
       return;
@@ -46,6 +46,7 @@ app.post("/enhance", async (req, res) => {
         : null,
       language: language || "en-US",
       packId: packId || null,
+      brandKit: brandKit || null,
     });
     res.json(plan);
   } catch (error) {

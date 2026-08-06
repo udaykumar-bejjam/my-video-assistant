@@ -374,6 +374,7 @@ export function buildPrompt({
   videoSize,
   language = "en-US",
   packId = null,
+  brandKit = null,
 }) {
   const canvas = canvasForVideoSize(videoSize);
   const catalog = compactCatalog(libraries, canvas);
@@ -422,6 +423,17 @@ SHORTS PACK
 - none selected — use default punchy effects
 `;
 
+  const brandBlock = brandKit
+    ? `
+BRAND KIT (soft constraints — prefer when choosing fonts/colors)
+- primaryFontId: ${brandKit.primaryFontId || ""}
+- hindiFontId: ${brandKit.hindiFontId || ""}
+- teluguFontId: ${brandKit.teluguFontId || ""}
+- primaryColor: ${brandKit.primaryColor || "#FFEF5A"}
+- secondaryColor: ${brandKit.secondaryColor || "#FF2D2D"}
+`
+    : "";
+
   return `You are the creative timing director for CaptionStudio.
 
 Decide PRECISELY:
@@ -430,7 +442,7 @@ Decide PRECISELY:
 3) where (x,y) and when (start/end) every asset plays
 
 Language: ${language} (${scriptHint})
-${packBlock}
+${packBlock}${brandBlock}
 VIDEO
 - durationSeconds: ${duration}
 - aspect: ${aspect}
@@ -448,9 +460,9 @@ SIGNIFICANT WORD RULES
 2. For each wordHit use the word's OWN startTime/endTime when words[] is present; else use caption start + short span.
 3. Prefer PUNCHY colourful effects${pack?.effectBias?.length ? ` from effectBias ${JSON.stringify(pack.effectBias)}` : " — punch, color-pulse, fire-pulse, stomp, slam, shake, neon-pulse"} — not plain bold.
 4. Randomise effectId within the allowed pool; do not reuse the same effect for every word.
-5. Set color to the effect's first palette colour (yellow/red for punch & color-pulse). Optionally set secondaryColor.
+5. Set color to the effect's first palette colour (or brand kit primary/secondary when provided). Optionally set secondaryColor.
 6. Pair each effect with an sfxId — prefer pack sfxBias then that effect's preferredSfx list.
-7. fontId MUST match the language script (${scriptHint}).
+7. fontId MUST match the language script (${scriptHint})${brandKit ? "; prefer brand kit font ids when they match the script" : ""}.
 8. assetId for wordHit = fontId (required for validation).
 9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
 10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
@@ -808,9 +820,6 @@ export function alignWordHit(
     const punchy = PUNCHY_EFFECT_IDS.filter((id) => effects[id]);
     const pool = bias.length ? bias : punchy.length ? punchy : effectIds;
     effectId = pool[Math.floor(Math.random() * pool.length)];
-  } else if (bias.length && !bias.includes(effectId)) {
-    // Prefer pack bias when AI omitted a valid bias pick
-    // Keep AI choice as-is when it already picked something valid
   }
   const effect = effects[effectId];
 
