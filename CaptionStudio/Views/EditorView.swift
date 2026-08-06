@@ -293,19 +293,26 @@ struct VideoPreviewPane: View {
                     .fill(Color.black.opacity(0.55))
 
                 if let player = editor.player {
+                    // Player + overlays must share the aspect canvas size (same
+                    // normalized space as export `renderSize`). Do not size
+                    // overlays from the player view's intrinsic video aspect —
+                    // that creates a smaller caption rect inside the canvas.
                     VideoPlayerRepresentable(player: player)
+                        .frame(width: width, height: height)
+                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay {
-                            CaptionOverlayView()
-                        }
-                        .overlay {
-                            LiveOverlayCanvas()
-                        }
-                        .overlay {
-                            if editor.showSafeZone {
-                                SafeZoneGuideView(zone: editor.activeSafeZone)
-                            }
-                        }
+
+                    CaptionOverlayView()
+                        .frame(width: width, height: height)
+                        .allowsHitTesting(false)
+
+                    LiveOverlayCanvas()
+                        .frame(width: width, height: height)
+
+                    if editor.showSafeZone {
+                        SafeZoneGuideView(zone: editor.activeSafeZone)
+                            .frame(width: width, height: height)
+                    }
                 }
 
                 VStack {

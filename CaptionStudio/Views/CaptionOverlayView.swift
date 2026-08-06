@@ -1,17 +1,26 @@
 import SwiftUI
 
 /// Live caption rendering synced to playback time.
+///
+/// Coordinate space must match the aspect canvas (export `renderSize`), not the
+/// source video's intrinsic frame. Parent should `.frame` this to the fitted canvas.
 struct CaptionOverlayView: View {
     @EnvironmentObject private var editor: EditorViewModel
+
+    /// Reference width used by export font scaling (`fontSize * width / 390`).
+    static let layoutReferenceWidth: CGFloat = 390
 
     var body: some View {
         GeometryReader { geo in
             let style = editor.project.captionStyle
+            let scale = geo.size.width / Self.layoutReferenceWidth
             if let caption = editor.activeCaption {
                 AnimatedCaptionText(
                     caption: caption,
                     style: style,
-                    time: editor.currentTime
+                    time: editor.currentTime,
+                    layoutScale: scale,
+                    maxTextWidth: geo.size.width * 0.88
                 )
                 .position(
                     x: geo.size.width * style.positionX,
@@ -43,6 +52,11 @@ struct AnimatedCaptionText: View {
     let caption: CaptionSegment
     let style: CaptionStyle
     let time: TimeInterval
+    /// Canvas width / 390 — same basis as `VideoExportService` caption font scaling.
+    var layoutScale: CGFloat = 1
+    var maxTextWidth: CGFloat = 320
+
+    private var fontSize: CGFloat { style.fontSize * layoutScale }
 
     var body: some View {
         Group {
@@ -55,9 +69,9 @@ struct AnimatedCaptionText: View {
                 plainText(style.textCase.apply(caption.text))
             }
         }
-        .shadow(color: style.shadowColor.color, radius: style.shadowRadius, y: 2)
-        .padding(.horizontal, style.backgroundColor.a > 0.05 ? 14 : 0)
-        .padding(.vertical, style.backgroundColor.a > 0.05 ? 8 : 0)
+        .shadow(color: style.shadowColor.color, radius: style.shadowRadius * layoutScale, y: 2 * layoutScale)
+        .padding(.horizontal, style.backgroundColor.a > 0.05 ? 14 * layoutScale : 0)
+        .padding(.vertical, style.backgroundColor.a > 0.05 ? 8 * layoutScale : 0)
         .background(
             style.backgroundColor.color,
             in: RoundedRectangle(cornerRadius: style.cornerRadius, style: .continuous)
@@ -75,7 +89,7 @@ struct AnimatedCaptionText: View {
     }
 
     private var karaokeText: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 5 * layoutScale) {
             ForEach(caption.words) { word in
                 let active = word.contains(time: time) || time >= word.endTime
                 strokedText(
@@ -87,7 +101,7 @@ struct AnimatedCaptionText: View {
                 .animation(.easeOut(duration: 0.12), value: word.contains(time: time))
             }
         }
-        .frame(maxWidth: 320)
+        .frame(maxWidth: maxTextWidth)
         .multilineTextAlignment(.center)
     }
 
@@ -101,7 +115,7 @@ struct AnimatedCaptionText: View {
     private func plainText(_ text: String) -> some View {
         strokedText(text, highlighted: false)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: 320)
+            .frame(maxWidth: maxTextWidth)
     }
 
     private func strokedText(_ text: String, highlighted: Bool) -> some View {
@@ -112,25 +126,27 @@ struct AnimatedCaptionText: View {
         return ZStack {
             if style.strokeWidth > 0 {
                 Text(text)
-                    .font(.custom(style.fontName, size: style.fontSize * 0.55))
+                    .font(.custom(style.fontName, size: fontSize))
                     .foregroundStyle(style.strokeColor.color)
-                    .padding(style.strokeWidth)
+                    .padding(style.strokeWidth * layoutScale)
             }
             Text(text)
-                .font(.custom(style.fontName, size: style.fontSize * 0.55))
+                .font(.custom(style.fontName, size: fontSize))
                 .foregroundStyle(fill)
         }
     }
 }
 
 /// Draggable live overlays on the preview.
+/// Parent must `.frame` this to the same aspect canvas as the video player / export.
 struct LiveOverlayCanvas: View {
     @EnvironmentObject private var editor: EditorViewModel
 
     var body: some View {
         GeometryReader { geo in
+            let scale = geo.size.width / CaptionOverlayView.layoutReferenceWidth
             ForEach(editor.visibleOverlays) { item in
-                overlayView(item)
+                overlayView(item, layoutScale: scale)
                     .position(x: geo.size.width * item.x, y: geo.size.height * item.y)
                     .gesture(
                         DragGesture()
@@ -150,54 +166,54 @@ struct LiveOverlayCanvas: View {
     }
 
     @ViewBuilder
-    private func overlayView(_ item: OverlayItem) -> some View {
+    private func overlayView(_ item: OverlayItem, layoutScale: CGFloat) -> some View {
         switch item.kind {
         case .emoji:
             Text(item.text)
-                .font(.system(size: item.fontSize * item.scale))
+                .font(.system(size: item.fontSize * item.scale * layoutScale))
                 .rotationEffect(.degrees(item.rotation))
         case .text, .watermark:
-            stylishOrPlainText(item)
+            stylishOrPlainText(item, layoutScale: layoutScale)
                 .rotationEffect(.degrees(item.rotation))
         case .wordHit:
-            WordHitView(item: item, time: editor.currentTime)
+            WordHitView(item: item, time: editor.currentTime, layoutScale: layoutScale)
         case .gif:
             if let url = editor.libraryFileURL(for: item) {
                 AnimatedGIFView(url: url, time: editor.currentTime, startTime: item.startTime)
-                    .frame(width: 72 * item.scale, height: 72 * item.scale)
+                    .frame(width: 90 * item.scale * layoutScale, height: 90 * item.scale * layoutScale)
                     .rotationEffect(.degrees(item.rotation))
             }
         case .png:
             if let url = editor.libraryFileURL(for: item) {
                 LibraryImage(url: url)
-                    .frame(width: 72 * item.scale, height: 72 * item.scale)
+                    .frame(width: 90 * item.scale * layoutScale, height: 90 * item.scale * layoutScale)
                     .rotationEffect(.degrees(item.rotation))
             }
         case .shape:
             shapeView(item)
-                .frame(width: 48 * item.scale, height: 48 * item.scale)
+                .frame(width: 60 * item.scale * layoutScale, height: 60 * item.scale * layoutScale)
                 .rotationEffect(.degrees(item.rotation))
         }
     }
 
     @ViewBuilder
-    private func stylishOrPlainText(_ item: OverlayItem) -> some View {
+    private func stylishOrPlainText(_ item: OverlayItem, layoutScale: CGFloat) -> some View {
         if let style = editor.stylishTextStyle(for: item) {
             Text(item.text)
-                .font(.custom(style.fontName ?? "AvenirNext-Bold", size: (style.fontSize ?? 28) * item.scale * 0.55))
+                .font(.custom(style.fontName ?? "AvenirNext-Bold", size: (style.fontSize ?? 28) * item.scale * layoutScale))
                 .foregroundStyle(Color(hex: style.textColor ?? "#FFFFFF") ?? .white)
-                .shadow(color: .black.opacity(0.45), radius: style.shadowRadius ?? 4, y: 2)
-                .padding(.horizontal, (style.backgroundColor != nil) ? 10 : 0)
-                .padding(.vertical, (style.backgroundColor != nil) ? 6 : 0)
+                .shadow(color: .black.opacity(0.45), radius: (style.shadowRadius ?? 4) * layoutScale, y: 2 * layoutScale)
+                .padding(.horizontal, (style.backgroundColor != nil) ? 10 * layoutScale : 0)
+                .padding(.vertical, (style.backgroundColor != nil) ? 6 * layoutScale : 0)
                 .background(
                     (Color(hex: style.backgroundColor ?? "#00000000") ?? .clear),
                     in: RoundedRectangle(cornerRadius: style.cornerRadius ?? 8)
                 )
         } else {
             Text(item.text)
-                .font(.custom("AvenirNext-Bold", size: item.fontSize * item.scale * 0.7))
+                .font(.custom("AvenirNext-Bold", size: item.fontSize * item.scale * layoutScale))
                 .foregroundStyle(item.color.color)
-                .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
+                .shadow(color: .black.opacity(0.45), radius: 4 * layoutScale, y: 2 * layoutScale)
         }
     }
 

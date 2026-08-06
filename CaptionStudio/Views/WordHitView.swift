@@ -4,25 +4,28 @@ import SwiftUI
 struct WordHitView: View {
     let item: OverlayItem
     let time: TimeInterval
+    /// Canvas width / 390 — matches export overlay font scaling.
+    var layoutScale: CGFloat = 1
 
     var body: some View {
         let local = max(0, time - item.startTime)
         let effect = WordHitEffect(rawValue: item.effectId ?? "punch") ?? .punch
         let fill = animatedColor(effect, local: local, base: item.color.color)
         let glow = fill.opacity(0.85)
+        let fontSize = item.fontSize * item.scale * layoutScale
 
         ZStack {
             // Shockwave / punch ring
             if showsShockwave(effect) {
                 Circle()
-                    .stroke(fill.opacity(shockOpacity(local)), lineWidth: 3)
+                    .stroke(fill.opacity(shockOpacity(local)), lineWidth: 3 * layoutScale)
                     .frame(width: shockSize(local), height: shockSize(local))
                     .blur(radius: 0.5)
             }
 
             // Soft glow bloom behind the word
             Text(item.text)
-                .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.72))
+                .font(.custom(resolvedFontName, size: fontSize))
                 .foregroundStyle(glow)
                 .blur(radius: glowRadius(effect, local: local))
                 .scaleEffect(scale(effect, local: local) * 1.04)
@@ -31,33 +34,33 @@ struct WordHitView: View {
             // RGB / glitch ghost layers
             if effect == .glitch {
                 Text(item.text)
-                    .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.72))
+                    .font(.custom(resolvedFontName, size: fontSize))
                     .foregroundStyle(Color.red.opacity(0.7))
-                    .offset(x: -3 + shakeX(effect, local: local), y: 1)
+                    .offset(x: (-3 + shakeX(effect, local: local)) * layoutScale, y: 1 * layoutScale)
                     .blendMode(.screen)
                 Text(item.text)
-                    .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.72))
+                    .font(.custom(resolvedFontName, size: fontSize))
                     .foregroundStyle(Color.cyan.opacity(0.7))
-                    .offset(x: 3 - shakeX(effect, local: local), y: -1)
+                    .offset(x: (3 - shakeX(effect, local: local)) * layoutScale, y: -1 * layoutScale)
                     .blendMode(.screen)
             }
 
             // Heavy outline for punch readability
             Text(item.text)
-                .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.72))
+                .font(.custom(resolvedFontName, size: fontSize))
                 .foregroundStyle(.black.opacity(0.9))
-                .offset(x: 2, y: 2)
+                .offset(x: 2 * layoutScale, y: 2 * layoutScale)
 
             // Main fill
             Text(item.text)
-                .font(.custom(resolvedFontName, size: item.fontSize * item.scale * 0.72))
+                .font(.custom(resolvedFontName, size: fontSize))
                 .foregroundStyle(fill)
                 .shadow(color: fill.opacity(0.9), radius: glowRadius(effect, local: local), y: 0)
-                .shadow(color: .black.opacity(0.55), radius: 4, y: 3)
+                .shadow(color: .black.opacity(0.55), radius: 4 * layoutScale, y: 3 * layoutScale)
         }
         .rotationEffect(.degrees(item.rotation + spinExtra(effect, local: local)))
         .scaleEffect(scale(effect, local: local))
-        .offset(x: shakeX(effect, local: local), y: offsetY(effect, local: local))
+        .offset(x: shakeX(effect, local: local) * layoutScale, y: offsetY(effect, local: local) * layoutScale)
         .opacity(opacity(effect, local: local))
         .blur(radius: effect == .glitch && Int(local * 24) % 4 == 0 ? 1.4 : 0)
     }
@@ -219,7 +222,7 @@ struct WordHitView: View {
     }
 
     private func shockSize(_ local: TimeInterval) -> CGFloat {
-        40 + min(160, CGFloat(local / 0.35) * 160)
+        (40 + min(160, CGFloat(local / 0.35) * 160)) * layoutScale
     }
 
     private func shockOpacity(_ local: TimeInterval) -> Double {

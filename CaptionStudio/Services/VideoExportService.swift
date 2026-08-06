@@ -54,7 +54,6 @@ final class VideoExportService: ObservableObject {
 
         let naturalSize = try await videoTrack.load(.naturalSize)
         let preferredTransform = try await videoTrack.load(.preferredTransform)
-        let oriented = Self.orientedSize(naturalSize, transform: preferredTransform)
         let renderSize = aspect.canvasSize
 
         let insertRange: CMTimeRange = {
@@ -130,16 +129,18 @@ final class VideoExportService: ObservableObject {
         instruction.timeRange = CMTimeRange(start: .zero, duration: compositionDuration)
 
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compVideo)
-        let (_, fitTransform) = AspectFit.transform(
-            sourceOrientedSize: oriented,
-            sourcePreferredTransform: preferredTransform,
+        let fitTransform = AspectFit.transform(
+            naturalSize: naturalSize,
+            preferredTransform: preferredTransform,
             targetSize: renderSize
         )
         layerInstruction.setTransform(fitTransform, at: .zero)
         instruction.layerInstructions = [layerInstruction]
         videoComposition.instructions = [instruction]
 
-        // Core Animation overlay pipeline on the target aspect canvas
+        // Core Animation overlay pipeline on the target aspect canvas.
+        // isGeometryFlipped = true → UIKit/SwiftUI coords (origin top-left, Y down),
+        // matching CaptionOverlayView / LiveOverlayCanvas normalized positions.
         let parentLayer = CALayer()
         parentLayer.frame = CGRect(origin: .zero, size: renderSize)
         parentLayer.isGeometryFlipped = true
@@ -264,7 +265,8 @@ final class VideoExportService: ObservableObject {
             )
 
             let midX = size.width * style.positionX
-            let midY = size.height * (1 - style.positionY) // flipped coords
+            // parentLayer.isGeometryFlipped → Y-down like SwiftUI; do NOT invert again.
+            let midY = size.height * style.positionY
             layer.position = CGPoint(x: midX, y: midY)
             Self.scheduleVisibility(on: layer, startTime: start, endTime: end, opacity: 1)
             root.addSublayer(layer)
@@ -446,7 +448,7 @@ final class VideoExportService: ObservableObject {
 
             layer.position = CGPoint(
                 x: size.width * item.x,
-                y: size.height * (1 - item.y)
+                y: size.height * item.y
             )
             layer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(item.rotation * .pi / 180)))
             Self.scheduleVisibility(
