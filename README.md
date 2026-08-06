@@ -66,7 +66,19 @@ npm run enhance -- examples/sample-captions.json
 
 **AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
 
-## Placement JSON (Cursor response)
+## Timing-aware placements
+
+Every library item carries measured metadata that Cursor (and the aligner) must respect:
+
+| Kind | Metadata used for timing |
+|------|---------------------------|
+| **SFX** | Exact `durationSeconds` of the audio file → `endTime = startTime + length` |
+| **GIF** | Full animation cycle length + pixel size → whole loops inside the caption window |
+| **PNG** | Pixel size + default hold length → clipped to the active caption |
+| **Text** | Estimated glyph box + hold length → rides the spoken caption window |
+
+`startTime` snaps to the caption currently playing. Positions are clamped using each asset’s `normalizedWidth/Height` so stickers stay on-screen.
+
 
 ```json
 {

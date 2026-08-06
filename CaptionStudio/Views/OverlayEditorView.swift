@@ -127,6 +127,9 @@ struct OverlayRow: View {
                     .font(.custom("AvenirNext-DemiBold", size: 13))
                     .foregroundStyle(.white)
                 Spacer()
+                Text(String(format: "%.1f–%.1fs", item.startTime, item.endTime))
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.7))
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
                         .foregroundStyle(.white.opacity(0.35))
