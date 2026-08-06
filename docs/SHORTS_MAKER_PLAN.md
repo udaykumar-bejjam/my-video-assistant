@@ -20,6 +20,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | MP4 export + share | Done |
 | Shorts Packs + opening hooks + batch export | Done |
 | Auto B-roll / sticker moments on strong words | Done |
+| Animated GIF preview + export burn-in | Done |
 | Drafts / brand kit / language lock / trim assist | Done |
 | Distribution copy + cover / safe zones / loudness | Done |
 

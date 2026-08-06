@@ -28,6 +28,8 @@
 		A10000000000000000000031 /* VideoTrimComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* VideoTrimComposer.swift */; };
 		A10000000000000000000033 /* TrimAssistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000032 /* TrimAssistView.swift */; };
 		A10000000000000000000051 /* BrollPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000050 /* BrollPlanner.swift */; };
+		A10000000000000000000061 /* AnimatedGIFDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000060 /* AnimatedGIFDecoder.swift */; };
+		A10000000000000000000063 /* AnimatedGIFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000062 /* AnimatedGIFView.swift */; };
 		A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* SafeZoneAndDistribution.swift */; };
 		A10000000000000000000043 /* CoverExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000042 /* CoverExportService.swift */; };
 		A10000000000000000000045 /* AudioNormalizeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000044 /* AudioNormalizeService.swift */; };
@@ -159,6 +161,7 @@
 				A1000000000000000000002E /* TrimService.swift */,
 				A10000000000000000000030 /* VideoTrimComposer.swift */,
 				A10000000000000000000050 /* BrollPlanner.swift */,
+				A10000000000000000000060 /* AnimatedGIFDecoder.swift */,
 				A10000000000000000000042 /* CoverExportService.swift */,
 				A10000000000000000000044 /* AudioNormalizeService.swift */,
 			);
@@ -183,6 +186,7 @@
 				89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */,
 				A10000000000000000000005 /* LibraryBrowserView.swift */,
 				A1000000000000000000000A /* WordHitView.swift */,
+				A10000000000000000000062 /* AnimatedGIFView.swift */,
 				A1000000000000000000000D /* PackPickerView.swift */,
 				A1000000000000000000000F /* BrandKitSettingsView.swift */,
 				A10000000000000000000032 /* TrimAssistView.swift */,
@@ -302,6 +306,8 @@
 				A10000000000000000000031 /* VideoTrimComposer.swift in Sources */,
 				A10000000000000000000033 /* TrimAssistView.swift in Sources */,
 				A10000000000000000000051 /* BrollPlanner.swift in Sources */,
+				A10000000000000000000061 /* AnimatedGIFDecoder.swift in Sources */,
+				A10000000000000000000063 /* AnimatedGIFView.swift in Sources */,
 				A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */,
 				A10000000000000000000043 /* CoverExportService.swift in Sources */,
 				A10000000000000000000045 /* AudioNormalizeService.swift in Sources */,

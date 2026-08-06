@@ -372,11 +372,41 @@ final class VideoExportService: ObservableObject {
                     punch.isRemovedOnCompletion = false
                     layer.add(punch, forKey: "punchScale")
                 }
-            case .gif, .png:
+            case .gif:
                 if let file = item.assetFileName,
                    let libraryRoot {
-                    let folder = item.kind == .gif ? "gifs" : "pngs"
-                    let url = libraryRoot.appendingPathComponent(folder).appendingPathComponent(file)
+                    let url = libraryRoot.appendingPathComponent("gifs").appendingPathComponent(file)
+                    let frames = AnimatedGIFDecoder.load(url: url)
+                    if frames.images.isEmpty { continue }
+
+                    let imageLayer = CALayer()
+                    let side = 90 * item.scale * (size.width / 390)
+                    imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+                    imageLayer.contents = frames.images[0]
+                    imageLayer.contentsGravity = .resizeAspect
+                    layer = imageLayer
+
+                    if frames.isAnimated {
+                        let cycle = max(frames.totalDuration, 0.05)
+                        let visible = max(0.05, item.endTime - item.startTime)
+                        let anim = CAKeyframeAnimation(keyPath: "contents")
+                        anim.values = frames.images
+                        anim.keyTimes = frames.keyTimes
+                        anim.duration = cycle
+                        anim.calculationMode = .discrete
+                        anim.repeatCount = Float(ceil(visible / cycle) + 1)
+                        anim.beginTime = AVCoreAnimationBeginTimeAtZero + item.startTime
+                        anim.fillMode = .forwards
+                        anim.isRemovedOnCompletion = false
+                        imageLayer.add(anim, forKey: "gifFrames")
+                    }
+                } else {
+                    continue
+                }
+            case .png:
+                if let file = item.assetFileName,
+                   let libraryRoot {
+                    let url = libraryRoot.appendingPathComponent("pngs").appendingPathComponent(file)
                     if let image = Self.loadCGImage(url: url) {
                         let imageLayer = CALayer()
                         let side = 90 * item.scale * (size.width / 390)
