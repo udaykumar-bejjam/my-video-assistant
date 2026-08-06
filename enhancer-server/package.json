@@ -11,7 +11,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "enhance": "node src/cli.js",
-    "test:packs": "node test/packs-smoke.mjs"
+    "test:packs": "node test/packs-smoke.mjs",
+    "test:broll": "node test/broll-smoke.mjs",
+    "test:trim": "node test/trim-logic-smoke.mjs"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.26",

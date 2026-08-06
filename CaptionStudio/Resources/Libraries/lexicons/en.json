@@ -1,0 +1,25 @@
+{
+  "language": "en",
+  "categories": {
+    "power": [
+      "fire", "crazy", "insane", "power", "energy", "blast", "boom", "hype",
+      "epic", "wild", "massive", "huge", "crush", "dominate", "win", "beast"
+    ],
+    "reveal": [
+      "secret", "reveal", "watch", "look", "wait", "suddenly", "twist",
+      "truth", "hidden", "discover", "unlock", "surprise"
+    ],
+    "emotion": [
+      "love", "heart", "feel", "miss", "cry", "happy", "sad", "wow",
+      "amazing", "beautiful", "emotional", "chills"
+    ],
+    "numbers": [
+      "one", "two", "three", "five", "ten", "hundred", "thousand",
+      "million", "first", "second", "third", "percent"
+    ],
+    "cta": [
+      "follow", "subscribe", "share", "comment", "like", "click", "tap",
+      "join", "buy", "try", "start", "go", "now", "today"
+    ]
+  }
+}

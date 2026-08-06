@@ -148,11 +148,10 @@ final class CursorEnhancerClient: ObservableObject {
             return biased.isEmpty ? sfx : biased
         }()
         let hitsPer = pack?.wordHitsPerCaption ?? 2
-        let everyN = pack?.gifEveryN ?? 2
         let hookWindow = pack?.requireHookInFirstSeconds ?? 3
 
         for (index, caption) in captions.prefix(8).enumerated() {
-            let sig = Self.significantWords(in: caption, limit: hitsPer)
+            let sig = Self.significantWords(in: caption, limit: hitsPer, language: language)
             for (wi, word) in sig.enumerated() {
                 guard let font = fonts[safe: (index + wi) % max(fonts.count, 1)],
                       let effect = effectPool[safe: (index * 3 + wi * 2) % max(effectPool.count, 1)]
@@ -182,41 +181,6 @@ final class CursorEnhancerClient: ObservableObject {
                     word: word.text
                 )
                 wordHits.append(raw)
-            }
-
-            if index.isMultiple(of: everyN), let gif = Self.pickGif(gifs, pack: pack, index: index) {
-                let raw = EnhancementPlacement(
-                    kind: "gif",
-                    assetId: gif.id,
-                    startTime: caption.startTime,
-                    endTime: caption.startTime + gif.playLength,
-                    x: 0.82,
-                    y: 0.24,
-                    scale: gif.defaultScale ?? 1,
-                    rotation: 0,
-                    reason: "GIF cycle \(gif.playLength)s",
-                    lengthSeconds: gif.playLength,
-                    captionIndex: index
-                )
-                let aligned = PlacementAligner.align(
-                    raw, asset: gif, kind: "gif", captions: captions, videoDuration: duration
-                )
-                placements.append(
-                    EnhancementPlacement(
-                        kind: "gif",
-                        assetId: gif.id,
-                        startTime: aligned.start,
-                        endTime: aligned.end,
-                        x: aligned.x,
-                        y: aligned.y,
-                        scale: raw.scale,
-                        rotation: 0,
-                        reason: raw.reason,
-                        lengthSeconds: gif.playLength,
-                        captionIndex: index,
-                        assetPixelSize: .init(width: gif.pixelSize.width, height: gif.pixelSize.height)
-                    )
-                )
             }
 
             if index.isMultiple(of: 3), let text = texts[safe: index % max(texts.count, 1)] {
@@ -252,41 +216,6 @@ final class CursorEnhancerClient: ObservableObject {
                         lengthSeconds: text.playLength,
                         captionIndex: index,
                         assetPixelSize: .init(width: text.pixelSize.width, height: text.pixelSize.height)
-                    )
-                )
-            }
-
-            if index.isMultiple(of: 3), let png = pngs[safe: index % max(pngs.count, 1)] {
-                let raw = EnhancementPlacement(
-                    kind: "png",
-                    assetId: png.id,
-                    startTime: caption.startTime,
-                    endTime: caption.startTime + png.playLength,
-                    x: 0.18,
-                    y: 0.3,
-                    scale: png.defaultScale ?? 1,
-                    rotation: -6,
-                    reason: "PNG \(Int(png.pixelSize.width))x\(Int(png.pixelSize.height))",
-                    lengthSeconds: png.playLength,
-                    captionIndex: index
-                )
-                let aligned = PlacementAligner.align(
-                    raw, asset: png, kind: "png", captions: captions, videoDuration: duration
-                )
-                placements.append(
-                    EnhancementPlacement(
-                        kind: "png",
-                        assetId: png.id,
-                        startTime: aligned.start,
-                        endTime: aligned.end,
-                        x: aligned.x,
-                        y: aligned.y,
-                        scale: raw.scale,
-                        rotation: raw.rotation,
-                        reason: raw.reason,
-                        lengthSeconds: png.playLength,
-                        captionIndex: index,
-                        assetPixelSize: .init(width: png.pixelSize.width, height: png.pixelSize.height)
                     )
                 )
             }
@@ -352,15 +281,54 @@ final class CursorEnhancerClient: ObservableObject {
             )
         }
 
+        // A3 — pair strong word hits with GIF/PNG stickers in safe corners
+        _ = BrollPlanner.ensureStickers(
+            wordHits: wordHits,
+            placements: &placements,
+            gifs: gifs,
+            pngs: pngs,
+            sfx: sfx,
+            language: language,
+            pack: pack,
+            duration: duration
+        )
+
+        // Align newly added stickers to measured lengths (keep word start — no caption snap)
+        placements = placements.map { placement in
+            guard placement.kind == "gif" || placement.kind == "png",
+                  let asset = libraries.item(
+                    kind: placement.kind == "gif" ? .gifs : .pngs,
+                    id: placement.assetId
+                  )
+            else { return placement }
+            let end = min(duration, placement.startTime + asset.playLength)
+            return EnhancementPlacement(
+                kind: placement.kind,
+                assetId: placement.assetId,
+                startTime: placement.startTime,
+                endTime: end,
+                x: placement.x,
+                y: placement.y,
+                scale: placement.scale,
+                rotation: placement.rotation,
+                text: placement.text,
+                reason: placement.reason,
+                lengthSeconds: asset.playLength,
+                captionIndex: placement.captionIndex,
+                wordIndex: placement.wordIndex,
+                assetPixelSize: .init(width: asset.pixelSize.width, height: asset.pixelSize.height)
+            )
+        }
+
         return EnhancementPlan(
-            summary: pack.map { "On-device pack \"\($0.name)\" placements snapped to asset lengths." }
-                ?? "On-device placements snapped to measured asset lengths and caption windows.",
+            summary: pack.map { "On-device pack \"\($0.name)\" word hits + B-roll stickers." }
+                ?? "On-device placements with auto B-roll stickers on strong words.",
             placements: placements,
             wordHits: wordHits,
             packId: pack?.id,
             source: "swift-local-fallback",
             model: nil,
-            note: "Enhancer unreachable — local aligner used library + pack biases",
+            note: "Enhancer unreachable — local aligner used library + pack + B-roll biases",
             language: language.localeIdentifier
         )
     }
@@ -387,7 +355,7 @@ final class CursorEnhancerClient: ObservableObject {
         var endTime: TimeInterval
     }
 
-    private static func significantWords(in caption: CaptionSegment, limit: Int) -> [SigWord] {
+    private static func significantWords(in caption: CaptionSegment, limit: Int, language: AppLanguage) -> [SigWord] {
         let filler: Set<String> = [
             "a", "an", "the", "to", "of", "and", "or", "in", "on", "is", "are", "for", "with", "this", "that",
             "एक", "और", "की", "के", "को", "में", "से", "है", "हैं", "का", "कि",
@@ -412,19 +380,9 @@ final class CursorEnhancerClient: ObservableObject {
         }
         return parts
             .filter { !$0.text.isEmpty && !filler.contains($0.text.lowercased()) && $0.text.count > 2 }
-            .sorted { $0.text.count > $1.text.count }
+            .sorted { StrongWordLexicon.score($0.text, language: language) > StrongWordLexicon.score($1.text, language: language) }
             .prefix(limit)
             .map { $0 }
-    }
-
-    private static func pickGif(_ gifs: [MediaLibraryItem], pack: ShortsPack?, index: Int) -> MediaLibraryItem? {
-        guard !gifs.isEmpty else { return nil }
-        if let tags = pack?.gifTags, !tags.isEmpty {
-            if let hit = gifs.first(where: { item in item.tagList.contains(where: { tags.contains($0) }) }) {
-                return hit
-            }
-        }
-        return gifs[safe: index % gifs.count]
     }
 }
 

@@ -5,13 +5,13 @@ import { execFileSync } from "node:child_process";
 import {
   effectPoolForPack,
   getPack,
-  gifEveryN,
   hookWindowSeconds,
   loadPacks,
-  pickGifForPack,
   sfxPoolForPack,
   wordHitsPerCaption,
 } from "./packs.js";
+import { ensureBrollStickers } from "./broll.js";
+import { scoreWordSignificance } from "./lexicon.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, "../..");
@@ -467,6 +467,7 @@ SIGNIFICANT WORD RULES
 9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
 10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
 11. Also emit supporting placements (gif/png/text/sfx) when helpful — gif density = ${pack?.gifDensity || "medium"}.
+12. B-ROLL: for every strong wordHit (power / reveal / emotion / numbers / CTA lexicon), also emit a gif OR png timed to that word's startTime, placed in a safe corner (x≈0.18/0.72, y≈0.2/0.55), tags matching the mood. Cap ≈3 stickers per 15s. Pair sticker with sfx (wordHit.sfxId counts).
 
 GENERAL TIMING RULES
 1. Never invent library ids.
@@ -474,6 +475,7 @@ GENERAL TIMING RULES
 3. Never schedule past durationSeconds.
 4. Keep resources fully on-screen given normalized size × scale.
 5. sfx endTime = startTime + sfx.lengthSeconds exactly.
+6. Sticker placements for wordHits must use snapToCaption:false semantics — start at the word, not the caption start.
 
 OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
 {
@@ -591,6 +593,35 @@ export function validatePlacements(
     pack,
     language: plan?.language || "en-US",
   });
+
+  const language = plan?.language || "en-US";
+  const beforeBroll = placements.length;
+  ensureBrollStickers({
+    wordHits,
+    placements,
+    gifLib: libraries.gifs.items,
+    pngLib: libraries.pngs.items,
+    sfxLib: libraries.sfx.items,
+    language,
+    pack,
+    videoDuration,
+    options: plan?.options || {},
+  });
+  for (let i = beforeBroll; i < placements.length; i++) {
+    const p = placements[i];
+    const asset = assets[p.kind]?.[p.assetId];
+    if (!asset) {
+      placements.splice(i, 1);
+      i -= 1;
+      continue;
+    }
+    placements[i] = alignPlacement(
+      { ...p, snapToCaption: false },
+      asset,
+      captions,
+      videoDuration
+    );
+  }
 
   return {
     summary: typeof plan?.summary === "string" ? plan.summary : "Enhancement plan",
@@ -926,14 +957,11 @@ export function heuristicPlan({
   const placements = [];
   const wordHits = [];
   const textLib = libraries["text-styles"].items;
-  const gifLib = libraries.gifs.items;
-  const pngLib = libraries.pngs.items;
   const sfxLib = libraries.sfx.items;
   const fontLib = libraries.fonts.items;
   const effectLib = libraries.effects.items;
   const pack = getPack(packId);
   const hitsPerCap = wordHitsPerCaption(pack);
-  const everyN = gifEveryN(pack);
   const effectPoolBase = effectPoolForPack(effectLib, pack);
   const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
 
@@ -968,7 +996,7 @@ export function heuristicPlan({
     ]);
     return parts
       .filter((w) => w.text && !filler.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
-      .sort((a, b) => String(b.text).length - String(a.text).length)
+      .sort((a, b) => scoreWordSignificance(b.text, language) - scoreWordSignificance(a.text, language))
       .slice(0, hitsPerCap);
   };
 
@@ -984,6 +1012,7 @@ export function heuristicPlan({
             : /(tip|how|secret|watch|टिप)/.test(lower)
               ? "reveal"
               : "default";
+    void mood;
 
     // Significant word hits with pack-biased effects + sfx
     const sig = significantFrom(cap);
@@ -1022,30 +1051,6 @@ export function heuristicPlan({
       });
     });
 
-    if (index % everyN === 0 && gifLib.length) {
-      const moodTags =
-        mood === "hype"
-          ? ["hype", "celebration"]
-          : mood === "tech"
-            ? ["tech", "focus"]
-            : mood === "reveal"
-              ? ["reveal", "focus"]
-              : [];
-      const gif = pickGifForPack(gifLib, pack, moodTags) || gifLib[index % gifLib.length];
-      placements.push({
-        kind: "gif",
-        assetId: gif.id,
-        captionIndex: index,
-        startTime: cap.startTime,
-        endTime: cap.startTime + (gif.lengthSeconds || 0.84),
-        x: 0.82,
-        y: 0.22 + (index % 3) * 0.08,
-        scale: gif.defaultScale || 1,
-        rotation: 0,
-        reason: `GIF support for caption ${index}${pack ? ` (${pack.id})` : ""}`,
-      });
-    }
-
     if (index % 3 === 0 && textLib.length) {
       const textAsset = textLib[index % textLib.length];
       placements.push({
@@ -1062,9 +1067,6 @@ export function heuristicPlan({
         reason: `Support text on caption ${index}`,
       });
     }
-
-    // Quiet unused var for lint parity with prior png usage
-    void pngLib;
   });
 
   // Opening SFX — prefer pack bias (ensureOpeningHook also enforces)
@@ -1094,8 +1096,8 @@ export function heuristicPlan({
   return validatePlacements(
     {
       summary: pack
-        ? `Heuristic pack "${pack.name}": word hits + overlays snapped to timings.`
-        : "Heuristic: significant words with randomised fonts/effects/SFX, snapped to word timings.",
+        ? `Heuristic pack "${pack.name}": word hits + B-roll stickers snapped to timings.`
+        : "Heuristic: significant words with fonts/effects/SFX + auto B-roll stickers.",
       language,
       packId: pack?.id || null,
       placements,
