@@ -20,6 +20,7 @@ export async function enhanceWithCursor({
   language = "en-US",
   packId = null,
   brandKit = null,
+  safeZone = null,
 }) {
   const libraries = loadLibraries();
   const normalizedCaptions = (captions || []).map((c) => ({
@@ -45,6 +46,7 @@ export async function enhanceWithCursor({
     language: lang,
     packId: pack,
     brandKit,
+    safeZone,
   };
 
   if (forceHeuristic || !process.env.CURSOR_API_KEY) {
@@ -83,7 +85,9 @@ export async function enhanceWithCursor({
       libraries,
       normalizedCaptions,
       videoDuration,
-      pack
+      pack,
+      videoSize,
+      safeZone
     );
     return {
       ...plan,

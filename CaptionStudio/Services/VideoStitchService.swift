@@ -23,7 +23,9 @@ final class VideoStitchService: ObservableObject {
         style: CaptionStyle,
         segments: [SegmentSpec],
         libraryRoot: URL?,
-        outputURL: URL? = nil
+        outputURL: URL? = nil,
+        normalizeLoudness: Bool = true,
+        brandSfxGain: Double = 0.8
     ) async throws -> URL {
         guard !segments.isEmpty else {
             throw ExportError.compositionFailed("No segments to export.")
@@ -63,7 +65,9 @@ final class VideoStitchService: ObservableObject {
                     duration: CMTime(seconds: chunk.duration, preferredTimescale: 600)
                 ),
                 outputURL: FileManager.default.temporaryDirectory
-                    .appendingPathComponent("CaptionStudio-part-\(offset)-\(UUID().uuidString).mp4")
+                    .appendingPathComponent("CaptionStudio-part-\(offset)-\(UUID().uuidString).mp4"),
+                normalizeLoudness: normalizeLoudness,
+                brandSfxGain: brandSfxGain
             )
             partURLs.append(partURL)
         }

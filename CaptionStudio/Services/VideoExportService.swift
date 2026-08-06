@@ -38,7 +38,9 @@ final class VideoExportService: ObservableObject {
         libraryRoot: URL? = nil,
         aspect: AspectRatioPreset = .portrait9x16,
         sourceTimeRange: CMTimeRange? = nil,
-        outputURL: URL? = nil
+        outputURL: URL? = nil,
+        normalizeLoudness: Bool = true,
+        brandSfxGain: Double = 0.8
     ) async throws -> URL {
         progress = 0.02
         statusMessage = "Building composition…"
@@ -88,10 +90,31 @@ final class VideoExportService: ObservableObject {
             try? compAudio.insertTimeRange(insertRange, of: audioTrack, at: .zero)
         }
 
+        var norm = AudioNormalizeService.Normalization(
+            dialogueGain: 1,
+            measuredPeak: AudioNormalizeService.targetPeak,
+            sfxGainScale: brandSfxGain
+        )
+        if normalizeLoudness {
+            statusMessage = "Measuring loudness…"
+            let peak = try await AudioNormalizeService.analyzeDialoguePeak(videoURL: videoURL)
+            norm = AudioNormalizeService.normalization(measuredPeak: peak, brandSfxGain: brandSfxGain)
+        }
+
+        let scaledSFX = soundEffects.map {
+            SoundEffectCue(
+                id: $0.id,
+                assetId: $0.assetId,
+                startTime: $0.startTime,
+                gain: min(1.2, $0.gain * norm.sfxGainScale),
+                reason: $0.reason
+            )
+        }
+
         // Mix in library SFX cues (already shifted to local 0-based timeline when chunked).
         try await mixSoundEffects(
             into: composition,
-            cues: soundEffects,
+            cues: scaledSFX,
             libraryRoot: libraryRoot,
             timelineDuration: compositionDuration
         )
@@ -163,9 +186,17 @@ final class VideoExportService: ObservableObject {
         session.outputFileType = .mp4
         session.videoComposition = videoComposition
         session.shouldOptimizeForNetworkUse = true
+        if normalizeLoudness, let mix = AudioNormalizeService.audioMix(for: composition, dialogueGain: norm.dialogueGain) {
+            session.audioMix = mix
+            statusMessage = "Encoding \(aspect.rawValue) (loudness ×\(String(format: "%.2f", norm.dialogueGain)))…"
+        } else {
+            statusMessage = "Encoding \(aspect.rawValue)…"
+        }
 
         progress = 0.25
-        statusMessage = "Encoding \(aspect.rawValue)…"
+        if statusMessage.isEmpty {
+            statusMessage = "Encoding \(aspect.rawValue)…"
+        }
 
         let progressTask = Task {
             while !Task.isCancelled {

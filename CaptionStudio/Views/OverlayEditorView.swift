@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct OverlayEditorView: View {
     @EnvironmentObject private var editor: EditorViewModel
@@ -246,6 +251,38 @@ struct ExportPanelView: View {
             }
             .padding(.horizontal, 16)
 
+            Toggle(isOn: $editor.normalizeLoudness) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Normalize loudness")
+                        .font(.custom("AvenirNext-DemiBold", size: 13))
+                        .foregroundStyle(.white)
+                    Text("Keeps dialogue + SFX levels consistent across posts")
+                        .font(.custom("AvenirNext-Medium", size: 11))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+            }
+            .tint(Color(red: 0.15, green: 0.9, blue: 0.72))
+            .padding(.horizontal, 16)
+
+            if let dist = editor.distribution {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Post copy")
+                        .font(.custom("AvenirNext-Medium", size: 12))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text(dist.title)
+                        .font(.custom("AvenirNext-DemiBold", size: 13))
+                        .foregroundStyle(.white)
+                    Text(dist.hashtagLine)
+                        .font(.custom("AvenirNext-Medium", size: 11))
+                        .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.85))
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+            }
+
             VStack(alignment: .leading, spacing: 8) {
                 summaryRow("Canvas", "\(Int(editor.project.aspectRatio.canvasSize.width))×\(Int(editor.project.aspectRatio.canvasSize.height))")
                 if let pack = editor.selectedPack {
@@ -377,6 +414,7 @@ struct ExportPanelView: View {
             if editor.batchExportAspects.isEmpty {
                 editor.batchExportAspects = [editor.project.aspectRatio]
             }
+            editor.ensureDistribution()
         }
     }
 
@@ -395,7 +433,10 @@ struct ExportPanelView: View {
 
 struct ExportShareView: View {
     let urls: [URL]
+    @EnvironmentObject private var editor: EditorViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var copyFlash: String?
+    @State private var isMakingCover = false
 
     init(url: URL) {
         self.urls = [url]
@@ -407,37 +448,98 @@ struct ExportShareView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color(red: 0.3, green: 0.92, blue: 0.75))
-                    .padding(.top, 24)
+            ScrollView {
+                VStack(spacing: 20) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color(red: 0.3, green: 0.92, blue: 0.75))
+                        .padding(.top, 24)
 
-                Text(urls.count > 1 ? "Ready to share (\(urls.count))" : "Ready to share")
-                    .font(.custom("AvenirNext-Heavy", size: 24))
-                    .foregroundStyle(.white)
+                    Text(urls.count > 1 ? "Ready to share (\(urls.count))" : "Ready to share")
+                        .font(.custom("AvenirNext-Heavy", size: 24))
+                        .foregroundStyle(.white)
 
-                ForEach(urls, id: \.self) { url in
-                    VStack(spacing: 8) {
-                        Text(url.lastPathComponent)
-                            .font(.custom("AvenirNext-Medium", size: 13))
-                            .foregroundStyle(.white.opacity(0.5))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                    if let dist = editor.distribution {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Post copy")
+                                .font(.custom("AvenirNext-Bold", size: 13))
+                                .foregroundStyle(.white.opacity(0.55))
 
-                        ShareLink(item: url) {
-                            Label(urls.count > 1 ? "Share \(url.lastPathComponent)" : "Share Video", systemImage: "square.and.arrow.up")
-                                .font(.custom("AvenirNext-DemiBold", size: 15))
-                                .foregroundStyle(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color(red: 0.15, green: 0.9, blue: 0.72), in: Capsule())
+                            copyBlock(label: "Title", value: dist.title)
+                            if let hook = dist.hookLine, !hook.isEmpty {
+                                copyBlock(label: "Hook", value: hook)
+                            }
+                            copyBlock(label: "Hashtags", value: dist.hashtagLine)
+                            copyBlock(label: "Cover text", value: dist.coverText)
                         }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 20)
+
+                        if let flash = copyFlash {
+                            Text(flash)
+                                .font(.custom("AvenirNext-Medium", size: 12))
+                                .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8))
+                        }
+
+                        Button {
+                            isMakingCover = true
+                            Task {
+                                await editor.exportCoverImage()
+                                isMakingCover = false
+                            }
+                        } label: {
+                            Label(
+                                isMakingCover
+                                ? "Making cover…"
+                                : (editor.coverURL == nil ? "Export cover PNG" : "Refresh cover PNG"),
+                                systemImage: "photo"
+                            )
+                            .font(.custom("AvenirNext-DemiBold", size: 14))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(red: 1.0, green: 0.92, blue: 0.35), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isMakingCover)
                         .padding(.horizontal, 24)
+
+                        if let coverURL = editor.coverURL {
+                            ShareLink(item: coverURL) {
+                                Label("Share cover", systemImage: "square.and.arrow.up")
+                                    .font(.custom("AvenirNext-DemiBold", size: 14))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white.opacity(0.12), in: Capsule())
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                    }
+
+                    ForEach(urls, id: \.self) { url in
+                        VStack(spacing: 8) {
+                            Text(url.lastPathComponent)
+                                .font(.custom("AvenirNext-Medium", size: 13))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            ShareLink(item: url) {
+                                Label(urls.count > 1 ? "Share \(url.lastPathComponent)" : "Share Video", systemImage: "square.and.arrow.up")
+                                    .font(.custom("AvenirNext-DemiBold", size: 15))
+                                    .foregroundStyle(.black)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color(red: 0.15, green: 0.9, blue: 0.72), in: Capsule())
+                            }
+                            .padding(.horizontal, 24)
+                        }
                     }
                 }
-
-                Spacer()
+                .padding(.bottom, 32)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(red: 0.05, green: 0.08, blue: 0.1).ignoresSafeArea())
@@ -446,6 +548,43 @@ struct ExportShareView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .onAppear {
+                editor.ensureDistribution()
+            }
         }
+    }
+
+    @ViewBuilder
+    private func copyBlock(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.4))
+            HStack(alignment: .top) {
+                Text(value)
+                    .font(.custom("AvenirNext-DemiBold", size: 14))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    copyToPasteboard(value)
+                    copyFlash = "Copied \(label.lowercased())"
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.15, green: 0.9, blue: 0.72))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func copyToPasteboard(_ string: String) {
+        #if os(iOS)
+        UIPasteboard.general.string = string
+        #elseif os(macOS)
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(string, forType: .string)
+        #endif
     }
 }
