@@ -48,14 +48,17 @@ final class VideoStitchService: ObservableObject {
 
             // Shift timeline so this part starts at t=0 for the segment exporter.
             let delta = -chunk.startTime
-            let localCaptions = VideoChunkPlanner.shiftCaptions(segment.captions, by: delta).map { cap -> CaptionSegment in
+            let localCaptions = VideoChunkPlanner.shiftCaptions(segment.captions, by: delta).compactMap { cap -> CaptionSegment? in
                 var c = cap
                 c.startTime = max(0, min(chunk.duration, c.startTime))
-                c.endTime = max(c.startTime + 0.05, min(chunk.duration, c.endTime))
-                c.words = c.words.map { w in
+                c.endTime = max(c.startTime, min(chunk.duration, c.endTime))
+                // Drop razor-thin remnants at chunk seams (avoids duplicate/ghost captions).
+                guard c.endTime - c.startTime >= 0.12 else { return nil }
+                c.words = c.words.compactMap { w in
                     var word = w
                     word.startTime = max(0, min(chunk.duration, w.startTime))
                     word.endTime = max(word.startTime, min(chunk.duration, w.endTime))
+                    guard word.endTime - word.startTime >= 0.04 else { return nil }
                     return word
                 }
                 return c

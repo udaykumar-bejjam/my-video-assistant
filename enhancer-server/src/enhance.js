@@ -5,6 +5,7 @@ import {
   extractJson,
   heuristicPlan,
   loadLibraries,
+  resolveVideoDuration,
   validatePlacements,
 } from "./libraries.js";
 
@@ -35,7 +36,8 @@ export async function enhanceWithCursor({
         }))
       : undefined,
   }));
-  const videoDuration = Number(duration) || 10;
+  // Never coerce 0 → 10 (Number(0) is falsy). Prefer explicit duration, else caption span.
+  const videoDuration = resolveVideoDuration(duration, normalizedCaptions);
   const lang = language || "en-US";
   const pack = packId || brandKit?.defaultPackId || null;
   const payload = {

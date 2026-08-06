@@ -571,6 +571,23 @@ const PUNCHY_EFFECT_IDS = [
   "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch",
 ];
 
+/**
+ * Resolve timeline length without the `Number(x) || 10` trap (0 is falsy and
+ * used to clamp all word hits into the first 10s while phrase captions continued).
+ */
+export function resolveVideoDuration(duration, captions = []) {
+  const raw = Number(duration);
+  const fromCaptions = (captions || []).reduce((max, c) => {
+    const end = Number(c?.endTime);
+    return Number.isFinite(end) ? Math.max(max, end) : max;
+  }, 0);
+  if (Number.isFinite(raw) && raw > 0.05) {
+    return Math.max(raw, fromCaptions);
+  }
+  if (fromCaptions > 0.05) return fromCaptions;
+  return 10;
+}
+
 export function validatePlacements(
   plan,
   libraries,
@@ -587,6 +604,7 @@ export function validatePlacements(
   const pack = getPack(packId || plan?.packId) || null;
   const resolvedPackId = pack?.id || packId || plan?.packId || null;
   const zone = normalizeSafeZone(safeZone || plan?.safeZone, videoSize);
+  const duration = resolveVideoDuration(videoDuration, captions);
 
   const placements = [];
   const wordHits = [];
@@ -599,13 +617,13 @@ export function validatePlacements(
   for (const p of incoming) {
     if (!p) continue;
     if (p.kind === "wordHit") {
-      const hit = alignWordHit(p, fonts, effects, sfx, captions, videoDuration, pack, zone);
+      const hit = alignWordHit(p, fonts, effects, sfx, captions, duration, pack, zone);
       if (hit) wordHits.push(hit);
       continue;
     }
     const asset = assets[p.kind]?.[p.assetId];
     if (!asset) continue;
-    placements.push(alignPlacement(p, asset, captions, videoDuration, zone));
+    placements.push(alignPlacement(p, asset, captions, duration, zone));
   }
 
   const hook = ensureOpeningHook({
@@ -616,7 +634,7 @@ export function validatePlacements(
     effects: libraries.effects.items,
     sfxLib: libraries.sfx.items,
     captions,
-    videoDuration,
+    videoDuration: duration,
     pack,
     language: plan?.language || "en-US",
     safeZone: zone,
@@ -633,7 +651,7 @@ export function validatePlacements(
     pack,
   });
   for (let i = beforeFill; i < wordHits.length; i++) {
-    const hit = alignWordHit(wordHits[i], fonts, effects, sfx, captions, videoDuration, pack, zone);
+    const hit = alignWordHit(wordHits[i], fonts, effects, sfx, captions, duration, pack, zone);
     if (hit) {
       wordHits[i] = hit;
     } else {
@@ -650,7 +668,7 @@ export function validatePlacements(
     sfxLib: libraries.sfx.items,
     language,
     pack,
-    videoDuration,
+    videoDuration: duration,
     options: plan?.options || {},
   });
   for (let i = beforeBroll; i < placements.length; i++) {
@@ -665,7 +683,7 @@ export function validatePlacements(
       { ...p, snapToCaption: false },
       asset,
       captions,
-      videoDuration,
+      duration,
       zone
     );
   }
@@ -1158,7 +1176,7 @@ export function heuristicPlan({
         startTime: cap.startTime,
         endTime: cap.startTime + (textAsset.lengthSeconds || 1.8),
         x: 0.5,
-        y: 0.78,
+        y: 0.28,
         scale: 1,
         rotation: 0,
         text: String(cap.text || "").split(/\s+/).slice(0, 3).join(" "),

@@ -97,6 +97,35 @@ assert(
   `sparse plan filled to ≥20s (got ${filledMax.toFixed(1)}s, hits=${(sparse.wordHits || []).length})`
 );
 
+// duration=0 must NOT clamp hits into the first 10s (old Number(0)||10 trap).
+const { resolveVideoDuration } = await import("../src/libraries.js");
+assert(resolveVideoDuration(0, captions) >= 28, `resolveVideoDuration(0) uses caption span (got ${resolveVideoDuration(0, captions)})`);
+assert(resolveVideoDuration(30, captions) === 30, `resolveVideoDuration(30) keeps explicit duration`);
+const zeroDurPlan = await enhanceWithCursor({
+  captions,
+  duration: 0,
+  forceHeuristic: true,
+  language: "en-US",
+  packId: "hype",
+  videoSize: { width: 1080, height: 1920 },
+});
+const zeroMax = (zeroDurPlan.wordHits || []).reduce(
+  (m, h) => Math.max(m, Number(h.startTime) || 0),
+  0
+);
+assert(zeroMax >= 20, `duration:0 still covers ≥20s (got ${zeroMax.toFixed(1)}s)`);
+
+// Support text must sit above phrase captions (not stacked at y≈0.78).
+const supportY = (zeroDurPlan.placements || [])
+  .filter((p) => p.kind === "text")
+  .map((p) => Number(p.y) || 0);
+if (supportY.length) {
+  assert(
+    supportY.every((y) => y < 0.55),
+    `support text y < 0.55 so it doesn't sit on captions (got [${supportY.join(",")}])`
+  );
+}
+
 console.log(`\nhits=${hits.length} max=${maxHit.toFixed(1)}s mid=${midHits.length} late=${lateHits.length}`);
 console.log(`${failures ? "FAILED" : "OK"} — ${failures} failure(s)`);
 process.exit(failures ? 1 : 0);

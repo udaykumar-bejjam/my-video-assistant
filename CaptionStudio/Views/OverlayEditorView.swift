@@ -299,12 +299,18 @@ struct AudioLayerPanel: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(editor.isAudioLayerSelected ? 0.1 : 0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(TimelineLaneStyle.audio.opacity(0.35), lineWidth: 1)
+                        .strokeBorder(
+                            TimelineLaneStyle.audio.opacity(editor.isAudioLayerSelected ? 0.7 : 0.35),
+                            lineWidth: 1
+                        )
                 )
         )
+        .onTapGesture {
+            editor.selectAudioLayer()
+        }
     }
 
     private func audioSlider(

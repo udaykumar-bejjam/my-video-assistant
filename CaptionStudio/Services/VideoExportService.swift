@@ -268,11 +268,48 @@ final class VideoExportService: ObservableObject {
             let end = max(start + 0.05, min(caption.endTime, duration > 0 ? duration : caption.endTime))
             guard end > start, start < duration || duration <= 0 else { continue }
 
+            let midX = size.width * style.positionX
+            let midY = size.height * style.positionY
+            let fontSize = style.fontSize * (size.width / 390)
+            let maxWidth = size.width * 0.88
+
+            // Match preview: karaoke / typewriter when word timings exist.
+            if style.animation == .karaoke, !caption.words.isEmpty {
+                addKaraokeCaptionLayers(
+                    to: root,
+                    caption: caption,
+                    style: style,
+                    fontSize: fontSize,
+                    maxWidth: maxWidth,
+                    midX: midX,
+                    midY: midY,
+                    clipStart: start,
+                    clipEnd: end,
+                    timelineDuration: duration
+                )
+                continue
+            }
+
+            if style.animation == .typewriter {
+                addTypewriterCaptionLayers(
+                    to: root,
+                    caption: caption,
+                    style: style,
+                    fontSize: fontSize,
+                    maxWidth: maxWidth,
+                    midX: midX,
+                    midY: midY,
+                    clipStart: start,
+                    clipEnd: end
+                )
+                continue
+            }
+
             let text = style.textCase.apply(caption.text)
             let layer = Self.makeTextLayer(
                 text: text,
                 fontName: style.fontName,
-                fontSize: style.fontSize * (size.width / 390),
+                fontSize: fontSize,
                 textColor: style.textColor.platformColor,
                 strokeColor: style.strokeColor.platformColor,
                 strokeWidth: style.strokeWidth,
@@ -280,14 +317,134 @@ final class VideoExportService: ObservableObject {
                 cornerRadius: style.cornerRadius,
                 shadowColor: style.shadowColor.platformColor,
                 shadowRadius: style.shadowRadius,
-                maxWidth: size.width * 0.88
+                maxWidth: maxWidth
             )
-
-            let midX = size.width * style.positionX
-            // parentLayer.isGeometryFlipped → Y-down like SwiftUI; do NOT invert again.
-            let midY = size.height * style.positionY
             layer.position = CGPoint(x: midX, y: midY)
             Self.scheduleVisibility(on: layer, startTime: start, endTime: end, opacity: 1)
+            root.addSublayer(layer)
+        }
+    }
+
+    /// Word-by-word karaoke burn-in (parity with `AnimatedCaptionText` preview).
+    private func addKaraokeCaptionLayers(
+        to root: CALayer,
+        caption: CaptionSegment,
+        style: CaptionStyle,
+        fontSize: CGFloat,
+        maxWidth: CGFloat,
+        midX: CGFloat,
+        midY: CGFloat,
+        clipStart: TimeInterval,
+        clipEnd: TimeInterval,
+        timelineDuration: TimeInterval
+    ) {
+        let words = caption.words.filter { $0.endTime > clipStart && $0.startTime < clipEnd }
+        guard !words.isEmpty else {
+            let text = style.textCase.apply(caption.text)
+            let layer = Self.makeTextLayer(
+                text: text,
+                fontName: style.fontName,
+                fontSize: fontSize,
+                textColor: style.textColor.platformColor,
+                strokeColor: style.strokeColor.platformColor,
+                strokeWidth: style.strokeWidth,
+                backgroundColor: style.backgroundColor.platformColor,
+                cornerRadius: style.cornerRadius,
+                shadowColor: style.shadowColor.platformColor,
+                shadowRadius: style.shadowRadius,
+                maxWidth: maxWidth
+            )
+            layer.position = CGPoint(x: midX, y: midY)
+            Self.scheduleVisibility(on: layer, startTime: clipStart, endTime: clipEnd, opacity: 1)
+            root.addSublayer(layer)
+            return
+        }
+
+        let spacing: CGFloat = 5 * (fontSize / 42)
+        var wordSizes: [CGSize] = []
+        var totalWidth: CGFloat = 0
+        for word in words {
+            let text = style.textCase.apply(word.text)
+            let size = Self.measureText(text, fontName: style.fontName, fontSize: fontSize, maxWidth: maxWidth)
+            wordSizes.append(size)
+            totalWidth += size.width
+        }
+        totalWidth += spacing * CGFloat(max(0, words.count - 1))
+        var cursorX = midX - min(totalWidth, maxWidth) / 2
+        let highlight = PlatformColor(red: 1, green: 0.92, blue: 0.35, alpha: 1)
+
+        for (index, word) in words.enumerated() {
+            let text = style.textCase.apply(word.text)
+            let wSize = wordSizes[index]
+            let center = CGPoint(x: cursorX + wSize.width / 2, y: midY)
+            let wordStart = max(clipStart, min(clipEnd, word.startTime))
+            let wordEnd = max(wordStart + 0.05, min(clipEnd, word.endTime))
+
+            func place(_ color: PlatformColor, from t0: TimeInterval, to t1: TimeInterval, opacity: Float) {
+                guard t1 > t0 + 0.02 else { return }
+                let layer = Self.makeTextLayer(
+                    text: text,
+                    fontName: style.fontName,
+                    fontSize: fontSize,
+                    textColor: color,
+                    strokeColor: style.strokeColor.platformColor,
+                    strokeWidth: style.strokeWidth,
+                    backgroundColor: .clear,
+                    cornerRadius: 0,
+                    shadowColor: style.shadowColor.platformColor,
+                    shadowRadius: style.shadowRadius,
+                    maxWidth: maxWidth
+                )
+                layer.position = center
+                Self.scheduleVisibility(on: layer, startTime: t0, endTime: t1, opacity: opacity)
+                root.addSublayer(layer)
+            }
+
+            // Dim before spoken → highlight while active → full after (matches preview).
+            place(style.textColor.platformColor, from: clipStart, to: wordStart, opacity: 0.35)
+            place(highlight, from: wordStart, to: wordEnd, opacity: 1)
+            place(style.textColor.platformColor, from: wordEnd, to: clipEnd, opacity: 1)
+
+            cursorX += wSize.width + spacing
+            _ = timelineDuration
+        }
+    }
+
+    private func addTypewriterCaptionLayers(
+        to root: CALayer,
+        caption: CaptionSegment,
+        style: CaptionStyle,
+        fontSize: CGFloat,
+        maxWidth: CGFloat,
+        midX: CGFloat,
+        midY: CGFloat,
+        clipStart: TimeInterval,
+        clipEnd: TimeInterval
+    ) {
+        let full = style.textCase.apply(caption.text)
+        guard !full.isEmpty else { return }
+        let span = max(0.2, clipEnd - clipStart)
+        let steps = min(full.count, 24)
+        for step in 1...steps {
+            let count = max(1, (full.count * step) / steps)
+            let visible = String(full.prefix(count))
+            let layer = Self.makeTextLayer(
+                text: visible,
+                fontName: style.fontName,
+                fontSize: fontSize,
+                textColor: style.textColor.platformColor,
+                strokeColor: style.strokeColor.platformColor,
+                strokeWidth: style.strokeWidth,
+                backgroundColor: style.backgroundColor.platformColor,
+                cornerRadius: style.cornerRadius,
+                shadowColor: style.shadowColor.platformColor,
+                shadowRadius: style.shadowRadius,
+                maxWidth: maxWidth
+            )
+            layer.position = CGPoint(x: midX, y: midY)
+            let t0 = clipStart + span * Double(step - 1) / Double(steps)
+            let t1 = step == steps ? clipEnd : clipStart + span * Double(step) / Double(steps)
+            Self.scheduleVisibility(on: layer, startTime: t0, endTime: t1, opacity: 1)
             root.addSublayer(layer)
         }
     }
@@ -578,6 +735,24 @@ final class VideoExportService: ObservableObject {
         #else
         return nil
         #endif
+    }
+
+    private static func measureText(
+        _ text: String,
+        fontName: String,
+        fontSize: CGFloat,
+        maxWidth: CGFloat
+    ) -> CGSize {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: PlatformFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: .bold)
+        ]
+        let bound = (text as NSString).boundingRect(
+            with: CGSize(width: maxWidth, height: 400),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attrs,
+            context: nil
+        )
+        return CGSize(width: ceil(bound.width) + 4, height: ceil(bound.height) + 4)
     }
 
     private static func makeTextLayer(

@@ -155,8 +155,11 @@ final class EditorViewModel: ObservableObject {
         Task { await enhancer.checkHealth() }
 
         let asset = AVURLAsset(url: localURL)
-        if let duration = try? await asset.load(.duration) {
+        if let duration = try? await asset.load(.duration), CMTimeGetSeconds(duration) > 0 {
             project.duration = CMTimeGetSeconds(duration)
+        } else {
+            let fallback = CMTimeGetSeconds(asset.duration)
+            project.duration = fallback.isFinite && fallback > 0 ? fallback : 0
         }
         if let track = try? await asset.loadTracks(withMediaType: .video).first {
             let natural = (try? await track.load(.naturalSize)) ?? .zero
@@ -251,6 +254,10 @@ final class EditorViewModel: ObservableObject {
         }
 
         await enhancer.checkHealth()
+        let timelineDuration = resolvedTimelineDuration()
+        if timelineDuration > project.duration {
+            project.duration = timelineDuration
+        }
         let chunks = VideoChunkPlanner.chunks(duration: project.duration)
         project.chunkCount = chunks.count
         let canvas = project.aspectRatio.canvasSize
@@ -273,12 +280,15 @@ final class EditorViewModel: ObservableObject {
 
             let packId = project.packId
             let zone = activeSafeZone
+            // Always pass a positive duration derived from captions when needed —
+            // enhancer used to coerce 0 → 10s and clamp all hits into the first 10s.
+            let enhanceDuration = max(project.duration, chunk.contextEnd, resolvedTimelineDuration())
             let plan: EnhancementPlan
             if enhancer.isHealthy {
                 do {
                     plan = try await enhancer.enhance(
                         captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
-                        duration: project.duration,
+                        duration: enhanceDuration,
                         videoSize: canvas,
                         language: language,
                         packId: packId,
@@ -289,7 +299,7 @@ final class EditorViewModel: ObservableObject {
                 } catch {
                     plan = enhancer.localHeuristicPlan(
                         captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
-                        duration: project.duration,
+                        duration: enhanceDuration,
                         libraries: libraries,
                         language: language,
                         pack: selectedPack,
@@ -300,7 +310,7 @@ final class EditorViewModel: ObservableObject {
             } else {
                 plan = enhancer.localHeuristicPlan(
                     captions: sliceCaptions.isEmpty ? project.captions : sliceCaptions,
-                    duration: project.duration,
+                    duration: enhanceDuration,
                     libraries: libraries,
                     language: language,
                     pack: selectedPack,
@@ -319,8 +329,17 @@ final class EditorViewModel: ObservableObject {
         // Deduplicate near-identical placements at chunk boundaries.
         merged = Self.dedupe(placements: merged)
 
-        let wordHits = merged.filter { $0.kind == "wordHit" }
+        var wordHits = merged.filter { $0.kind == "wordHit" }
         let others = merged.filter { $0.kind != "wordHit" }
+        // Defense in depth: fill any caption windows still missing hits (full timeline).
+        let filled = appendMissingWordHits(
+            wordHits: &wordHits,
+            captions: project.captions,
+            duration: project.duration
+        )
+        if filled > 0 {
+            notes.append("Filled \(filled) word hit(s) for full-duration coverage")
+        }
 
         let packLabel = selectedPack.map { " / pack:\($0.name)" } ?? ""
         let plan = EnhancementPlan(
@@ -344,6 +363,42 @@ final class EditorViewModel: ObservableObject {
         apply(plan: plan)
         lastEnhancementNote = plan.summary
         editorTab = .libraries
+    }
+
+    /// Prefer measured video duration; never leave 0 when captions already span the timeline.
+    private func resolvedTimelineDuration() -> TimeInterval {
+        let fromCaptions = project.captions.map(\.endTime).max() ?? 0
+        let fromProject = project.duration
+        if fromProject > 0.05 { return max(fromProject, fromCaptions) }
+        if fromCaptions > 0.05 { return fromCaptions }
+        return fromProject
+    }
+
+    /// Ensure every caption window has ≥1 word hit so export doesn't look like
+    /// "punchy captions for ~10s, then plain captions only".
+    private func appendMissingWordHits(
+        wordHits: inout [EnhancementPlacement],
+        captions: [CaptionSegment],
+        duration: TimeInterval
+    ) -> Int {
+        let missing = captions.filter { cap in
+            !wordHits.contains {
+                $0.startTime >= cap.startTime - 0.05 && $0.startTime <= cap.endTime + 0.05
+            }
+        }
+        guard !missing.isEmpty else { return 0 }
+
+        let fill = enhancer.localHeuristicPlan(
+            captions: missing,
+            duration: max(duration, missing.map(\.endTime).max() ?? duration),
+            libraries: libraries,
+            language: language,
+            pack: selectedPack,
+            safeZone: activeSafeZone
+        )
+        let extras = fill.wordHits ?? []
+        wordHits.append(contentsOf: extras)
+        return extras.count
     }
 
     /// Pick a Shorts Pack — sets aspect, caption style, and packId for enhance.
@@ -1024,11 +1079,17 @@ final class EditorViewModel: ObservableObject {
 
         refreshWatermarkOverlay()
 
+        // Keep export timeline aligned with captions if duration was never measured.
+        let resolved = resolvedTimelineDuration()
+        if resolved > project.duration {
+            project.duration = resolved
+        }
+
         do {
             var results: [URL] = []
             for aspect in aspects {
                 let overlays = Self.remapOverlays(project.overlays, from: project.aspectRatio, to: aspect)
-                let chunks = VideoChunkPlanner.chunks(duration: project.duration)
+                let chunks = VideoChunkPlanner.chunks(duration: max(project.duration, 0.1))
                 project.chunkCount = chunks.count
                 let result: URL
 
