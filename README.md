@@ -76,8 +76,9 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  
 3. Run on iPhone / simulator / My Mac  
-4. Import or **Try Demo** → **AI Captions** → **AI Place**  
-5. Browse **Library** tab or export  
+4. Import or **Try Demo** → pick a **Shorts Pack** → **AI Captions** → **AI Place**  
+5. Browse **Library** / **Trim** tabs or export  
+6. **Save Draft** (Export tab or leave editor) — reopen from Home drafts list  
 
 **AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
 
