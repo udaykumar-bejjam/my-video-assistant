@@ -171,8 +171,9 @@ final class EditorViewModel: ObservableObject {
 
         let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
         timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            Task { @MainActor in
-                self?.currentTime = CMTimeGetSeconds(time)
+            let seconds = CMTimeGetSeconds(time)
+            Task { @MainActor [weak self] in
+                self?.currentTime = seconds
             }
         }
 
@@ -181,7 +182,7 @@ final class EditorViewModel: ObservableObject {
             object: item,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.isPlaying = false
                 self?.seek(to: 0)
             }
@@ -412,8 +413,9 @@ final class EditorViewModel: ObservableObject {
 
             let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
             timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-                Task { @MainActor in
-                    self?.currentTime = CMTimeGetSeconds(time)
+                let seconds = CMTimeGetSeconds(time)
+                Task { @MainActor [weak self] in
+                    self?.currentTime = seconds
                 }
             }
             endObserver = NotificationCenter.default.addObserver(
@@ -421,7 +423,7 @@ final class EditorViewModel: ObservableObject {
                 object: item,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.isPlaying = false
                     self?.seek(to: 0)
                 }
@@ -521,8 +523,9 @@ final class EditorViewModel: ObservableObject {
             isPlaying = false
             let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
             timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-                Task { @MainActor in
-                    self?.currentTime = CMTimeGetSeconds(time)
+                let seconds = CMTimeGetSeconds(time)
+                Task { @MainActor [weak self] in
+                    self?.currentTime = seconds
                 }
             }
             endObserver = NotificationCenter.default.addObserver(
@@ -530,7 +533,7 @@ final class EditorViewModel: ObservableObject {
                 object: item,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.isPlaying = false
                     self?.seek(to: 0)
                 }
@@ -737,7 +740,7 @@ final class EditorViewModel: ObservableObject {
             rotation: placement.rotation,
             startTime: aligned.start,
             endTime: aligned.end,
-            color: .white,
+            color: .whiteColor,
             fontSize: 24,
             shape: .rectangle,
             opacity: 1,
@@ -814,6 +817,8 @@ final class EditorViewModel: ObservableObject {
             )
             project.soundEffects.append(cue)
             previewSFX(cue)
+        case .fonts, .effects:
+            break
         }
         editorTab = .overlays
     }

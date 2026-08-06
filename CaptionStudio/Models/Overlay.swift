@@ -86,7 +86,7 @@ struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
             rotation: 0,
             startTime: time,
             endTime: time + duration,
-            color: .white,
+            color: .whiteColor,
             fontSize: 28,
             shape: .rectangle,
             opacity: 1
@@ -107,7 +107,7 @@ struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
             rotation: -8,
             startTime: time,
             endTime: time + duration,
-            color: .white,
+            color: .whiteColor,
             fontSize: 48,
             shape: .circle,
             opacity: 1

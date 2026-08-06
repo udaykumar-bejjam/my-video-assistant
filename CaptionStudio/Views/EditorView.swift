@@ -277,15 +277,16 @@ struct VideoPreviewPane: View {
             let aspect = editor.project.aspectRatio.aspectValue
             let maxW = geo.size.width
             let maxH = geo.size.height
-            let width: CGFloat
-            let height: CGFloat
-            if maxW / maxH > aspect {
-                height = maxH
-                width = height * aspect
-            } else {
-                width = maxW
-                height = width / aspect
-            }
+            let fitted: CGSize = {
+                if maxW / maxH > aspect {
+                    let height = maxH
+                    return CGSize(width: height * aspect, height: height)
+                }
+                let width = maxW
+                return CGSize(width: width, height: width / aspect)
+            }()
+            let width = fitted.width
+            let height = fitted.height
 
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
