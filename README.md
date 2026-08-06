@@ -66,6 +66,16 @@ npm run enhance -- examples/sample-captions.json
 
 **AI Place** calls the enhancer. If the server is down, the app applies a local library heuristic.
 
+## Languages, fonts & significant word hits
+
+- **Languages:** English, Hindi (`hi-IN`), Telugu (`te-IN`) — Speech locale + demo captions
+- **Fonts library:** Latin + Kohinoor Devanagari + Kohinoor Telugu (and ITF Devanagari)
+- **Effects library:** slam, bounce, zoom, shake, spin, flash, rise, glitch, typepop, pulse
+- **AI Place** returns a precise JSON plan:
+  - `wordHits[]` — significant words with `fontId`, randomised `effectId`, paired `sfxId`, timed to word start/end
+  - `placements[]` — supporting GIFs / text / SFX
+- The app applies that response exactly (overlays + SFX cues + export burn-in)
+
 ## Aspect ratios & long videos
 
 - **9:16** (1080×1920) and **16:9** (1920×1080) canvases — auto-inferred from the source, overridable in Export
