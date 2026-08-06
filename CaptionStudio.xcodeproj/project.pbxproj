@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000016 /* PlacementAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* PlacementAligner.swift */; };
 		A10000000000000000000011 /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* MediaLibrary.swift */; };
 		A10000000000000000000012 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ColorHex.swift */; };
 		A10000000000000000000013 /* MediaLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* MediaLibraryStore.swift */; };
@@ -28,6 +29,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000006 /* PlacementAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementAligner.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* MediaLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibraryStore.swift; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 				ECDCDC6984284FD8BE34308C /* VideoExportService.swift */,
 				A10000000000000000000003 /* MediaLibraryStore.swift */,
 				A10000000000000000000004 /* CursorEnhancerClient.swift */,
+				A10000000000000000000006 /* PlacementAligner.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -228,6 +231,7 @@
 				A10000000000000000000012 /* ColorHex.swift in Sources */,
 				A10000000000000000000013 /* MediaLibraryStore.swift in Sources */,
 				A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */,
+				A10000000000000000000016 /* PlacementAligner.swift in Sources */,
 				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

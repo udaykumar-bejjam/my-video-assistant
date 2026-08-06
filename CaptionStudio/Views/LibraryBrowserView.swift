@@ -150,9 +150,27 @@ struct LibraryTile: View {
                     .font(.custom("AvenirNext-Medium", size: 11))
                     .foregroundStyle(.white.opacity(0.75))
                     .lineLimit(1)
+
+                Text(metaLabel)
+                    .font(.custom("AvenirNext-Medium", size: 9))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(1)
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private var metaLabel: String {
+        switch kind {
+        case .sfx:
+            return String(format: "%.2fs", item.playLength)
+        case .gifs:
+            return String(format: "%.2fs · %dx%d", item.playLength, Int(item.pixelSize.width), Int(item.pixelSize.height))
+        case .pngs:
+            return String(format: "%dx%d", Int(item.pixelSize.width), Int(item.pixelSize.height))
+        case .textStyles:
+            return String(format: "%.1fs hold", item.playLength)
+        }
     }
 
     @ViewBuilder

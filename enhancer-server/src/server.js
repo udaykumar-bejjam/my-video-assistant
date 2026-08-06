@@ -32,12 +32,19 @@ app.get("/libraries", (_req, res) => {
  */
 app.post("/enhance", async (req, res) => {
   try {
-    const { captions, duration, forceHeuristic } = req.body || {};
+    const { captions, duration, forceHeuristic, videoSize } = req.body || {};
     if (!Array.isArray(captions)) {
       res.status(400).json({ error: "captions array required" });
       return;
     }
-    const plan = await enhanceWithCursor({ captions, duration, forceHeuristic: Boolean(forceHeuristic) });
+    const plan = await enhanceWithCursor({
+      captions,
+      duration,
+      forceHeuristic: Boolean(forceHeuristic),
+      videoSize: videoSize && videoSize.width && videoSize.height
+        ? { width: Number(videoSize.width), height: Number(videoSize.height) }
+        : null,
+    });
     res.json(plan);
   } catch (error) {
     res.status(500).json({ error: error.message || String(error) });

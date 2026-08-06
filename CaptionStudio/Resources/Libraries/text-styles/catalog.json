@@ -5,7 +5,11 @@
     {
       "id": "neon-punch",
       "name": "Neon Punch",
-      "tags": ["hype", "energy", "hook"],
+      "tags": [
+        "hype",
+        "energy",
+        "hook"
+      ],
       "previewText": "LET'S GO",
       "fontName": "AvenirNext-Heavy",
       "fontSize": 42,
@@ -15,12 +19,18 @@
       "strokeWidth": 2.5,
       "shadowRadius": 10,
       "animation": "bounce",
-      "defaultDuration": 1.8
+      "defaultDuration": 1.8,
+      "estimatedWidth": 184,
+      "estimatedHeight": 56
     },
     {
       "id": "soft-serif",
       "name": "Soft Serif",
-      "tags": ["calm", "story", "emotional"],
+      "tags": [
+        "calm",
+        "story",
+        "emotional"
+      ],
       "previewText": "meanwhile",
       "fontName": "Georgia-Bold",
       "fontSize": 36,
@@ -30,12 +40,18 @@
       "strokeWidth": 0,
       "shadowRadius": 12,
       "animation": "fade",
-      "defaultDuration": 2.2
+      "defaultDuration": 2.2,
+      "estimatedWidth": 178,
+      "estimatedHeight": 48
     },
     {
       "id": "boxed-caption",
       "name": "Boxed Caption",
-      "tags": ["info", "label", "product"],
+      "tags": [
+        "info",
+        "label",
+        "product"
+      ],
       "previewText": "Pro tip",
       "fontName": "AvenirNext-Bold",
       "fontSize": 30,
@@ -47,12 +63,18 @@
       "cornerRadius": 10,
       "shadowRadius": 0,
       "animation": "pop",
-      "defaultDuration": 2.0
+      "defaultDuration": 2.0,
+      "estimatedWidth": 120,
+      "estimatedHeight": 40
     },
     {
       "id": "outline-impact",
       "name": "Outline Impact",
-      "tags": ["impact", "reveal", "cta"],
+      "tags": [
+        "impact",
+        "reveal",
+        "cta"
+      ],
       "previewText": "WATCH THIS",
       "fontName": "AvenirNext-Heavy",
       "fontSize": 44,
@@ -62,12 +84,18 @@
       "strokeWidth": 3,
       "shadowRadius": 0,
       "animation": "pop",
-      "defaultDuration": 1.6
+      "defaultDuration": 1.6,
+      "estimatedWidth": 242,
+      "estimatedHeight": 59
     },
     {
       "id": "mint-glow",
       "name": "Mint Glow",
-      "tags": ["tech", "ai", "modern"],
+      "tags": [
+        "tech",
+        "ai",
+        "modern"
+      ],
       "previewText": "AI magic",
       "fontName": "AvenirNext-Bold",
       "fontSize": 38,
@@ -77,13 +105,19 @@
       "strokeWidth": 1.5,
       "shadowRadius": 14,
       "animation": "karaoke",
-      "defaultDuration": 2.0
+      "defaultDuration": 2.0,
+      "estimatedWidth": 167,
+      "estimatedHeight": 51
     },
     {
       "id": "whisper",
       "name": "Whisper",
-      "tags": ["subtle", "aside", "joke"],
-      "previewText": "wait for it…",
+      "tags": [
+        "subtle",
+        "aside",
+        "joke"
+      ],
+      "previewText": "wait for it\u2026",
       "fontName": "AvenirNext-Medium",
       "fontSize": 28,
       "textCase": "lower",
@@ -92,7 +126,9 @@
       "strokeWidth": 1,
       "shadowRadius": 4,
       "animation": "typewriter",
-      "defaultDuration": 2.4
+      "defaultDuration": 2.4,
+      "estimatedWidth": 184,
+      "estimatedHeight": 37
     }
   ]
 }

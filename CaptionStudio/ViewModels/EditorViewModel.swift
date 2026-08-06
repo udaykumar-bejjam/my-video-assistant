@@ -233,6 +233,13 @@ final class EditorViewModel: ObservableObject {
 
     private func makeStylishText(from placement: EnhancementPlacement) -> OverlayItem? {
         guard let style = libraries.item(kind: .textStyles, id: placement.assetId) else { return nil }
+        let aligned = PlacementAligner.align(
+            placement,
+            asset: style,
+            kind: "text",
+            captions: project.captions,
+            videoDuration: project.duration
+        )
         let color = Color(hex: style.textColor ?? "#FFFFFF") ?? .white
         return OverlayItem(
             kind: .text,
@@ -240,17 +247,17 @@ final class EditorViewModel: ObservableObject {
             assetId: nil,
             assetFileName: nil,
             styleAssetId: style.id,
-            x: placement.x,
-            y: placement.y,
+            x: aligned.x,
+            y: aligned.y,
             scale: placement.scale,
             rotation: placement.rotation,
-            startTime: placement.startTime,
-            endTime: placement.endTime,
+            startTime: aligned.start,
+            endTime: aligned.end,
             color: color.codable,
             fontSize: style.fontSize ?? 34,
             shape: .rectangle,
             opacity: 1,
-            reason: placement.reason
+            reason: placement.reason ?? "hold \(String(format: "%.2fs", style.playLength))"
         )
     }
 
@@ -262,33 +269,48 @@ final class EditorViewModel: ObservableObject {
         guard let asset = libraries.item(kind: library, id: placement.assetId),
               let file = asset.file
         else { return nil }
+        let aligned = PlacementAligner.align(
+            placement,
+            asset: asset,
+            kind: kind == .gif ? "gif" : "png",
+            captions: project.captions,
+            videoDuration: project.duration
+        )
         return OverlayItem(
             kind: kind,
             text: asset.name,
             assetId: asset.id,
             assetFileName: file,
             styleAssetId: nil,
-            x: placement.x,
-            y: placement.y,
+            x: aligned.x,
+            y: aligned.y,
             scale: placement.scale,
             rotation: placement.rotation,
-            startTime: placement.startTime,
-            endTime: placement.endTime,
+            startTime: aligned.start,
+            endTime: aligned.end,
             color: .white,
             fontSize: 24,
             shape: .rectangle,
             opacity: 1,
             reason: placement.reason
+                ?? "\(Int(asset.pixelSize.width))×\(Int(asset.pixelSize.height)), \(String(format: "%.2fs", asset.playLength))"
         )
     }
 
     private func makeSFX(from placement: EnhancementPlacement) -> SoundEffectCue? {
         guard let asset = libraries.item(kind: .sfx, id: placement.assetId) else { return nil }
+        let aligned = PlacementAligner.align(
+            placement,
+            asset: asset,
+            kind: "sfx",
+            captions: project.captions,
+            videoDuration: project.duration
+        )
         return SoundEffectCue(
             assetId: asset.id,
-            startTime: placement.startTime,
+            startTime: aligned.start,
             gain: asset.defaultGain ?? 0.8,
-            reason: placement.reason
+            reason: placement.reason ?? "length \(String(format: "%.2fs", asset.playLength))"
         )
     }
 
@@ -299,13 +321,14 @@ final class EditorViewModel: ObservableObject {
                 kind: "text",
                 assetId: item.id,
                 startTime: currentTime,
-                endTime: currentTime + (item.defaultDuration ?? 2),
+                endTime: currentTime + item.playLength,
                 x: 0.5,
                 y: 0.3,
                 scale: 1,
                 rotation: 0,
                 text: item.previewText,
-                reason: "Manual library pick"
+                reason: "Manual · \(String(format: "%.2fs", item.playLength))",
+                lengthSeconds: item.playLength
             )
             if let overlay = makeStylishText(from: placement) {
                 project.overlays.append(overlay)
@@ -316,12 +339,13 @@ final class EditorViewModel: ObservableObject {
                 kind: kind == .gifs ? "gif" : "png",
                 assetId: item.id,
                 startTime: currentTime,
-                endTime: currentTime + (item.defaultDuration ?? 2),
+                endTime: currentTime + item.playLength,
                 x: 0.75,
                 y: 0.25,
                 scale: item.defaultScale ?? 1,
                 rotation: 0,
-                reason: "Manual library pick"
+                reason: "Manual · \(Int(item.pixelSize.width))×\(Int(item.pixelSize.height)) · \(String(format: "%.2fs", item.playLength))",
+                lengthSeconds: item.playLength
             )
             if let overlay = makeImageOverlay(
                 from: placement,
@@ -336,7 +360,7 @@ final class EditorViewModel: ObservableObject {
                 assetId: item.id,
                 startTime: currentTime,
                 gain: item.defaultGain ?? 0.8,
-                reason: "Manual library pick"
+                reason: "Manual · exact \(String(format: "%.2fs", item.playLength))"
             )
             project.soundEffects.append(cue)
             previewSFX(cue)

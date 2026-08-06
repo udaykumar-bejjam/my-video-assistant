@@ -47,6 +47,7 @@ final class CursorEnhancerClient: ObservableObject {
     func enhance(
         captions: [CaptionSegment],
         duration: TimeInterval,
+        videoSize: CGSize? = nil,
         forceHeuristic: Bool = false
     ) async throws -> EnhancementPlan {
         let url = baseURL.appendingPathComponent("enhance")
@@ -55,7 +56,7 @@ final class CursorEnhancerClient: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 120
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "duration": duration,
             "forceHeuristic": forceHeuristic,
             "captions": captions.map { [
@@ -64,6 +65,12 @@ final class CursorEnhancerClient: ObservableObject {
                 "endTime": $0.endTime
             ] as [String: Any] }
         ]
+        if let videoSize {
+            body["videoSize"] = [
+                "width": videoSize.width,
+                "height": videoSize.height
+            ]
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -81,7 +88,7 @@ final class CursorEnhancerClient: ObservableObject {
         }
     }
 
-    /// Offline path used when the Node enhancer isn't running.
+    /// Offline path used when the Node enhancer isn't running — still uses measured library lengths.
     func localHeuristicPlan(
         captions: [CaptionSegment],
         duration: TimeInterval,
@@ -95,48 +102,106 @@ final class CursorEnhancerClient: ObservableObject {
 
         for (index, caption) in captions.prefix(8).enumerated() {
             if let text = texts[safe: index % max(texts.count, 1)] {
+                let raw = EnhancementPlacement(
+                    kind: "text",
+                    assetId: text.id,
+                    startTime: caption.startTime,
+                    endTime: caption.startTime + text.playLength,
+                    x: 0.5,
+                    y: 0.28,
+                    scale: 1,
+                    rotation: index.isMultiple(of: 2) ? -2 : 3,
+                    text: caption.text.split(separator: " ").prefix(4).joined(separator: " "),
+                    reason: "Text hold \(text.playLength)s on caption \(index)",
+                    lengthSeconds: text.playLength,
+                    captionIndex: index
+                )
+                let aligned = PlacementAligner.align(
+                    raw, asset: text, kind: "text", captions: captions, videoDuration: duration
+                )
                 placements.append(
                     EnhancementPlacement(
-                        kind: "text",
-                        assetId: text.id,
-                        startTime: caption.startTime,
-                        endTime: min(caption.endTime, caption.startTime + (text.defaultDuration ?? 1.8)),
-                        x: 0.5,
-                        y: 0.28,
-                        scale: 1,
-                        rotation: index.isMultiple(of: 2) ? -2 : 3,
-                        text: caption.text.split(separator: " ").prefix(4).joined(separator: " "),
-                        reason: "Local stylish text"
+                        kind: raw.kind,
+                        assetId: raw.assetId,
+                        startTime: aligned.start,
+                        endTime: aligned.end,
+                        x: aligned.x,
+                        y: aligned.y,
+                        scale: raw.scale,
+                        rotation: raw.rotation,
+                        text: raw.text,
+                        reason: raw.reason,
+                        lengthSeconds: text.playLength,
+                        captionIndex: index,
+                        assetPixelSize: .init(width: text.pixelSize.width, height: text.pixelSize.height)
                     )
                 )
             }
             if index.isMultiple(of: 2), let gif = gifs[safe: index % max(gifs.count, 1)] {
+                let raw = EnhancementPlacement(
+                    kind: "gif",
+                    assetId: gif.id,
+                    startTime: caption.startTime,
+                    endTime: caption.startTime + gif.playLength,
+                    x: 0.82,
+                    y: 0.24,
+                    scale: gif.defaultScale ?? 1,
+                    rotation: 0,
+                    reason: "GIF cycle \(gif.playLength)s",
+                    lengthSeconds: gif.playLength,
+                    captionIndex: index
+                )
+                let aligned = PlacementAligner.align(
+                    raw, asset: gif, kind: "gif", captions: captions, videoDuration: duration
+                )
                 placements.append(
                     EnhancementPlacement(
                         kind: "gif",
                         assetId: gif.id,
-                        startTime: caption.startTime,
-                        endTime: caption.startTime + (gif.defaultDuration ?? 1.2),
-                        x: 0.82,
-                        y: 0.24,
-                        scale: gif.defaultScale ?? 1,
+                        startTime: aligned.start,
+                        endTime: aligned.end,
+                        x: aligned.x,
+                        y: aligned.y,
+                        scale: raw.scale,
                         rotation: 0,
-                        reason: "Local GIF"
+                        reason: raw.reason,
+                        lengthSeconds: gif.playLength,
+                        captionIndex: index,
+                        assetPixelSize: .init(width: gif.pixelSize.width, height: gif.pixelSize.height)
                     )
                 )
             }
             if index.isMultiple(of: 3), let png = pngs[safe: index % max(pngs.count, 1)] {
+                let raw = EnhancementPlacement(
+                    kind: "png",
+                    assetId: png.id,
+                    startTime: caption.startTime,
+                    endTime: caption.startTime + png.playLength,
+                    x: 0.18,
+                    y: 0.3,
+                    scale: png.defaultScale ?? 1,
+                    rotation: -6,
+                    reason: "PNG \(Int(png.pixelSize.width))x\(Int(png.pixelSize.height))",
+                    lengthSeconds: png.playLength,
+                    captionIndex: index
+                )
+                let aligned = PlacementAligner.align(
+                    raw, asset: png, kind: "png", captions: captions, videoDuration: duration
+                )
                 placements.append(
                     EnhancementPlacement(
                         kind: "png",
                         assetId: png.id,
-                        startTime: caption.startTime + 0.1,
-                        endTime: caption.startTime + (png.defaultDuration ?? 2),
-                        x: 0.18,
-                        y: 0.3,
-                        scale: png.defaultScale ?? 1,
-                        rotation: -6,
-                        reason: "Local PNG"
+                        startTime: aligned.start,
+                        endTime: aligned.end,
+                        x: aligned.x,
+                        y: aligned.y,
+                        scale: raw.scale,
+                        rotation: raw.rotation,
+                        reason: raw.reason,
+                        lengthSeconds: png.playLength,
+                        captionIndex: index,
+                        assetPixelSize: .init(width: png.pixelSize.width, height: png.pixelSize.height)
                     )
                 )
             }
@@ -146,23 +211,25 @@ final class CursorEnhancerClient: ObservableObject {
                         kind: "sfx",
                         assetId: sound.id,
                         startTime: caption.startTime,
-                        endTime: caption.startTime + 0.4,
+                        endTime: caption.startTime + sound.playLength,
                         x: 0.5,
                         y: 0.5,
                         scale: 1,
                         rotation: 0,
-                        reason: "Local SFX"
+                        reason: "SFX exact \(sound.playLength)s",
+                        lengthSeconds: sound.playLength,
+                        captionIndex: index
                     )
                 )
             }
         }
 
         return EnhancementPlan(
-            summary: "On-device heuristic placements from bundled libraries.",
+            summary: "On-device placements snapped to measured asset lengths and caption windows.",
             placements: placements,
             source: "swift-local-fallback",
             model: nil,
-            note: "Enhancer unreachable — applied local library heuristics"
+            note: "Enhancer unreachable — local aligner used library duration/size metadata"
         )
     }
 }
