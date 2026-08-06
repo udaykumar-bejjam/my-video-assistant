@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "library": "sfx",
+  "items": [
+    {
+      "id": "whoosh",
+      "name": "Whoosh",
+      "tags": [
+        "transition",
+        "motion",
+        "sweep"
+      ],
+      "file": "whoosh.m4a",
+      "wav": "whoosh.wav",
+      "defaultGain": 0.85,
+      "durationSeconds": 0.35,
+      "sampleRate": 44100,
+      "defaultDuration": 0.35
+    },
+    {
+      "id": "pop",
+      "name": "Pop",
+      "tags": [
+        "impact",
+        "ui",
+        "appear"
+      ],
+      "file": "pop.m4a",
+      "wav": "pop.wav",
+      "defaultGain": 0.9,
+      "durationSeconds": 0.12,
+      "sampleRate": 44100,
+      "defaultDuration": 0.12
+    },
+    {
+      "id": "ding",
+      "name": "Ding",
+      "tags": [
+        "success",
+        "reveal",
+        "notification"
+      ],
+      "file": "ding.m4a",
+      "wav": "ding.wav",
+      "defaultGain": 0.75,
+      "durationSeconds": 0.45,
+      "sampleRate": 44100,
+      "defaultDuration": 0.45
+    },
+    {
+      "id": "bass-hit",
+      "name": "Bass Hit",
+      "tags": [
+        "impact",
+        "hype",
+        "drop"
+      ],
+      "file": "bass-hit.m4a",
+      "wav": "bass-hit.wav",
+      "defaultGain": 0.95,
+      "durationSeconds": 0.28,
+      "sampleRate": 44100,
+      "defaultDuration": 0.28
+    },
+    {
+      "id": "riser",
+      "name": "Riser",
+      "tags": [
+        "build",
+        "tension",
+        "hook"
+      ],
+      "file": "riser.m4a",
+      "wav": "riser.wav",
+      "defaultGain": 0.7,
+      "durationSeconds": 0.8,
+      "sampleRate": 44100,
+      "defaultDuration": 0.8
+    },
+    {
+      "id": "click",
+      "name": "Click",
+      "tags": [
+        "ui",
+        "cut",
+        "subtle"
+      ],
+      "file": "click.m4a",
+      "wav": "click.wav",
+      "defaultGain": 0.6,
+      "durationSeconds": 0.04,
+      "sampleRate": 44100,
+      "defaultDuration": 0.04
+    },
+    {
+      "id": "cheer-hit",
+      "name": "Cheer Hit",
+      "tags": [
+        "celebration",
+        "win",
+        "cheer"
+      ],
+      "file": "cheer-hit.m4a",
+      "wav": "cheer-hit.wav",
+      "defaultGain": 0.8,
+      "durationSeconds": 0.5,
+      "sampleRate": 44100,
+      "defaultDuration": 0.5
+    },
+    {
+      "id": "glitch",
+      "name": "Glitch",
+      "tags": [
+        "tech",
+        "glitch",
+        "modern"
+      ],
+      "file": "glitch.m4a",
+      "wav": "glitch.wav",
+      "defaultGain": 0.7,
+      "durationSeconds": 0.2,
+      "sampleRate": 44100,
+      "defaultDuration": 0.2
+    }
+  ]
+}

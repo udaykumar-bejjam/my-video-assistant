@@ -1,0 +1,430 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
+		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
+		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
+		A10000000000000000000017 /* AspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* AspectRatio.swift */; };
+		A10000000000000000000016 /* PlacementAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* PlacementAligner.swift */; };
+		A10000000000000000000011 /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* MediaLibrary.swift */; };
+		A10000000000000000000012 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ColorHex.swift */; };
+		A10000000000000000000013 /* MediaLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* MediaLibraryStore.swift */; };
+		A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* CursorEnhancerClient.swift */; };
+		A10000000000000000000015 /* LibraryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* LibraryBrowserView.swift */; };
+		A1000000000000000000001B /* ShortsPack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* ShortsPack.swift */; };
+		A1000000000000000000001C /* PackLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* PackLibrary.swift */; };
+		A1000000000000000000001D /* PackPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* PackPickerView.swift */; };
+		A1000000000000000000001E /* BrandKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000E /* BrandKitStore.swift */; };
+		A1000000000000000000001F /* BrandKitSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* BrandKitSettingsView.swift */; };
+		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
+		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
+		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
+		2B5FE125AA0B4DAE8A6D56F3 /* Overlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142E6A9EEF23416C8AD79128 /* Overlay.swift */; };
+		9A6FCD49B9D1435EA471D525 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73018BD2CB744246849221A7 /* TranscriptionService.swift */; };
+		175AF3E39F6F4B54A8CB36DA /* VideoExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECDCDC6984284FD8BE34308C /* VideoExportService.swift */; };
+		53260933AA0442B788B437DA /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0B3D0781504EE8828D661B /* EditorViewModel.swift */; };
+		B0B99DD8AF774E898EB86940 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E20188223DB4025895DE90E /* HomeView.swift */; };
+		0AE832BD868940A9B1C91558 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEDBFB5EF34F7A8A8A0A94 /* EditorView.swift */; };
+		AB5B47E835D44F2AB38086A0 /* CaptionOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DEDC6A8D5FF4CE99CB0D887 /* CaptionOverlayView.swift */; };
+		533F485510F04FB4AA3E7F46 /* CaptionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386983F2C5A0468FBFC08732 /* CaptionListView.swift */; };
+		FC28048E3B74402B8E7F52FD /* OverlayEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */; };
+		8BFE9067525D4FDFBFD26741 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A39FC676D8C44E4BA2872CED /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* AspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectRatio.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* PlacementAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementAligner.swift; sourceTree = "<group>"; };
+		A10000000000000000000001 /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* MediaLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibraryStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* CursorEnhancerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorEnhancerClient.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* LibraryBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBrowserView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000B /* ShortsPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortsPack.swift; sourceTree = "<group>"; };
+		A1000000000000000000000C /* PackLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackLibrary.swift; sourceTree = "<group>"; };
+		A1000000000000000000000D /* PackPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackPickerView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000E /* BrandKitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandKitStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000000F /* BrandKitSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandKitSettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
+		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
+		46F567830C8F481597C10E04 /* Caption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Caption.swift; sourceTree = "<group>"; };
+		142E6A9EEF23416C8AD79128 /* Overlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Overlay.swift; sourceTree = "<group>"; };
+		73018BD2CB744246849221A7 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		ECDCDC6984284FD8BE34308C /* VideoExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoExportService.swift; sourceTree = "<group>"; };
+		BE0B3D0781504EE8828D661B /* EditorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorViewModel.swift; sourceTree = "<group>"; };
+		0E20188223DB4025895DE90E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		62FEDBFB5EF34F7A8A8A0A94 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
+		3DEDC6A8D5FF4CE99CB0D887 /* CaptionOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionOverlayView.swift; sourceTree = "<group>"; };
+		386983F2C5A0468FBFC08732 /* CaptionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionListView.swift; sourceTree = "<group>"; };
+		89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayEditorView.swift; sourceTree = "<group>"; };
+		637654A63F53498B91097712 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A39FC676D8C44E4BA2872CED /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6437E63536C6450FB0F6D860 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BC444BBFA355418694770F92 = {
+			isa = PBXGroup;
+			children = (
+				123CDE5090974D1A81330FC6 /* CaptionStudio */,
+				44BE0480A584430197C80CFB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		44BE0480A584430197C80CFB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		123CDE5090974D1A81330FC6 /* CaptionStudio */ = {
+			isa = PBXGroup;
+			children = (
+				524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */,
+				A00D948FB079450CBF2C5F59 /* Models */,
+				EBF1A18429AB464989CC3FBF /* Services */,
+				29E0F17802C6434580478C05 /* ViewModels */,
+				69DC5E3E39814CF19AD54A0E /* Views */,
+				7D59BCD1B1DF413794150611 /* Resources */,
+			);
+			path = CaptionStudio;
+			sourceTree = "<group>";
+		};
+		A00D948FB079450CBF2C5F59 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				46F567830C8F481597C10E04 /* Caption.swift */,
+				142E6A9EEF23416C8AD79128 /* Overlay.swift */,
+				A10000000000000000000001 /* MediaLibrary.swift */,
+				A10000000000000000000002 /* ColorHex.swift */,
+				A10000000000000000000007 /* AspectRatio.swift */,
+				A10000000000000000000009 /* LanguageAndEffects.swift */,
+				A1000000000000000000000B /* ShortsPack.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EBF1A18429AB464989CC3FBF /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				73018BD2CB744246849221A7 /* TranscriptionService.swift */,
+				ECDCDC6984284FD8BE34308C /* VideoExportService.swift */,
+				A10000000000000000000003 /* MediaLibraryStore.swift */,
+				A10000000000000000000004 /* CursorEnhancerClient.swift */,
+				A10000000000000000000006 /* PlacementAligner.swift */,
+				A10000000000000000000008 /* VideoStitchService.swift */,
+				A1000000000000000000000C /* PackLibrary.swift */,
+				A1000000000000000000000E /* BrandKitStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		29E0F17802C6434580478C05 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				BE0B3D0781504EE8828D661B /* EditorViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		69DC5E3E39814CF19AD54A0E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				0E20188223DB4025895DE90E /* HomeView.swift */,
+				62FEDBFB5EF34F7A8A8A0A94 /* EditorView.swift */,
+				3DEDC6A8D5FF4CE99CB0D887 /* CaptionOverlayView.swift */,
+				386983F2C5A0468FBFC08732 /* CaptionListView.swift */,
+				89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */,
+				A10000000000000000000005 /* LibraryBrowserView.swift */,
+				A1000000000000000000000A /* WordHitView.swift */,
+				A1000000000000000000000D /* PackPickerView.swift */,
+				A1000000000000000000000F /* BrandKitSettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		7D59BCD1B1DF413794150611 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A39FC676D8C44E4BA2872CED /* Assets.xcassets */,
+				637654A63F53498B91097712 /* Info.plist */,
+				A10000000000000000000020 /* Libraries */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2E0B858B68AC43A28FFFA56C /* CaptionStudio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B70CF2A767B147E7B53ECCE0 /* Build configuration list for PBXNativeTarget "CaptionStudio" */;
+			buildPhases = (
+				20BE85D131C247A1977BF7FF /* Sources */,
+				6437E63536C6450FB0F6D860 /* Frameworks */,
+				BCC0AD853F8F4AB6B1A06622 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CaptionStudio;
+			productName = CaptionStudio;
+			productReference = 89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		88C5754CCED74549AFA97B03 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					2E0B858B68AC43A28FFFA56C = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 03B3452F36B14E9C9F08537C /* Build configuration list for PBXProject "CaptionStudio" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = BC444BBFA355418694770F92;
+			productRefGroup = 44BE0480A584430197C80CFB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2E0B858B68AC43A28FFFA56C /* CaptionStudio */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BCC0AD853F8F4AB6B1A06622 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8BFE9067525D4FDFBFD26741 /* Assets.xcassets in Resources */,
+				A10000000000000000000021 /* Libraries in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		20BE85D131C247A1977BF7FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */,
+				B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */,
+				2B5FE125AA0B4DAE8A6D56F3 /* Overlay.swift in Sources */,
+				9A6FCD49B9D1435EA471D525 /* TranscriptionService.swift in Sources */,
+				175AF3E39F6F4B54A8CB36DA /* VideoExportService.swift in Sources */,
+				53260933AA0442B788B437DA /* EditorViewModel.swift in Sources */,
+				B0B99DD8AF774E898EB86940 /* HomeView.swift in Sources */,
+				0AE832BD868940A9B1C91558 /* EditorView.swift in Sources */,
+				AB5B47E835D44F2AB38086A0 /* CaptionOverlayView.swift in Sources */,
+				533F485510F04FB4AA3E7F46 /* CaptionListView.swift in Sources */,
+				FC28048E3B74402B8E7F52FD /* OverlayEditorView.swift in Sources */,
+				A10000000000000000000011 /* MediaLibrary.swift in Sources */,
+				A10000000000000000000012 /* ColorHex.swift in Sources */,
+				A10000000000000000000013 /* MediaLibraryStore.swift in Sources */,
+				A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */,
+				A10000000000000000000016 /* PlacementAligner.swift in Sources */,
+				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
+				A10000000000000000000017 /* AspectRatio.swift in Sources */,
+				A10000000000000000000019 /* LanguageAndEffects.swift in Sources */,
+				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
+				A1000000000000000000001A /* WordHitView.swift in Sources */,
+				A1000000000000000000001B /* ShortsPack.swift in Sources */,
+				A1000000000000000000001C /* PackLibrary.swift in Sources */,
+				A1000000000000000000001D /* PackPickerView.swift in Sources */,
+				A1000000000000000000001E /* BrandKitStore.swift in Sources */,
+				A1000000000000000000001F /* BrandKitSettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0EC45CD1352F461286AAFDE4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		06DEA6524EA8445F8873CF5A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E99053BBA3D24954B98BB98D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CaptionStudio/Resources/CaptionStudio.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CaptionStudio/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CaptionStudio;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CaptionStudio talks to the local Cursor SDK enhancer on your Mac.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access may be used when capturing audio for transcription.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your captioned videos to Photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Select videos from your library to add captions and overlays.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "CaptionStudio transcribes your video on-device to generate AI captions.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		14923B350B9E495F93655AF3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CaptionStudio/Resources/CaptionStudio.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CaptionStudio/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CaptionStudio;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CaptionStudio talks to the local Cursor SDK enhancer on your Mac.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access may be used when capturing audio for transcription.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your captioned videos to Photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Select videos from your library to add captions and overlays.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "CaptionStudio transcribes your video on-device to generate AI captions.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		03B3452F36B14E9C9F08537C /* Build configuration list for PBXProject "CaptionStudio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EC45CD1352F461286AAFDE4 /* Debug */,
+				06DEA6524EA8445F8873CF5A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B70CF2A767B147E7B53ECCE0 /* Build configuration list for PBXNativeTarget "CaptionStudio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E99053BBA3D24954B98BB98D /* Debug */,
+				14923B350B9E495F93655AF3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 88C5754CCED74549AFA97B03 /* Project object */;
+}

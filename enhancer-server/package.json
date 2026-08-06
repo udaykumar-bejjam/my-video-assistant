@@ -1,0 +1,21 @@
+{
+  "name": "captionstudio-enhancer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cursor SDK service that places stylish text, GIFs, PNGs, and SFX on caption timelines",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "enhance": "node src/cli.js",
+    "test:packs": "node test/packs-smoke.mjs"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.26",
+    "express": "^4.21.2",
+    "cors": "^2.8.5"
+  }
+}

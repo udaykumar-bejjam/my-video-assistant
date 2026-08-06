@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "library": "gifs",
+  "items": [
+    {
+      "id": "pop-burst",
+      "name": "Pop Burst",
+      "tags": [
+        "hype",
+        "impact",
+        "reveal"
+      ],
+      "file": "pop-burst.gif",
+      "defaultDuration": 0.84,
+      "defaultScale": 1.1,
+      "width": 192,
+      "height": 192,
+      "frameCount": 12,
+      "durationSeconds": 0.84,
+      "frameDurationMs": 70
+    },
+    {
+      "id": "pulse-ring",
+      "name": "Pulse Ring",
+      "tags": [
+        "focus",
+        "tech",
+        "highlight"
+      ],
+      "file": "pulse-ring.gif",
+      "defaultDuration": 0.84,
+      "defaultScale": 1.0,
+      "width": 192,
+      "height": 192,
+      "frameCount": 12,
+      "durationSeconds": 0.84,
+      "frameDurationMs": 70
+    },
+    {
+      "id": "confetti",
+      "name": "Confetti",
+      "tags": [
+        "celebration",
+        "win",
+        "cheer"
+      ],
+      "file": "confetti.gif",
+      "defaultDuration": 0.84,
+      "defaultScale": 1.2,
+      "width": 192,
+      "height": 192,
+      "frameCount": 12,
+      "durationSeconds": 0.84,
+      "frameDurationMs": 70
+    },
+    {
+      "id": "shine-sweep",
+      "name": "Shine Sweep",
+      "tags": [
+        "product",
+        "premium",
+        "cta"
+      ],
+      "file": "shine-sweep.gif",
+      "defaultDuration": 0.84,
+      "defaultScale": 1.0,
+      "width": 192,
+      "height": 192,
+      "frameCount": 12,
+      "durationSeconds": 0.84,
+      "frameDurationMs": 70
+    },
+    {
+      "id": "bounce-dot",
+      "name": "Bounce Dot",
+      "tags": [
+        "playful",
+        "point",
+        "ui"
+      ],
+      "file": "bounce-dot.gif",
+      "defaultDuration": 0.84,
+      "defaultScale": 0.9,
+      "width": 192,
+      "height": 192,
+      "frameCount": 12,
+      "durationSeconds": 0.84,
+      "frameDurationMs": 70
+    }
+  ]
+}

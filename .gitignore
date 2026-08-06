@@ -1,0 +1,28 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Node enhancer
+enhancer-server/node_modules/
+enhancer-server/.env
+
+# Temporary exports / demos (keep AssetLibraries)
+/tmp/
+*.mp4
+!AssetLibraries/**
+!CaptionStudio/Resources/Libraries/**
