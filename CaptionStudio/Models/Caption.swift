@@ -104,11 +104,11 @@ enum CaptionPreset: String, CaseIterable, Identifiable, Codable {
             return CaptionStyle(
                 fontName: "AvenirNext-Heavy",
                 fontSize: 44,
-                textColor: .white,
-                strokeColor: .black,
+                textColor: Color.white,
+                strokeColor: Color.black,
                 strokeWidth: 3,
-                backgroundColor: .clear,
-                shadowColor: .clear,
+                backgroundColor: Color.clear,
+                shadowColor: Color.clear,
                 shadowRadius: 0,
                 cornerRadius: 0,
                 animation: .karaoke,
@@ -232,9 +232,9 @@ struct CodableColor: Equatable, Codable, Hashable {
         Color(.sRGB, red: r, green: g, blue: b, opacity: a)
     }
 
-    static let clear = CodableColor(r: 0, g: 0, b: 0, a: 0)
-    static let white = CodableColor(r: 1, g: 1, b: 1, a: 1)
-    static let black = CodableColor(r: 0, g: 0, b: 0, a: 1)
+    static let clearColor = CodableColor(r: 0, g: 0, b: 0, a: 0)
+    static let whiteColor = CodableColor(r: 1, g: 1, b: 1, a: 1)
+    static let blackColor = CodableColor(r: 0, g: 0, b: 0, a: 1)
 }
 
 extension Color {

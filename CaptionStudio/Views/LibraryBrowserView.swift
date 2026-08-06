@@ -221,7 +221,6 @@ struct LibraryTile: View {
         }
     }
 }
-}
 
 struct LibraryImage: View {
     let url: URL
