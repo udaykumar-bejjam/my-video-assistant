@@ -160,7 +160,8 @@ final class CursorEnhancerClient: ObservableObject {
         let hitsPer = pack?.wordHitsPerCaption ?? 2
         let hookWindow = pack?.requireHookInFirstSeconds ?? 3
 
-        for (index, caption) in captions.prefix(8).enumerated() {
+        // Seed word hits for every caption (not only the first 8 / ~10s).
+        for (index, caption) in captions.enumerated() {
             let sig = Self.significantWords(in: caption, limit: hitsPer, language: language)
             for (wi, word) in sig.enumerated() {
                 guard let font = fonts[safe: (index + wi) % max(fonts.count, 1)],

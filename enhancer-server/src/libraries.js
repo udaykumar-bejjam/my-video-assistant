@@ -484,6 +484,7 @@ SIGNIFICANT WORD RULES
 12. B-ROLL: for every strong wordHit (power / reveal / emotion / numbers / CTA lexicon), also emit a gif OR png timed to that word's startTime, placed in a safe corner (x≈0.18/0.72, y≈0.2/0.55), tags matching the mood. Prefer gif (animated) over png for power / emotion / reveal when a matching gif exists. Cap ≈3 stickers per 15s. Pair sticker with sfx (wordHit.sfxId counts).
 13. Keep x,y centers inside safeZone for all visual placements.
 14. Also return distribution { title, coverText, hashtags[], hookLine } for social posting.
+15. FULL DURATION: place wordHits across EVERY caption window from start to end — not only the opening ~10s. Sparse early-only plans are invalid.
 
 GENERAL TIMING RULES
 1. Never invent library ids.
@@ -492,6 +493,7 @@ GENERAL TIMING RULES
 4. Keep resources fully on-screen given normalized size × scale AND safeZone.
 5. sfx endTime = startTime + sfx.lengthSeconds exactly.
 6. Sticker placements for wordHits must use snapToCaption:false semantics — start at the word, not the caption start.
+7. Cover the full timeline: the last wordHit should fall near the final captions (within the last ~20% of durationSeconds when captions exist there).
 
 OUTPUT SCHEMA (JSON only) — the app applies this response precisely:
 {
@@ -621,6 +623,24 @@ export function validatePlacements(
   });
 
   const language = plan?.language || "en-US";
+  // Fill captions the model/heuristic skipped so AI Place spans the full video.
+  const beforeFill = wordHits.length;
+  appendMissingCaptionWordHits({
+    wordHits,
+    captions,
+    libraries,
+    language,
+    pack,
+  });
+  for (let i = beforeFill; i < wordHits.length; i++) {
+    const hit = alignWordHit(wordHits[i], fonts, effects, sfx, captions, videoDuration, pack, zone);
+    if (hit) {
+      wordHits[i] = hit;
+    } else {
+      wordHits.splice(i, 1);
+      i -= 1;
+    }
+  }
   const beforeBroll = placements.length;
   ensureBrollStickers({
     wordHits,
@@ -989,6 +1009,119 @@ function round4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
+const FILLER_WORDS = new Set([
+  "a","an","the","to","of","and","or","in","on","is","are","for","with","this","that",
+  "एक","और","की","के","को","में","से","है","हैं","का","कि",
+  "ఒక","మరియు","లో","కి","నుంచి","ఉంది","అని"
+]);
+
+function captionTokens(cap) {
+  if (Array.isArray(cap.words) && cap.words.length) {
+    return cap.words.map((w, i) => ({ ...w, index: i }));
+  }
+  return String(cap.text || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((text, i, arr) => {
+      const span = (cap.endTime - cap.startTime) / Math.max(arr.length, 1);
+      return {
+        text,
+        index: i,
+        startTime: cap.startTime + i * span,
+        endTime: cap.startTime + (i + 1) * span,
+      };
+    });
+}
+
+function significantWordsFromCaption(cap, language, limit) {
+  return captionTokens(cap)
+    .filter((w) => w.text && !FILLER_WORDS.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
+    .sort((a, b) => scoreWordSignificance(b.text, language) - scoreWordSignificance(a.text, language))
+    .slice(0, limit);
+}
+
+function captionHasWordHit(wordHits, cap) {
+  const start = Number(cap.startTime) || 0;
+  const end = Number(cap.endTime) || start;
+  return wordHits.some((h) => {
+    const t = Number(h.startTime) || 0;
+    return t >= start - 0.05 && t <= end + 0.05;
+  });
+}
+
+/**
+ * Build pack-biased wordHits for every caption that still has none.
+ * Ensures AI Place covers the full video, not only the opening captions.
+ */
+function appendMissingCaptionWordHits({
+  wordHits,
+  captions = [],
+  libraries,
+  language = "en-US",
+  pack = null,
+}) {
+  if (!Array.isArray(captions) || !captions.length) return 0;
+  const fontLib = libraries.fonts.items;
+  const effectLib = libraries.effects.items;
+  const sfxLib = libraries.sfx.items;
+  const hitsPerCap = wordHitsPerCaption(pack);
+  const effectPoolBase = effectPoolForPack(effectLib, pack);
+  const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
+
+  const scriptFonts = fontLib.filter((f) => {
+    const scripts = f.scripts || [];
+    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
+    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
+    return scripts.some((s) => ["en", "latin"].includes(s));
+  });
+  const fonts = scriptFonts.length ? scriptFonts : fontLib;
+  let added = 0;
+
+  captions.forEach((cap, index) => {
+    if (captionHasWordHit(wordHits, cap)) return;
+    const sig = significantWordsFromCaption(cap, language, hitsPerCap);
+    if (!sig.length) return;
+    sig.forEach((word, wi) => {
+      const font = fonts[(index + wi) % fonts.length];
+      if (!font) return;
+      const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
+      const effectPool = punchy.length ? punchy : effectPoolBase;
+      const effect = effectPool[(index * 3 + wi * 2) % effectPool.length];
+      if (!effect) return;
+      const preferred = (effect.preferredSfx || [])
+        .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
+        .filter(Boolean);
+      const sfx =
+        preferred[0] ||
+        sfxPoolBase[(index + wi) % sfxPoolBase.length] ||
+        sfxLib[(index + wi) % sfxLib.length];
+      const palette = effect.colors || WORD_HIT_COLORS;
+      wordHits.push({
+        kind: "wordHit",
+        assetId: font.id,
+        fontId: font.id,
+        effectId: effect.id,
+        sfxId: sfx?.id,
+        word: word.text,
+        text: word.text,
+        captionIndex: index,
+        wordIndex: word.index,
+        startTime: word.startTime,
+        endTime: word.endTime,
+        x: 0.35 + (wi % 2) * 0.3,
+        y: 0.36 + (index % 3) * 0.06,
+        scale: 1.35 + (wi % 2) * 0.2,
+        rotation: wi % 2 === 0 ? -5 : 6,
+        color: palette[0],
+        secondaryColor: palette[1] || palette[0],
+        reason: `Full-duration fill "${word.text}" → ${effect.id}`,
+      });
+      added += 1;
+    });
+  });
+  return added;
+}
+
 /** Offline heuristic — significant word hits + measured asset lengths. */
 export function heuristicPlan({
   captions,
@@ -1003,99 +1136,19 @@ export function heuristicPlan({
   const wordHits = [];
   const textLib = libraries["text-styles"].items;
   const sfxLib = libraries.sfx.items;
-  const fontLib = libraries.fonts.items;
-  const effectLib = libraries.effects.items;
   const pack = getPack(packId);
-  const hitsPerCap = wordHitsPerCaption(pack);
-  const effectPoolBase = effectPoolForPack(effectLib, pack);
   const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
 
-  const scriptFonts = fontLib.filter((f) => {
-    const scripts = f.scripts || [];
-    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
-    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
-    return scripts.some((s) => ["en", "latin"].includes(s));
+  // Seed from all captions — validatePlacements also fills any gaps.
+  appendMissingCaptionWordHits({
+    wordHits,
+    captions,
+    libraries,
+    language,
+    pack,
   });
-  const fonts = scriptFonts.length ? scriptFonts : fontLib;
 
-  const significantFrom = (cap) => {
-    const parts = Array.isArray(cap.words) && cap.words.length
-      ? cap.words.map((w, i) => ({ ...w, index: i }))
-      : String(cap.text || "")
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((text, i, arr) => {
-            const span = (cap.endTime - cap.startTime) / arr.length;
-            return {
-              text,
-              index: i,
-              startTime: cap.startTime + i * span,
-              endTime: cap.startTime + (i + 1) * span,
-            };
-          });
-    // Prefer longer / non-filler tokens
-    const filler = new Set([
-      "a","an","the","to","of","and","or","in","on","is","are","for","with","this","that",
-      "एक","और","की","के","को","में","से","है","हैं","का","कि",
-      "ఒక","మరియు","లో","కి","నుంచి","ఉంది","అని"
-    ]);
-    return parts
-      .filter((w) => w.text && !filler.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
-      .sort((a, b) => scoreWordSignificance(b.text, language) - scoreWordSignificance(a.text, language))
-      .slice(0, hitsPerCap);
-  };
-
-  captions.slice(0, 8).forEach((cap, index) => {
-    const lower = (cap.text || "").toLowerCase();
-    const mood =
-      /(let'?s go|fire|crazy|insane|wow|hype|धमाका|ज़ोर|గొప్ప)/.test(lower)
-        ? "hype"
-        : /(love|heart|feel|miss|प्यार|ప్రేమ)/.test(lower)
-          ? "emotional"
-          : /(ai|tech|code|app|build|एआई)/.test(lower)
-            ? "tech"
-            : /(tip|how|secret|watch|टिप)/.test(lower)
-              ? "reveal"
-              : "default";
-    void mood;
-
-    // Significant word hits with pack-biased effects + sfx
-    const sig = significantFrom(cap);
-    sig.forEach((word, wi) => {
-      const font = fonts[(index + wi) % fonts.length];
-      const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
-      const effectPool = punchy.length ? punchy : effectPoolBase;
-      const effect = effectPool[(index * 3 + wi * 2) % effectPool.length];
-      const preferred = (effect.preferredSfx || [])
-        .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
-        .filter(Boolean);
-      const sfx =
-        preferred[0] ||
-        sfxPoolBase[(index + wi) % sfxPoolBase.length] ||
-        sfxLib[(index + wi) % sfxLib.length];
-      const palette = effect.colors || WORD_HIT_COLORS;
-      wordHits.push({
-        kind: "wordHit",
-        assetId: font.id,
-        fontId: font.id,
-        effectId: effect.id,
-        sfxId: sfx.id,
-        word: word.text,
-        text: word.text,
-        captionIndex: index,
-        wordIndex: word.index,
-        startTime: word.startTime,
-        endTime: word.endTime,
-        x: 0.35 + (wi % 2) * 0.3,
-        y: 0.36 + (index % 3) * 0.06,
-        scale: 1.35 + (wi % 2) * 0.2,
-        rotation: wi % 2 === 0 ? -5 : 6,
-        color: palette[0],
-        secondaryColor: palette[1] || palette[0],
-        reason: `Pack${pack ? `:${pack.id}` : ""} "${word.text}" → ${effect.id} + ${sfx.id}`,
-      });
-    });
-
+  (captions || []).forEach((cap, index) => {
     if (index % 3 === 0 && textLib.length) {
       const textAsset = textLib[index % textLib.length];
       placements.push({
