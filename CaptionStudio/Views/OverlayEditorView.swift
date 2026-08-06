@@ -12,9 +12,20 @@ struct OverlayEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Overlays")
-                .font(.custom("AvenirNext-Bold", size: 15))
-                .foregroundStyle(.white)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Timeline layers")
+                    .font(.custom("AvenirNext-Bold", size: 15))
+                    .foregroundStyle(.white)
+                Spacer()
+                Text("\(editor.project.overlays.count) overlays · \(editor.project.soundEffects.count) SFX")
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .padding(.horizontal, 16)
+
+            Text("Select a layer to scrub, retime, or delete. Drag on preview to reposition.")
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.4))
                 .padding(.horizontal, 16)
 
             HStack(spacing: 8) {
@@ -55,8 +66,8 @@ struct OverlayEditorView: View {
                 .padding(.horizontal, 16)
             }
 
-            if editor.project.overlays.isEmpty {
-                Text("Add text, emojis, or shapes timed to your clip.")
+            if editor.project.overlays.isEmpty && editor.project.soundEffects.isEmpty {
+                Text("Run AI Place or add stickers — they show up here as adjustable layers.")
                     .font(.custom("AvenirNext-Medium", size: 13))
                     .foregroundStyle(.white.opacity(0.4))
                     .padding(.horizontal, 16)
@@ -64,9 +75,11 @@ struct OverlayEditorView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 8) {
-                        ForEach(editor.project.overlays) { item in
-                            OverlayRow(
+                        ForEach(editor.timelineOverlays) { item in
+                            OverlayLayerRow(
                                 item: item,
+                                duration: max(editor.project.duration, 0.1),
+                                currentTime: editor.currentTime,
                                 isSelected: editor.selectedOverlayID == item.id
                             ) {
                                 editor.selectedOverlayID = item.id
@@ -75,6 +88,29 @@ struct OverlayEditorView: View {
                                 editor.deleteOverlay(item.id)
                             } onChange: { updated in
                                 editor.updateOverlay(updated)
+                            }
+                        }
+
+                        if !editor.project.soundEffects.isEmpty {
+                            Text("Sound effects")
+                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 8)
+
+                            ForEach(editor.project.soundEffects.sorted(by: { $0.startTime < $1.startTime })) { cue in
+                                SFXLayerRow(
+                                    cue: cue,
+                                    duration: max(editor.project.duration, 0.1),
+                                    currentTime: editor.currentTime
+                                ) {
+                                    editor.seek(to: cue.startTime)
+                                    editor.previewSFX(cue)
+                                } onDelete: {
+                                    editor.deleteSoundEffect(cue.id)
+                                } onChange: { updated in
+                                    editor.updateSoundEffect(updated)
+                                }
                             }
                         }
                     }
@@ -101,8 +137,10 @@ struct OverlayEditorView: View {
     }
 }
 
-struct OverlayRow: View {
+struct OverlayLayerRow: View {
     let item: OverlayItem
+    var duration: TimeInterval
+    var currentTime: TimeInterval
     var isSelected: Bool
     var onSelect: () -> Void
     var onDelete: () -> Void
@@ -112,12 +150,16 @@ struct OverlayRow: View {
 
     init(
         item: OverlayItem,
+        duration: TimeInterval,
+        currentTime: TimeInterval,
         isSelected: Bool,
         onSelect: @escaping () -> Void,
         onDelete: @escaping () -> Void,
         onChange: @escaping (OverlayItem) -> Void
     ) {
         self.item = item
+        self.duration = duration
+        self.currentTime = currentTime
         self.isSelected = isSelected
         self.onSelect = onSelect
         self.onDelete = onDelete
@@ -125,22 +167,74 @@ struct OverlayRow: View {
         _draft = State(initialValue: item)
     }
 
+    private var isLive: Bool { item.isVisible(at: currentTime) }
+
+    private var title: String {
+        switch item.kind {
+        case .emoji: return item.text
+        case .wordHit: return item.text.isEmpty ? "Word hit" : item.text
+        case .gif, .png: return item.text.isEmpty ? item.kind.label : item.text
+        default: return item.text.isEmpty ? item.kind.label : item.text
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(item.kind == .emoji ? item.text : item.kind.label)
+            HStack(spacing: 8) {
+                Image(systemName: item.kind.systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(TimelineLaneStyle.color(for: item.kind))
+                    .frame(width: 18)
+
+                Text(title)
                     .font(.custom("AvenirNext-DemiBold", size: 13))
                     .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Text(item.kind.label.uppercased())
+                    .font(.custom("AvenirNext-Medium", size: 9))
+                    .foregroundStyle(TimelineLaneStyle.color(for: item.kind).opacity(0.9))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(TimelineLaneStyle.color(for: item.kind).opacity(0.15), in: Capsule())
+
+                if isLive {
+                    Text("LIVE")
+                        .font(.custom("AvenirNext-Bold", size: 9))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(red: 0.4, green: 0.95, blue: 0.8), in: Capsule())
+                }
+
                 Spacer()
-                Text(String(format: "%.1f–%.1fs", item.startTime, item.endTime))
-                    .font(.custom("AvenirNext-Medium", size: 10))
-                    .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.7))
+
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
                         .foregroundStyle(.white.opacity(0.35))
                 }
                 .buttonStyle(.plain)
             }
+
+            // Mini span bar
+            GeometryReader { geo in
+                let w = max(geo.size.width, 1)
+                let x = CGFloat(draft.startTime / duration) * w
+                let width = max(4, CGFloat((draft.endTime - draft.startTime) / duration) * w)
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule()
+                        .fill(TimelineLaneStyle.color(for: item.kind).opacity(isSelected ? 0.95 : 0.55))
+                        .frame(width: width)
+                        .offset(x: x)
+                    // Playhead tick
+                    Rectangle()
+                        .fill(Color.white.opacity(0.7))
+                        .frame(width: 1.5)
+                        .offset(x: CGFloat(currentTime / duration) * w)
+                }
+            }
+            .frame(height: 8)
 
             if item.kind == .text || item.kind == .watermark {
                 TextField("Overlay text", text: $draft.text)
@@ -157,33 +251,231 @@ struct OverlayRow: View {
                 Text(reason)
                     .font(.custom("AvenirNext-Medium", size: 11))
                     .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(2)
             }
+
+            timingSlider(
+                label: "Start",
+                value: Binding(
+                    get: { draft.startTime },
+                    set: { newStart in
+                        var updated = draft
+                        let clamped = min(max(0, newStart), max(0, duration - 0.1))
+                        updated.startTime = clamped
+                        if updated.endTime <= clamped + 0.05 {
+                            updated.endTime = min(duration, clamped + 0.4)
+                        }
+                        draft = updated
+                        onChange(updated)
+                    }
+                ),
+                range: 0...max(duration, 0.1)
+            )
+
+            timingSlider(
+                label: "End",
+                value: Binding(
+                    get: { draft.endTime },
+                    set: { newEnd in
+                        var updated = draft
+                        let minEnd = updated.startTime + 0.05
+                        updated.endTime = min(duration, max(minEnd, newEnd))
+                        draft = updated
+                        onChange(updated)
+                    }
+                ),
+                range: 0...max(duration, 0.1)
+            )
 
             HStack {
                 Text("Scale")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 40, alignment: .leading)
                 Slider(value: $draft.scale, in: 0.5...2.5)
-                    .tint(Color(red: 0.3, green: 0.92, blue: 0.75))
+                    .tint(TimelineLaneStyle.color(for: item.kind))
                     .onChange(of: draft.scale) { _, v in
                         var updated = draft
                         updated.scale = v
                         onChange(updated)
                     }
+                Text(String(format: "%.1f×", draft.scale))
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(width: 36, alignment: .trailing)
             }
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(isSelected ? 0.1 : 0.05))
+                .fill(Color.white.opacity(isSelected ? 0.12 : 0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(
+                            isSelected ? TimelineLaneStyle.color(for: item.kind).opacity(0.55) : Color.clear,
+                            lineWidth: 1
+                        )
+                )
         )
         .onTapGesture(perform: onSelect)
         .onChange(of: item) { _, newValue in
             draft = newValue
         }
     }
+
+    private func timingSlider(
+        label: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>
+    ) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.4))
+                .frame(width: 40, alignment: .leading)
+            Slider(value: value, in: range)
+                .tint(TimelineLaneStyle.color(for: item.kind))
+            Text(String(format: "%.1fs", value.wrappedValue))
+                .font(.custom("AvenirNext-Medium", size: 10))
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(width: 36, alignment: .trailing)
+        }
+    }
 }
 
+struct SFXLayerRow: View {
+    let cue: SoundEffectCue
+    var duration: TimeInterval
+    var currentTime: TimeInterval
+    var onSelect: () -> Void
+    var onDelete: () -> Void
+    var onChange: (SoundEffectCue) -> Void
+
+    @State private var draft: SoundEffectCue
+
+    init(
+        cue: SoundEffectCue,
+        duration: TimeInterval,
+        currentTime: TimeInterval,
+        onSelect: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        onChange: @escaping (SoundEffectCue) -> Void
+    ) {
+        self.cue = cue
+        self.duration = duration
+        self.currentTime = currentTime
+        self.onSelect = onSelect
+        self.onDelete = onDelete
+        self.onChange = onChange
+        _draft = State(initialValue: cue)
+    }
+
+    private var isLive: Bool { abs(currentTime - cue.startTime) < 0.35 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TimelineLaneStyle.sfx)
+                Text(cue.assetId)
+                    .font(.custom("AvenirNext-DemiBold", size: 13))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if isLive {
+                    Text("LIVE")
+                        .font(.custom("AvenirNext-Bold", size: 9))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(TimelineLaneStyle.sfx, in: Capsule())
+                }
+                Spacer()
+                Button(action: onSelect) {
+                    Image(systemName: "play.fill")
+                        .foregroundStyle(TimelineLaneStyle.sfx)
+                }
+                .buttonStyle(.plain)
+                Button(role: .destructive, action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack {
+                Text("Start")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 40, alignment: .leading)
+                Slider(
+                    value: Binding(
+                        get: { draft.startTime },
+                        set: { t in
+                            var updated = draft
+                            updated.startTime = min(max(0, t), duration)
+                            draft = updated
+                            onChange(updated)
+                        }
+                    ),
+                    in: 0...max(duration, 0.1)
+                )
+                .tint(TimelineLaneStyle.sfx)
+                Text(String(format: "%.1fs", draft.startTime))
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(width: 36, alignment: .trailing)
+            }
+
+            HStack {
+                Text("Gain")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(width: 40, alignment: .leading)
+                Slider(
+                    value: Binding(
+                        get: { draft.gain },
+                        set: { g in
+                            var updated = draft
+                            updated.gain = g
+                            draft = updated
+                            onChange(updated)
+                        }
+                    ),
+                    in: 0.1...1.2
+                )
+                .tint(TimelineLaneStyle.sfx)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
+        .onTapGesture(perform: onSelect)
+        .onChange(of: cue) { _, newValue in
+            draft = newValue
+        }
+    }
+}
+
+enum TimelineLaneStyle {
+    static let captions = Color(red: 0.3, green: 0.92, blue: 0.75)
+    static let wordHit = Color(red: 1.0, green: 0.94, blue: 0.35)
+    static let sticker = Color(red: 1.0, green: 0.45, blue: 0.75)
+    static let text = Color(red: 0.55, green: 0.75, blue: 1.0)
+    static let trim = Color(red: 1.0, green: 0.55, blue: 0.2)
+    static let sfx = Color(red: 0.7, green: 0.55, blue: 1.0)
+
+    static func color(for kind: OverlayKind) -> Color {
+        switch kind {
+        case .wordHit: return wordHit
+        case .gif, .png: return sticker
+        case .text, .watermark, .emoji: return text
+        case .shape: return captions
+        }
+    }
+}
 struct ExportPanelView: View {
     @EnvironmentObject private var editor: EditorViewModel
 

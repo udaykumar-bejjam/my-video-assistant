@@ -428,42 +428,162 @@ struct SafeZoneGuideView: View {
 struct TimelineScrubber: View {
     @EnvironmentObject private var editor: EditorViewModel
 
+    private var duration: TimeInterval { max(editor.project.duration, 0.1) }
+
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             Slider(
                 value: Binding(
                     get: { editor.currentTime },
                     set: { editor.seek(to: $0) }
                 ),
-                in: 0...max(editor.project.duration, 0.1)
+                in: 0...duration
             )
-            .tint(Color(red: 0.3, green: 0.92, blue: 0.75))
+            .tint(TimelineLaneStyle.captions)
 
-            // Caption markers + trim suggestions
-            GeometryReader { geo in
-                let duration = max(editor.project.duration, 0.1)
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08))
-                    ForEach(editor.trimSuggestions) { cut in
-                        let selected = editor.selectedTrimIDs.contains(cut.id)
-                        let x = cut.startTime / duration * geo.size.width
-                        let w = max(2, cut.duration / duration * geo.size.width)
-                        Capsule()
-                            .fill(Color(red: 1.0, green: 0.55, blue: 0.2).opacity(selected ? 0.85 : 0.35))
-                            .frame(width: w, height: 6)
-                            .offset(x: x)
+            // Multi-lane timeline of placed items
+            VStack(spacing: 4) {
+                timelineLane(
+                    title: "Caps",
+                    color: TimelineLaneStyle.captions,
+                    spans: editor.project.captions.map {
+                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: $0.endTime, selected: editor.selectedCaptionID == $0.id)
                     }
-                    ForEach(editor.project.captions) { caption in
-                        let x = caption.startTime / duration * geo.size.width
-                        let w = max(2, caption.duration / duration * geo.size.width)
-                        Capsule()
-                            .fill(Color(red: 0.3, green: 0.92, blue: 0.75).opacity(0.7))
-                            .frame(width: w, height: 6)
-                            .offset(x: x)
+                ) { span in
+                    if let cap = editor.project.captions.first(where: { $0.id.uuidString == span.id }) {
+                        editor.selectedCaptionID = cap.id
+                        editor.seek(to: cap.startTime)
+                        editor.editorTab = .captions
+                    }
+                }
+
+                timelineLane(
+                    title: "Hits",
+                    color: TimelineLaneStyle.wordHit,
+                    spans: editor.project.overlays.filter { $0.kind == .wordHit }.map {
+                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: $0.endTime, selected: editor.selectedOverlayID == $0.id)
+                    }
+                ) { span in
+                    selectOverlay(idString: span.id)
+                }
+
+                timelineLane(
+                    title: "Stick",
+                    color: TimelineLaneStyle.sticker,
+                    spans: editor.project.overlays.filter { $0.kind == .gif || $0.kind == .png }.map {
+                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: $0.endTime, selected: editor.selectedOverlayID == $0.id)
+                    }
+                ) { span in
+                    selectOverlay(idString: span.id)
+                }
+
+                timelineLane(
+                    title: "Text",
+                    color: TimelineLaneStyle.text,
+                    spans: editor.project.overlays.filter {
+                        $0.kind == .text || $0.kind == .emoji || $0.kind == .watermark || $0.kind == .shape
+                    }.map {
+                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: $0.endTime, selected: editor.selectedOverlayID == $0.id)
+                    }
+                ) { span in
+                    selectOverlay(idString: span.id)
+                }
+
+                timelineLane(
+                    title: "SFX",
+                    color: TimelineLaneStyle.sfx,
+                    spans: editor.project.soundEffects.map {
+                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: min(duration, $0.startTime + 0.35), selected: false)
+                    },
+                    markerOnly: true
+                ) { span in
+                    if let cue = editor.project.soundEffects.first(where: { $0.id.uuidString == span.id }) {
+                        editor.seek(to: cue.startTime)
+                        editor.editorTab = .overlays
+                    }
+                }
+
+                if !editor.trimSuggestions.isEmpty {
+                    timelineLane(
+                        title: "Trim",
+                        color: TimelineLaneStyle.trim,
+                        spans: editor.trimSuggestions.map {
+                            TimelineSpan(
+                                id: $0.id.uuidString,
+                                start: $0.startTime,
+                                end: $0.endTime,
+                                selected: editor.selectedTrimIDs.contains($0.id)
+                            )
+                        }
+                    ) { span in
+                        if let cut = editor.trimSuggestions.first(where: { $0.id.uuidString == span.id }) {
+                            if editor.selectedTrimIDs.contains(cut.id) {
+                                editor.selectedTrimIDs.remove(cut.id)
+                            } else {
+                                editor.selectedTrimIDs.insert(cut.id)
+                            }
+                            editor.seek(to: cut.startTime)
+                            editor.editorTab = .trim
+                        }
                     }
                 }
             }
-            .frame(height: 6)
         }
     }
+
+    private func selectOverlay(idString: String) {
+        guard let item = editor.project.overlays.first(where: { $0.id.uuidString == idString }) else { return }
+        editor.selectedOverlayID = item.id
+        editor.seek(to: item.startTime)
+        editor.editorTab = .overlays
+    }
+
+    private func timelineLane(
+        title: String,
+        color: Color,
+        spans: [TimelineSpan],
+        markerOnly: Bool = false,
+        onTap: @escaping (TimelineSpan) -> Void
+    ) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.custom("AvenirNext-Medium", size: 9))
+                .foregroundStyle(.white.opacity(0.4))
+                .frame(width: 28, alignment: .leading)
+
+            GeometryReader { geo in
+                let w = max(geo.size.width, 1)
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.06))
+                    ForEach(spans) { span in
+                        let x = CGFloat(span.start / duration) * w
+                        let width = markerOnly
+                            ? 3
+                            : max(3, CGFloat((span.end - span.start) / duration) * w)
+                        Capsule()
+                            .fill(color.opacity(span.selected ? 0.95 : 0.55))
+                            .frame(width: width, height: markerOnly ? 10 : 8)
+                            .offset(x: x)
+                            .contentShape(Rectangle())
+                            .onTapGesture { onTap(span) }
+                    }
+                    // Playhead
+                    Rectangle()
+                        .fill(Color.white.opacity(0.85))
+                        .frame(width: 1.5, height: 12)
+                        .offset(x: CGFloat(editor.currentTime / duration) * w)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(height: 12)
+        }
+        .frame(height: 14)
+    }
+}
+
+private struct TimelineSpan: Identifiable {
+    var id: String
+    var start: TimeInterval
+    var end: TimeInterval
+    var selected: Bool
 }

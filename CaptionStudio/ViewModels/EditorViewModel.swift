@@ -85,7 +85,7 @@ final class EditorViewModel: ObservableObject {
             switch self {
             case .captions: return "Captions"
             case .styles: return "Styles"
-            case .overlays: return "Overlays"
+            case .overlays: return "Layers"
             case .libraries: return "Library"
             case .trim: return "Trim"
             case .export: return "Export"
@@ -95,7 +95,7 @@ final class EditorViewModel: ObservableObject {
             switch self {
             case .captions: return "text.bubble.fill"
             case .styles: return "paintpalette.fill"
-            case .overlays: return "square.stack.3d.up.fill"
+            case .overlays: return "rectangle.stack.fill"
             case .libraries: return "square.grid.2x2.fill"
             case .trim: return "scissors"
             case .export: return "square.and.arrow.up.fill"
@@ -914,6 +914,20 @@ final class EditorViewModel: ObservableObject {
     func deleteOverlay(_ id: OverlayItem.ID) {
         project.overlays.removeAll { $0.id == id }
         if selectedOverlayID == id { selectedOverlayID = nil }
+    }
+
+    func updateSoundEffect(_ cue: SoundEffectCue) {
+        guard let index = project.soundEffects.firstIndex(where: { $0.id == cue.id }) else { return }
+        project.soundEffects[index] = cue
+    }
+
+    func deleteSoundEffect(_ id: SoundEffectCue.ID) {
+        project.soundEffects.removeAll { $0.id == id }
+    }
+
+    /// Overlays sorted by start time for the layers timeline / inspector.
+    var timelineOverlays: [OverlayItem] {
+        project.overlays.sorted { $0.startTime < $1.startTime }
     }
 
     // MARK: - Export
