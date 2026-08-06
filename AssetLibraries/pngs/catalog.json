@@ -11,8 +11,8 @@
         "highlight"
       ],
       "file": "starburst.png",
-      "defaultDuration": 2.0,
-      "defaultScale": 1.0,
+      "defaultDuration": 2,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
     },
@@ -25,8 +25,8 @@
         "direction"
       ],
       "file": "arrow-pop.png",
-      "defaultDuration": 2.0,
-      "defaultScale": 1.0,
+      "defaultDuration": 2,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
     },
@@ -54,7 +54,7 @@
       ],
       "file": "heart.png",
       "defaultDuration": 1.8,
-      "defaultScale": 1.0,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
     },
@@ -68,7 +68,7 @@
       ],
       "file": "bolt.png",
       "defaultDuration": 1.5,
-      "defaultScale": 1.0,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
     },
@@ -96,7 +96,7 @@
       ],
       "file": "sparkle.png",
       "defaultDuration": 1.6,
-      "defaultScale": 1.0,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
     },
@@ -109,10 +109,48 @@
         "precision"
       ],
       "file": "target.png",
-      "defaultDuration": 2.0,
-      "defaultScale": 1.0,
+      "defaultDuration": 2,
+      "defaultScale": 1,
       "width": 256,
       "height": 256
+    },
+    {
+      "id": "iconify-mdi-fire",
+      "name": "Fire",
+      "tags": [
+        "power",
+        "hype",
+        "energy",
+        "hot"
+      ],
+      "file": "iconify-mdi-fire.png",
+      "defaultDuration": 1.8,
+      "defaultScale": 1,
+      "width": 256,
+      "height": 256,
+      "source": "iconify",
+      "iconifyId": "mdi:fire",
+      "licenseNote": "Check Iconify collection license (prefer MIT/Apache)"
+    },
+    {
+      "id": "iconify-mdi-arrow-right",
+      "name": "Arrow Right",
+      "tags": [
+        "cta",
+        "direction",
+        "point",
+        "product",
+        "premium",
+        "arrow-right"
+      ],
+      "file": "iconify-mdi-arrow-right.png",
+      "defaultDuration": 1.8,
+      "defaultScale": 1,
+      "width": 256,
+      "height": 256,
+      "source": "iconify",
+      "iconifyId": "mdi:arrow-right",
+      "licenseNote": "Check Iconify collection license (prefer MIT/Apache)"
     }
   ]
 }
