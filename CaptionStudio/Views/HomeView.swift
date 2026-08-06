@@ -86,11 +86,9 @@ struct HomeView: View {
                         .padding(.top, 18)
                         .opacity(appear ? 1 : 0)
 
-                    if !editor.projectStore.drafts.isEmpty {
-                        DraftsListView()
-                            .padding(.top, 20)
-                            .opacity(appear ? 1 : 0)
-                    }
+                    DraftsListView()
+                        .padding(.top, 20)
+                        .opacity(appear ? 1 : 0)
                 }
                 .padding(.horizontal, 28)
 
@@ -156,14 +154,30 @@ struct HomeView: View {
 
 struct DraftsListView: View {
     @EnvironmentObject private var editor: EditorViewModel
+    @State private var showImporter = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Drafts")
-                .font(.custom("AvenirNext-DemiBold", size: 13))
-                .foregroundStyle(.white.opacity(0.55))
+            HStack {
+                Text("Saved projects")
+                    .font(.custom("AvenirNext-DemiBold", size: 13))
+                    .foregroundStyle(.white.opacity(0.55))
+                Spacer()
+                Button {
+                    showImporter = true
+                } label: {
+                    Label("Open package", systemImage: "folder")
+                        .font(.custom("AvenirNext-DemiBold", size: 11))
+                        .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8))
+                }
+                .buttonStyle(.plain)
+            }
 
-            ForEach(editor.projectStore.drafts.prefix(6)) { draft in
+            Text("JSON project files with captions, overlays, SFX refs, and resume position.")
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.35))
+
+            ForEach(editor.projectStore.drafts.prefix(8)) { draft in
                 HStack(spacing: 12) {
                     Button {
                         Task { await editor.openDraft(draft) }
@@ -182,9 +196,18 @@ struct DraftsListView: View {
                                     .font(.custom("AvenirNext-DemiBold", size: 14))
                                     .foregroundStyle(.white)
                                     .lineLimit(1)
-                                Text(String(format: "%.0fs · %@", draft.duration, draft.updatedAt.formatted(date: .abbreviated, time: .shortened)))
+                                Text(String(
+                                    format: "%.0fs · resume %@ · %@",
+                                    draft.duration,
+                                    draft.resumeClock,
+                                    draft.updatedAt.formatted(date: .abbreviated, time: .shortened)
+                                ))
                                     .font(.custom("AvenirNext-Medium", size: 11))
                                     .foregroundStyle(.white.opacity(0.45))
+                                Text(summaryLine(for: draft))
+                                    .font(.custom("AvenirNext-Medium", size: 10))
+                                    .foregroundStyle(.white.opacity(0.32))
+                                    .lineLimit(1)
                             }
                             Spacer(minLength: 0)
                             Text(draft.languageBadge)
@@ -209,8 +232,41 @@ struct DraftsListView: View {
                 }
                 .padding(.vertical, 4)
             }
+
+            if editor.projectStore.drafts.isEmpty {
+                Text("No saved projects yet — Save from the editor, or open a .captionstudio package.")
+                    .font(.custom("AvenirNext-Medium", size: 12))
+                    .foregroundStyle(.white.opacity(0.35))
+                    .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            let accessed = url.startAccessingSecurityScopedResource()
+            Task {
+                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                var package = url
+                // Allow picking a folder that is the package, or that contains project.json.
+                if url.lastPathComponent == "project.json" {
+                    package = url.deletingLastPathComponent()
+                }
+                await editor.importProjectPackage(from: package)
+            }
+        }
+    }
+
+    private func summaryLine(for draft: SavedProject) -> String {
+        var parts: [String] = []
+        if !draft.captions.isEmpty { parts.append("\(draft.captions.count) caps") }
+        if !draft.overlays.isEmpty { parts.append("\(draft.overlays.count) overlays") }
+        if !draft.soundEffects.isEmpty { parts.append("\(draft.soundEffects.count) SFX") }
+        parts.append(draft.audio.enhancerPreset.title)
+        return parts.joined(separator: " · ")
     }
 }
 

@@ -36,9 +36,9 @@ struct EditorView: View {
                 .environmentObject(editor)
         }
         .confirmationDialog("Leave editor?", isPresented: $showLeaveConfirm) {
-            Button("Save Draft & Leave") {
+            Button("Save Project & Leave") {
                 do {
-                    try editor.saveDraft()
+                    try editor.saveProject()
                     editor.leaveWithoutSaving()
                 } catch {
                     editor.errorMessage = error.localizedDescription
@@ -75,6 +75,23 @@ struct EditorView: View {
             }
 
             Spacer()
+
+            Button {
+                do {
+                    _ = try editor.saveProject()
+                } catch {
+                    editor.errorMessage = error.localizedDescription
+                }
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .font(.custom("AvenirNext-DemiBold", size: 12))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.1), in: Capsule())
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            .disabled(editor.project.videoURL == nil)
 
             if editor.isTranscribing || editor.isEnhancing || editor.isExporting {
                 ProgressView()

@@ -923,12 +923,12 @@ struct ExportPanelView: View {
 
             Button {
                 do {
-                    _ = try editor.saveDraft()
+                    _ = try editor.saveProject()
                 } catch {
                     editor.errorMessage = error.localizedDescription
                 }
             } label: {
-                Label("Save Draft", systemImage: "square.and.arrow.down")
+                Label("Save Project", systemImage: "square.and.arrow.down")
                     .font(.custom("AvenirNext-DemiBold", size: 13))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -938,6 +938,22 @@ struct ExportPanelView: View {
             .buttonStyle(.plain)
             .disabled(editor.project.videoURL == nil)
             .padding(.horizontal, 16)
+
+            #if os(macOS)
+            Button {
+                exportPortablePackage()
+            } label: {
+                Label("Export package…", systemImage: "folder.badge.plus")
+                    .font(.custom("AvenirNext-DemiBold", size: 13))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color.white.opacity(0.08), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(editor.project.videoURL == nil)
+            .padding(.horizontal, 16)
+            #endif
 
             if let draftMessage = editor.draftMessage {
                 Text(draftMessage)
@@ -964,6 +980,24 @@ struct ExportPanelView: View {
             editor.ensureDistribution()
         }
     }
+
+    #if os(macOS)
+    private func exportPortablePackage() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Export Here"
+        panel.message = "Choose a folder for the .captionstudio package (project.json + video)."
+        guard panel.runModal() == .OK, let directory = panel.url else { return }
+        do {
+            let package = try editor.exportProjectPackage(to: directory)
+            editor.draftMessage = "Exported \(package.lastPathComponent)"
+        } catch {
+            editor.errorMessage = error.localizedDescription
+        }
+    }
+    #endif
 
     private func summaryRow(_ title: String, _ value: String) -> some View {
         HStack {

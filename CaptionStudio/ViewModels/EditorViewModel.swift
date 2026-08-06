@@ -447,17 +447,41 @@ final class EditorViewModel: ObservableObject {
         project.overlays.append(mark)
     }
 
-    // MARK: - Drafts
+    // MARK: - Projects (JSON save / load)
+
+    /// Snapshot of playhead, tab, and selections for `project.json`.
+    func currentSessionState() -> ProjectSessionState {
+        ProjectSessionState(
+            playheadTime: currentTime,
+            editorTab: editorTab.rawValue,
+            selectedCaptionID: selectedCaptionID,
+            selectedOverlayID: selectedOverlayID,
+            selectedSoundEffectID: selectedSoundEffectID,
+            isAudioLayerSelected: isAudioLayerSelected,
+            showSafeZone: showSafeZone,
+            libraryKind: libraryKind.rawValue
+        )
+    }
 
     @discardableResult
     func saveDraft() throws -> SavedProject {
         project.language = language
-        let saved = try projectStore.save(project: project)
-        // Point at the durable draft copy so later saves are stable.
+        let saved = try projectStore.save(
+            project: project,
+            session: currentSessionState(),
+            distribution: distribution
+        )
+        // Point at the durable project copy so later saves are stable.
         project.videoURL = try projectStore.load(id: saved.id).1
         project.id = saved.id
-        draftMessage = "Saved “\(saved.title)”"
+        draftMessage = "Saved “\(saved.title)” at \(saved.resumeClock)"
         return saved
+    }
+
+    /// Alias — projects are JSON packages with media references.
+    @discardableResult
+    func saveProject() throws -> SavedProject {
+        try saveDraft()
     }
 
     func openDraft(_ saved: SavedProject) async {
@@ -469,6 +493,7 @@ final class EditorViewModel: ObservableObject {
             normalizeLoudness = project.audio.normalizeLoudness
             selectedPreset = packs.pack(id: draft.packId)?.captionPreset ?? selectedPreset
             lastEnhancementNote = draft.enhancementSummary
+            distribution = draft.distribution
             refreshTrimSuggestions()
             refreshWatermarkOverlay()
 
@@ -476,7 +501,6 @@ final class EditorViewModel: ObservableObject {
             let item = AVPlayerItem(asset: asset)
             let newPlayer = AVPlayer(playerItem: item)
             player = newPlayer
-            currentTime = 0
             isPlaying = false
 
             let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
@@ -496,15 +520,63 @@ final class EditorViewModel: ObservableObject {
                     self?.seek(to: 0)
                 }
             }
-            draftMessage = "Opened “\(draft.title)”"
+
+            // Resume exactly where the project was left.
+            applySession(draft.session, project: project)
+            draftMessage = "Opened “\(draft.title)” · resume \(draft.resumeClock)"
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
+    /// Restore playhead, tab, and selections from `project.json` session.
+    private func applySession(_ session: ProjectSessionState, project: VideoProject) {
+        if let tab = EditorTab(rawValue: session.editorTab) {
+            editorTab = tab
+        }
+        showSafeZone = session.showSafeZone
+        if let kindRaw = session.libraryKind,
+           let kind = MediaLibraryKind(rawValue: kindRaw) {
+            libraryKind = kind
+        }
+
+        selectedCaptionID = session.selectedCaptionID.flatMap { id in
+            project.captions.contains(where: { $0.id == id }) ? id : nil
+        }
+        selectedOverlayID = session.selectedOverlayID.flatMap { id in
+            project.overlays.contains(where: { $0.id == id }) ? id : nil
+        }
+        selectedSoundEffectID = session.selectedSoundEffectID.flatMap { id in
+            project.soundEffects.contains(where: { $0.id == id }) ? id : nil
+        }
+        isAudioLayerSelected = session.isAudioLayerSelected
+            && selectedOverlayID == nil
+            && selectedSoundEffectID == nil
+
+        let t = min(max(0, session.playheadTime), max(0, project.duration))
+        currentTime = t
+        seek(to: t)
+    }
+
     func deleteDraft(_ id: UUID) {
         do {
             try projectStore.delete(id: id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Export a portable `.captionstudio` folder (project.json + video) for sharing/backup.
+    func exportProjectPackage(to directory: URL) throws -> URL {
+        _ = try saveProject()
+        return try projectStore.exportPackage(id: project.id, to: directory)
+    }
+
+    /// Import a `.captionstudio` package and open it at the saved playhead.
+    func importProjectPackage(from packageURL: URL) async {
+        do {
+            let saved = try projectStore.importPackage(from: packageURL)
+            await openDraft(saved)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -519,6 +591,11 @@ final class EditorViewModel: ObservableObject {
         normalizeLoudness = project.audio.normalizeLoudness
         isAudioLayerSelected = false
         selectedSoundEffectID = nil
+        selectedOverlayID = nil
+        selectedCaptionID = nil
+        distribution = nil
+        editorTab = .captions
+        currentTime = 0
         if let pack = selectedPack {
             applyPackSideEffects(pack)
         }

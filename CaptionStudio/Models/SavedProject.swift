@@ -1,7 +1,31 @@
 import Foundation
 import CoreGraphics
 
-/// On-disk snapshot of an editable project for drafts / history.
+/// Where the editor was left — restored on open so work resumes mid-timeline.
+struct ProjectSessionState: Equatable, Codable, Hashable {
+    var playheadTime: TimeInterval = 0
+    /// Matches `EditorViewModel.EditorTab.rawValue` (`captions`, `overlays`, …).
+    var editorTab: String = "captions"
+    var selectedCaptionID: UUID?
+    var selectedOverlayID: UUID?
+    var selectedSoundEffectID: UUID?
+    var isAudioLayerSelected: Bool = false
+    var showSafeZone: Bool = true
+    var libraryKind: String?
+
+    static let `default` = ProjectSessionState()
+}
+
+/// On-disk snapshot of an editable project (`project.json` next to `video.*`).
+///
+/// Layout per project folder:
+/// ```
+/// <id>/
+///   project.json   — captions, overlays, SFX refs, audio mix, session
+///   video.<ext>    — source footage copy
+/// ```
+/// Library assets (GIF/PNG/SFX/fonts) are referenced by `assetId` / `assetFileName`
+/// and resolved from the Media Library at load time.
 struct SavedProject: Identifiable, Codable, Equatable {
     var id: UUID
     var title: String
@@ -21,6 +45,10 @@ struct SavedProject: Identifiable, Codable, Equatable {
     var chunkCount: Int
     var createdAt: Date
     var updatedAt: Date
+    /// Resume playhead, tab, and layer selection.
+    var session: ProjectSessionState
+    /// Social post copy from AI Place / heuristics.
+    var distribution: DistributionPackage?
 
     var sourceSize: CGSize {
         CGSize(width: sourceWidth, height: sourceHeight)
@@ -34,7 +62,20 @@ struct SavedProject: Identifiable, Codable, Equatable {
         }
     }
 
-    static func from(project: VideoProject, videoFileName: String, updatedAt: Date = .now) -> SavedProject {
+    var resumeClock: String {
+        let t = max(0, session.playheadTime)
+        let m = Int(t) / 60
+        let s = Int(t) % 60
+        return String(format: "%d:%02d", m, s)
+    }
+
+    static func from(
+        project: VideoProject,
+        videoFileName: String,
+        session: ProjectSessionState = .default,
+        distribution: DistributionPackage? = nil,
+        updatedAt: Date = .now
+    ) -> SavedProject {
         SavedProject(
             id: project.id,
             title: project.title,
@@ -53,7 +94,9 @@ struct SavedProject: Identifiable, Codable, Equatable {
             language: project.language,
             chunkCount: project.chunkCount,
             createdAt: project.createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            session: session,
+            distribution: distribution
         )
     }
 
@@ -82,6 +125,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
         case id, title, videoFileName, duration, aspectRatio
         case sourceWidth, sourceHeight, captions, captionStyle, overlays, soundEffects
         case audio, enhancementSummary, packId, language, chunkCount, createdAt, updatedAt
+        case session, distribution
     }
 
     init(
@@ -102,7 +146,9 @@ struct SavedProject: Identifiable, Codable, Equatable {
         language: AppLanguage,
         chunkCount: Int,
         createdAt: Date,
-        updatedAt: Date
+        updatedAt: Date,
+        session: ProjectSessionState = .default,
+        distribution: DistributionPackage? = nil
     ) {
         self.id = id
         self.title = title
@@ -122,6 +168,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
         self.chunkCount = chunkCount
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.session = session
+        self.distribution = distribution
     }
 
     init(from decoder: Decoder) throws {
@@ -144,6 +192,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
         chunkCount = try c.decodeIfPresent(Int.self, forKey: .chunkCount) ?? 1
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        session = try c.decodeIfPresent(ProjectSessionState.self, forKey: .session) ?? .default
+        distribution = try c.decodeIfPresent(DistributionPackage.self, forKey: .distribution)
     }
 }
 
