@@ -335,7 +335,12 @@ final class EditorViewModel: ObservableObject {
             ?? libraries.items(for: .fonts).first { $0.scripts?.contains(where: { language.scriptTags.contains($0) }) == true }
         guard let font else { return nil }
         let effectId = placement.effectId ?? WordHitEffect.random().rawValue
-        let color = Color(hex: placement.color ?? "#FFEF5A") ?? .yellow
+        let effect = WordHitEffect(rawValue: effectId)
+        let effectColors = libraries.item(kind: .effects, id: effectId)?.colors
+        let primaryHex = placement.color
+            ?? effectColors?.first
+            ?? "#FFEF5A"
+        let color = Color(hex: primaryHex) ?? (effect?.palette.first ?? .yellow)
         return OverlayItem(
             kind: .wordHit,
             text: placement.displayText.isEmpty ? (font.previewText ?? "!") : placement.displayText,
@@ -348,12 +353,12 @@ final class EditorViewModel: ObservableObject {
             sfxId: placement.sfxId,
             x: placement.x,
             y: placement.y,
-            scale: placement.scale,
+            scale: max(placement.scale, 1.25),
             rotation: placement.rotation,
             startTime: placement.startTime,
             endTime: placement.endTime,
             color: color.codable,
-            fontSize: 48,
+            fontSize: 52,
             shape: .rectangle,
             opacity: 1,
             reason: placement.reason,

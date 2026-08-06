@@ -241,6 +241,8 @@ export function compactCatalog(libraries, canvas = REFERENCE_CANVAS) {
       animation: i.animation,
       lengthSeconds: i.lengthSeconds,
       preferredSfx: i.preferredSfx || [],
+      colors: i.colors || ["#FFEF5A", "#FF2D2D"],
+      description: i.description,
     })),
   };
 }
@@ -406,12 +408,14 @@ ${JSON.stringify(catalog, null, 2)}
 SIGNIFICANT WORD RULES
 1. Pick 1–2 high-impact words per caption (names, verbs of power, emotion, numbers, CTAs). Skip filler.
 2. For each wordHit use the word's OWN startTime/endTime when words[] is present; else use caption start + short span.
-3. Randomise effectId across the effects library (do not reuse the same effect for every word).
-4. Pair each effect with an sfxId — prefer that effect's preferredSfx list.
-5. fontId MUST match the language script (${scriptHint}).
-6. assetId for wordHit = fontId (required for validation).
-7. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
-8. Also emit supporting placements (gif/png/text/sfx) as before when helpful — keep total visual clutter low.
+3. Prefer PUNCHY colourful effects — punch, color-pulse, fire-pulse, stomp, slam, shake, neon-pulse — not plain bold.
+4. Randomise effectId; do not reuse the same effect for every word.
+5. Set color to the effect's first palette colour (yellow/red for punch & color-pulse). Optionally set secondaryColor.
+6. Pair each effect with an sfxId — prefer that effect's preferredSfx list.
+7. fontId MUST match the language script (${scriptHint}).
+8. assetId for wordHit = fontId (required for validation).
+9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
+10. Also emit supporting placements (gif/png/text/sfx) when helpful — keep clutter low.
 
 GENERAL TIMING RULES
 1. Never invent library ids.
@@ -474,7 +478,10 @@ export function extractJson(text) {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
-const WORD_HIT_COLORS = ["#FFEF5A", "#33F2CF", "#FF6B6B", "#FFFFFF", "#FF9F1C", "#C77DFF"];
+const WORD_HIT_COLORS = ["#FFEF5A", "#FF2D2D", "#FF9F1C", "#33F2CF", "#FF2D9B", "#FFFFFF"];
+const PUNCHY_EFFECT_IDS = [
+  "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch",
+];
 
 export function validatePlacements(plan, libraries, captions = [], videoDuration = 10) {
   const assets = indexAssets(libraries);
@@ -520,7 +527,9 @@ export function alignWordHit(placement, fonts, effects, sfxMap, captions, videoD
   const effectIds = Object.keys(effects);
   let effectId = placement.effectId;
   if (!effects[effectId]) {
-    effectId = effectIds[Math.floor(Math.random() * effectIds.length)];
+    const punchy = PUNCHY_EFFECT_IDS.filter((id) => effects[id]);
+    const pool = punchy.length ? punchy : effectIds;
+    effectId = pool[Math.floor(Math.random() * pool.length)];
   }
   const effect = effects[effectId];
 
@@ -559,10 +568,12 @@ export function alignWordHit(placement, fonts, effects, sfxMap, captions, videoD
   if (caption) end = Math.min(end, caption.endTime + 0.15);
 
   const wordText = placement.word || placement.text || font.previewText || "!";
+  const palette = Array.isArray(effect.colors) && effect.colors.length ? effect.colors : WORD_HIT_COLORS;
   const color =
     typeof placement.color === "string" && placement.color.startsWith("#")
       ? placement.color
-      : WORD_HIT_COLORS[Math.floor(Math.random() * WORD_HIT_COLORS.length)];
+      : palette[0];
+  const secondaryColor = palette[1] || palette[0];
 
   const nw = (font.normalizedWidth || 0.2) * (Number(placement.scale) || 1.3);
   const nh = (font.normalizedHeight || 0.08) * (Number(placement.scale) || 1.3);
@@ -593,9 +604,9 @@ export function alignWordHit(placement, fonts, effects, sfxMap, captions, videoD
       ? Number(placement.rotation)
       : (Math.random() * 16 - 8),
     color,
-    reason: placement.reason || `Significant word "${wordText}" with ${effectId}+${sfxId}`,
+    secondaryColor,
+    reason: placement.reason || `Punchy "${wordText}" → ${effectId} (${color}/${secondaryColor}) + ${sfxId}`,
     assetPixelSize: { width: font.pixelWidth || 200, height: font.pixelHeight || 64 },
-    // paired SFX cue length for the client
     sfxLengthSeconds: sfxLen,
   };
 }
@@ -676,9 +687,13 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
     const sig = significantFrom(cap);
     sig.forEach((word, wi) => {
       const font = fonts[(index + wi) % fonts.length];
-      const effect = effectLib[(index * 3 + wi * 2) % effectLib.length];
+      // Bias toward punchy / colour-pulse effects
+      const punchy = effectLib.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
+      const effectPool = punchy.length ? punchy : effectLib;
+      const effect = effectPool[(index * 3 + wi * 2) % effectPool.length];
       const preferred = (effect.preferredSfx || []).map((id) => sfxLib.find((s) => s.id === id)).filter(Boolean);
       const sfx = preferred[0] || sfxLib[(index + wi) % sfxLib.length];
+      const palette = effect.colors || WORD_HIT_COLORS;
       wordHits.push({
         kind: "wordHit",
         assetId: font.id,
@@ -693,10 +708,11 @@ export function heuristicPlan({ captions, duration, libraries, language = "en-US
         endTime: word.endTime,
         x: 0.35 + (wi % 2) * 0.3,
         y: 0.36 + (index % 3) * 0.06,
-        scale: 1.25 + (wi % 2) * 0.15,
+        scale: 1.35 + (wi % 2) * 0.2,
         rotation: wi % 2 === 0 ? -5 : 6,
-        color: WORD_HIT_COLORS[(index + wi) % WORD_HIT_COLORS.length],
-        reason: `Significant "${word.text}" → ${effect.id} + ${sfx.id}`,
+        color: palette[0],
+        secondaryColor: palette[1] || palette[0],
+        reason: `Punchy "${word.text}" → ${effect.id} (${palette[0]}/${palette[1] || palette[0]}) + ${sfx.id}`,
       });
     });
 

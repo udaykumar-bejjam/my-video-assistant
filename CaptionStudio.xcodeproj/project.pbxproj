@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
 		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
 		A10000000000000000000017 /* AspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* AspectRatio.swift */; };
@@ -32,6 +33,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* AspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectRatio.swift; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 				386983F2C5A0468FBFC08732 /* CaptionListView.swift */,
 				89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */,
 				A10000000000000000000005 /* LibraryBrowserView.swift */,
+				A1000000000000000000000A /* WordHitView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				A10000000000000000000017 /* AspectRatio.swift in Sources */,
 				A10000000000000000000019 /* LanguageAndEffects.swift in Sources */,
 				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
+				A1000000000000000000001A /* WordHitView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

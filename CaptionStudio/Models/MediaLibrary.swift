@@ -55,6 +55,8 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
     var animation: String?
     var scripts: [String]?
     var preferredSfx: [String]?
+    var colors: [String]?
+    var description: String?
     var defaultDuration: TimeInterval?
     var defaultScale: CGFloat?
     var defaultGain: Double?
@@ -86,7 +88,7 @@ struct MediaLibraryItem: Identifiable, Hashable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, name, tags, file, wav, previewText, fontName, fontSize
         case textCase, textColor, strokeColor, strokeWidth, backgroundColor
-        case cornerRadius, shadowRadius, animation, scripts, preferredSfx
+        case cornerRadius, shadowRadius, animation, scripts, preferredSfx, colors, description
         case defaultDuration, defaultScale, defaultGain
         case durationSeconds, lengthSeconds, width, height, frameCount
         case estimatedWidth, estimatedHeight, pixelWidth, pixelHeight
@@ -120,6 +122,7 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
     var effectId: String?
     var sfxId: String?
     var color: String?
+    var secondaryColor: String?
     var word: String?
     var assetPixelSize: AssetSize?
     var assetNormalizedSize: AssetSize?
@@ -131,7 +134,7 @@ struct EnhancementPlacement: Identifiable, Hashable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case kind, assetId, startTime, endTime, x, y, scale, rotation, text, reason
-        case lengthSeconds, captionIndex, wordIndex, fontId, effectId, sfxId, color, word
+        case lengthSeconds, captionIndex, wordIndex, fontId, effectId, sfxId, color, secondaryColor, word
         case assetPixelSize, assetNormalizedSize
     }
 
