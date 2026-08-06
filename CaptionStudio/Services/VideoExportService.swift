@@ -153,18 +153,20 @@ final class VideoExportService: ObservableObject {
         overlayRoot.frame = parentLayer.bounds
         parentLayer.addSublayer(overlayRoot)
 
+        let timelineSeconds = CMTimeGetSeconds(compositionDuration)
         addCaptionLayers(
             to: overlayRoot,
             captions: captions,
             style: style,
             size: renderSize,
-            duration: CMTimeGetSeconds(compositionDuration)
+            duration: timelineSeconds
         )
         addOverlayLayers(
             to: overlayRoot,
             overlays: overlays,
             size: renderSize,
-            libraryRoot: libraryRoot
+            libraryRoot: libraryRoot,
+            duration: timelineSeconds
         )
 
         videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
@@ -242,6 +244,10 @@ final class VideoExportService: ObservableObject {
         duration: TimeInterval
     ) {
         for caption in captions {
+            let start = max(0, caption.startTime)
+            let end = max(start + 0.05, min(caption.endTime, duration > 0 ? duration : caption.endTime))
+            guard end > start, start < duration || duration <= 0 else { continue }
+
             let text = style.textCase.apply(caption.text)
             let layer = Self.makeTextLayer(
                 text: text,
@@ -260,26 +266,7 @@ final class VideoExportService: ObservableObject {
             let midX = size.width * style.positionX
             let midY = size.height * (1 - style.positionY) // flipped coords
             layer.position = CGPoint(x: midX, y: midY)
-
-            let appear = CAPBasicAnimation(keyPath: "opacity")
-            appear.fromValue = 0
-            appear.toValue = 1
-            appear.beginTime = AVCoreAnimationBeginTimeAtZero + caption.startTime
-            appear.duration = 0.12
-            appear.fillMode = .forwards
-            appear.isRemovedOnCompletion = false
-
-            let disappear = CAPBasicAnimation(keyPath: "opacity")
-            disappear.fromValue = 1
-            disappear.toValue = 0
-            disappear.beginTime = AVCoreAnimationBeginTimeAtZero + caption.endTime
-            disappear.duration = 0.1
-            disappear.fillMode = .forwards
-            disappear.isRemovedOnCompletion = false
-
-            layer.opacity = 0
-            layer.add(appear, forKey: "appear")
-            layer.add(disappear, forKey: "disappear")
+            Self.scheduleVisibility(on: layer, startTime: start, endTime: end, opacity: 1)
             root.addSublayer(layer)
         }
     }
@@ -329,13 +316,19 @@ final class VideoExportService: ObservableObject {
         to root: CALayer,
         overlays: [OverlayItem],
         size: CGSize,
-        libraryRoot: URL?
+        libraryRoot: URL?,
+        duration: TimeInterval
     ) {
         for item in overlays {
+            let start = max(0, item.startTime)
+            let end = max(start + 0.05, min(item.endTime, duration > 0 ? duration : item.endTime))
+            guard end > start else { continue }
+            if duration > 0, start >= duration { continue }
+
             let layer: CALayer
             switch item.kind {
             case .emoji, .text, .watermark, .wordHit:
-                let fontName = item.fontName ?? "AvenirNext-Heavy"
+                let fontName = Self.resolveFontName(for: item, libraryRoot: libraryRoot)
                 let fontSize = (item.kind == .wordHit ? item.fontSize * 0.95 : item.fontSize)
                     * item.scale * (size.width / 390)
                 let isHit = item.kind == .wordHit
@@ -347,7 +340,8 @@ final class VideoExportService: ObservableObject {
                 let redStroke = NSColor(srgbRed: 1, green: 0.18, blue: 0.18, alpha: 1)
                 let yellowGlow = NSColor(srgbRed: 1, green: 0.94, blue: 0.35, alpha: 0.9)
                 #endif
-                layer = Self.makeTextLayer(
+                // Outer host owns opacity + rotation; inner content can punch-scale without fighting transforms.
+                let content = Self.makeTextLayer(
                     text: item.text,
                     fontName: fontName,
                     fontSize: fontSize,
@@ -360,66 +354,70 @@ final class VideoExportService: ObservableObject {
                     shadowRadius: isHit ? 12 : 6,
                     maxWidth: size.width * 0.8
                 )
+                let host = CALayer()
+                host.bounds = content.bounds
+                content.position = CGPoint(x: host.bounds.midX, y: host.bounds.midY)
+                host.addSublayer(content)
                 if isHit {
-                    // Punch scale keyframes for export
-                    let punch = CAPBasicAnimation(keyPath: "transform.scale")
-                    punch.fromValue = 0.4
-                    punch.toValue = 1.25
-                    punch.beginTime = AVCoreAnimationBeginTimeAtZero + item.startTime
-                    punch.duration = 0.18
-                    punch.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                    punch.fillMode = .forwards
+                    let punch = CAKeyframeAnimation(keyPath: "transform.scale")
+                    punch.values = [0.45, 1.28, 1.0]
+                    punch.keyTimes = [0, 0.55, 1]
+                    punch.duration = 0.22
+                    punch.beginTime = AVCoreAnimationBeginTimeAtZero + start
+                    punch.fillMode = .both
                     punch.isRemovedOnCompletion = false
-                    layer.add(punch, forKey: "punchScale")
+                    content.add(punch, forKey: "punchScale")
                 }
+                layer = host
             case .gif:
-                if let file = item.assetFileName,
-                   let libraryRoot {
-                    let url = libraryRoot.appendingPathComponent("gifs").appendingPathComponent(file)
-                    let frames = AnimatedGIFDecoder.load(url: url)
-                    if frames.images.isEmpty { continue }
+                guard let libraryRoot,
+                      let url = Self.libraryMediaURL(
+                        kindFolder: "gifs",
+                        fileName: item.assetFileName,
+                        assetId: item.assetId,
+                        libraryRoot: libraryRoot
+                      )
+                else { continue }
+                let frames = AnimatedGIFDecoder.load(url: url)
+                guard let first = frames.images.first else { continue }
 
-                    let imageLayer = CALayer()
-                    let side = 90 * item.scale * (size.width / 390)
-                    imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
-                    imageLayer.contents = frames.images[0]
-                    imageLayer.contentsGravity = .resizeAspect
-                    layer = imageLayer
+                let imageLayer = CALayer()
+                let side = 90 * item.scale * (size.width / 390)
+                imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+                imageLayer.contents = first
+                imageLayer.contentsGravity = .resizeAspect
+                layer = imageLayer
 
-                    if frames.isAnimated {
-                        let cycle = max(frames.totalDuration, 0.05)
-                        let visible = max(0.05, item.endTime - item.startTime)
-                        let anim = CAKeyframeAnimation(keyPath: "contents")
-                        anim.values = frames.images
-                        anim.keyTimes = frames.keyTimes
-                        anim.duration = cycle
-                        anim.calculationMode = .discrete
-                        anim.repeatCount = Float(ceil(visible / cycle) + 1)
-                        anim.beginTime = AVCoreAnimationBeginTimeAtZero + item.startTime
-                        anim.fillMode = .forwards
-                        anim.isRemovedOnCompletion = false
-                        imageLayer.add(anim, forKey: "gifFrames")
-                    }
-                } else {
-                    continue
+                if frames.isAnimated, frames.images.count == frames.keyTimes.count {
+                    let cycle = max(frames.totalDuration, 0.05)
+                    let visible = max(0.05, end - start)
+                    let anim = CAKeyframeAnimation(keyPath: "contents")
+                    anim.values = frames.images.map { $0 as Any }
+                    anim.keyTimes = frames.keyTimes
+                    anim.duration = cycle
+                    anim.calculationMode = .discrete
+                    anim.repeatCount = Float(ceil(visible / cycle) + 1)
+                    anim.beginTime = AVCoreAnimationBeginTimeAtZero + start
+                    anim.fillMode = .both
+                    anim.isRemovedOnCompletion = false
+                    imageLayer.add(anim, forKey: "gifFrames")
                 }
             case .png:
-                if let file = item.assetFileName,
-                   let libraryRoot {
-                    let url = libraryRoot.appendingPathComponent("pngs").appendingPathComponent(file)
-                    if let image = Self.loadCGImage(url: url) {
-                        let imageLayer = CALayer()
-                        let side = 90 * item.scale * (size.width / 390)
-                        imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
-                        imageLayer.contents = image
-                        imageLayer.contentsGravity = .resizeAspect
-                        layer = imageLayer
-                    } else {
-                        continue
-                    }
-                } else {
-                    continue
-                }
+                guard let libraryRoot,
+                      let url = Self.libraryMediaURL(
+                        kindFolder: "pngs",
+                        fileName: item.assetFileName,
+                        assetId: item.assetId,
+                        libraryRoot: libraryRoot
+                      ),
+                      let image = Self.loadCGImage(url: url)
+                else { continue }
+                let imageLayer = CALayer()
+                let side = 90 * item.scale * (size.width / 390)
+                imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+                imageLayer.contents = image
+                imageLayer.contentsGravity = .resizeAspect
+                layer = imageLayer
             case .shape:
                 let shape = CAShapeLayer()
                 let side = 60 * item.scale * (size.width / 390)
@@ -451,28 +449,82 @@ final class VideoExportService: ObservableObject {
                 y: size.height * (1 - item.y)
             )
             layer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(item.rotation * .pi / 180)))
-            layer.opacity = 0
-
-            let appear = CAPBasicAnimation(keyPath: "opacity")
-            appear.fromValue = 0
-            appear.toValue = Float(item.opacity)
-            appear.beginTime = AVCoreAnimationBeginTimeAtZero + item.startTime
-            appear.duration = 0.1
-            appear.fillMode = .forwards
-            appear.isRemovedOnCompletion = false
-
-            let disappear = CAPBasicAnimation(keyPath: "opacity")
-            disappear.fromValue = Float(item.opacity)
-            disappear.toValue = 0
-            disappear.beginTime = AVCoreAnimationBeginTimeAtZero + item.endTime
-            disappear.duration = 0.1
-            disappear.fillMode = .forwards
-            disappear.isRemovedOnCompletion = false
-
-            layer.add(appear, forKey: "appear")
-            layer.add(disappear, forKey: "disappear")
+            Self.scheduleVisibility(
+                on: layer,
+                startTime: start,
+                endTime: end,
+                opacity: Float(max(0, min(1, item.opacity)))
+            )
             root.addSublayer(layer)
         }
+    }
+
+    /// macOS/Catalyst often ignore `CABasicAnimation` during `AVAssetExportSession`
+    /// offline render — use a single opacity keyframe timeline instead.
+    private static func scheduleVisibility(
+        on layer: CALayer,
+        startTime: TimeInterval,
+        endTime: TimeInterval,
+        opacity: Float
+    ) {
+        let fadeIn: TimeInterval = 0.08
+        let fadeOut: TimeInterval = 0.1
+        let start = max(0, startTime)
+        let end = max(start + 0.05, endTime)
+        let duration = max(0.05, (end + fadeOut) - start)
+        let tFadeIn = min(fadeIn, duration * 0.25) / duration
+        let tFadeOut = max(tFadeIn + 0.01, (duration - fadeOut) / duration)
+
+        let anim = CAKeyframeAnimation(keyPath: "opacity")
+        anim.values = [0, opacity, opacity, 0]
+        anim.keyTimes = [0, tFadeIn, tFadeOut, 1].map { NSNumber(value: Double($0)) }
+        anim.duration = duration
+        anim.beginTime = AVCoreAnimationBeginTimeAtZero + start
+        anim.calculationMode = .linear
+        anim.fillMode = .both
+        anim.isRemovedOnCompletion = false
+
+        layer.opacity = 0
+        layer.add(anim, forKey: "visibility")
+    }
+
+    private static func libraryMediaURL(
+        kindFolder: String,
+        fileName: String?,
+        assetId: String?,
+        libraryRoot: URL
+    ) -> URL? {
+        if let fileName {
+            let url = libraryRoot.appendingPathComponent(kindFolder).appendingPathComponent(fileName)
+            if FileManager.default.fileExists(atPath: url.path) { return url }
+        }
+        guard let assetId,
+              let data = try? Data(contentsOf: libraryRoot.appendingPathComponent("\(kindFolder)/catalog.json")),
+              let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data),
+              let file = catalog.items.first(where: { $0.id == assetId })?.file
+        else { return nil }
+        let url = libraryRoot.appendingPathComponent(kindFolder).appendingPathComponent(file)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private static func resolveFontName(for item: OverlayItem, libraryRoot: URL?) -> String {
+        if let fontName = item.fontName, !fontName.isEmpty { return fontName }
+        guard let libraryRoot else { return "AvenirNext-Heavy" }
+        if let styleId = item.styleAssetId,
+           let data = try? Data(contentsOf: libraryRoot.appendingPathComponent("text-styles/catalog.json")),
+           let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data),
+           let name = catalog.items.first(where: { $0.id == styleId })?.fontName,
+           !name.isEmpty {
+            return name
+        }
+        if let fontId = item.fontId ?? item.assetId,
+           let data = try? Data(contentsOf: libraryRoot.appendingPathComponent("fonts/catalog.json")),
+           let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data),
+           let name = catalog.items.first(where: { $0.id == fontId })?.fontName,
+           !name.isEmpty {
+            return name
+        }
+        return "AvenirNext-Heavy"
     }
 
     private static func loadCGImage(url: URL) -> CGImage? {
@@ -588,6 +640,3 @@ extension CodableColor {
         #endif
     }
 }
-
-/// Thin wrapper so we can construct CABasicAnimation without name clash.
-typealias CAPBasicAnimation = CABasicAnimation
