@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "library": "sfx",
+  "items": [
+    {
+      "id": "whoosh",
+      "name": "Whoosh",
+      "tags": ["transition", "motion", "sweep"],
+      "file": "whoosh.m4a",
+      "wav": "whoosh.wav",
+      "defaultGain": 0.85
+    },
+    {
+      "id": "pop",
+      "name": "Pop",
+      "tags": ["impact", "ui", "appear"],
+      "file": "pop.m4a",
+      "wav": "pop.wav",
+      "defaultGain": 0.9
+    },
+    {
+      "id": "ding",
+      "name": "Ding",
+      "tags": ["success", "reveal", "notification"],
+      "file": "ding.m4a",
+      "wav": "ding.wav",
+      "defaultGain": 0.75
+    },
+    {
+      "id": "bass-hit",
+      "name": "Bass Hit",
+      "tags": ["impact", "hype", "drop"],
+      "file": "bass-hit.m4a",
+      "wav": "bass-hit.wav",
+      "defaultGain": 0.95
+    },
+    {
+      "id": "riser",
+      "name": "Riser",
+      "tags": ["build", "tension", "hook"],
+      "file": "riser.m4a",
+      "wav": "riser.wav",
+      "defaultGain": 0.7
+    },
+    {
+      "id": "click",
+      "name": "Click",
+      "tags": ["ui", "cut", "subtle"],
+      "file": "click.m4a",
+      "wav": "click.wav",
+      "defaultGain": 0.6
+    },
+    {
+      "id": "cheer-hit",
+      "name": "Cheer Hit",
+      "tags": ["celebration", "win", "cheer"],
+      "file": "cheer-hit.m4a",
+      "wav": "cheer-hit.wav",
+      "defaultGain": 0.8
+    },
+    {
+      "id": "glitch",
+      "name": "Glitch",
+      "tags": ["tech", "glitch", "modern"],
+      "file": "glitch.m4a",
+      "wav": "glitch.wav",
+      "defaultGain": 0.7
+    }
+  ]
+}

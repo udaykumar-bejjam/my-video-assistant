@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "library": "gifs",
+  "items": [
+    {
+      "id": "pop-burst",
+      "name": "Pop Burst",
+      "tags": ["hype", "impact", "reveal"],
+      "file": "pop-burst.gif",
+      "defaultDuration": 1.2,
+      "defaultScale": 1.1
+    },
+    {
+      "id": "pulse-ring",
+      "name": "Pulse Ring",
+      "tags": ["focus", "tech", "highlight"],
+      "file": "pulse-ring.gif",
+      "defaultDuration": 1.5,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "confetti",
+      "name": "Confetti",
+      "tags": ["celebration", "win", "cheer"],
+      "file": "confetti.gif",
+      "defaultDuration": 1.8,
+      "defaultScale": 1.2
+    },
+    {
+      "id": "shine-sweep",
+      "name": "Shine Sweep",
+      "tags": ["product", "premium", "cta"],
+      "file": "shine-sweep.gif",
+      "defaultDuration": 1.4,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "bounce-dot",
+      "name": "Bounce Dot",
+      "tags": ["playful", "point", "ui"],
+      "file": "bounce-dot.gif",
+      "defaultDuration": 1.3,
+      "defaultScale": 0.9
+    }
+  ]
+}

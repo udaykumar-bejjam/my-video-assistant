@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import CoreImage
 import CoreText
+import QuartzCore
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -33,6 +34,8 @@ final class VideoExportService: ObservableObject {
         captions: [CaptionSegment],
         style: CaptionStyle,
         overlays: [OverlayItem],
+        soundEffects: [SoundEffectCue] = [],
+        libraryRoot: URL? = nil,
         outputURL: URL? = nil
     ) async throws -> URL {
         progress = 0.02
@@ -78,6 +81,14 @@ final class VideoExportService: ObservableObject {
             )
         }
 
+        // Mix in library SFX cues.
+        try await mixSoundEffects(
+            into: composition,
+            cues: soundEffects,
+            libraryRoot: libraryRoot,
+            timelineDuration: duration
+        )
+
         progress = 0.15
         statusMessage = "Rendering captions…"
 
@@ -116,7 +127,8 @@ final class VideoExportService: ObservableObject {
         addOverlayLayers(
             to: overlayRoot,
             overlays: overlays,
-            size: renderSize
+            size: renderSize,
+            libraryRoot: libraryRoot
         )
 
         videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
@@ -225,10 +237,52 @@ final class VideoExportService: ObservableObject {
         }
     }
 
+    private func mixSoundEffects(
+        into composition: AVMutableComposition,
+        cues: [SoundEffectCue],
+        libraryRoot: URL?,
+        timelineDuration: CMTime
+    ) async throws {
+        guard let libraryRoot, !cues.isEmpty else { return }
+        let catalogURL = libraryRoot.appendingPathComponent("sfx/catalog.json")
+        guard
+            let data = try? Data(contentsOf: catalogURL),
+            let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data)
+        else { return }
+
+        for cue in cues {
+            guard let item = catalog.items.first(where: { $0.id == cue.assetId }) else { continue }
+            let fileName = item.file ?? item.wav
+            guard let fileName else { continue }
+            let url = libraryRoot.appendingPathComponent("sfx").appendingPathComponent(fileName)
+            guard FileManager.default.fileExists(atPath: url.path) else { continue }
+
+            let sfxAsset = AVURLAsset(url: url)
+            guard let track = try await sfxAsset.loadTracks(withMediaType: .audio).first,
+                  let compAudio = composition.addMutableTrack(
+                    withMediaType: .audio,
+                    preferredTrackID: kCMPersistentTrackID_Invalid
+                  )
+            else { continue }
+
+            let sfxDuration = try await sfxAsset.load(.duration)
+            let start = CMTime(seconds: cue.startTime, preferredTimescale: 600)
+            let available = CMTimeSubtract(timelineDuration, start)
+            let insertDuration = CMTimeMinimum(sfxDuration, available)
+            guard insertDuration.seconds > 0 else { continue }
+            try? compAudio.insertTimeRange(
+                CMTimeRange(start: .zero, duration: insertDuration),
+                of: track,
+                at: start
+            )
+        }
+    }
+
     private func addOverlayLayers(
         to root: CALayer,
         overlays: [OverlayItem],
-        size: CGSize
+        size: CGSize,
+        libraryRoot: URL?
     ) {
         for item in overlays {
             let layer: CALayer
@@ -247,6 +301,24 @@ final class VideoExportService: ObservableObject {
                     shadowRadius: 4,
                     maxWidth: size.width * 0.7
                 )
+            case .gif, .png:
+                if let file = item.assetFileName,
+                   let libraryRoot {
+                    let folder = item.kind == .gif ? "gifs" : "pngs"
+                    let url = libraryRoot.appendingPathComponent(folder).appendingPathComponent(file)
+                    if let image = Self.loadCGImage(url: url) {
+                        let imageLayer = CALayer()
+                        let side = 90 * item.scale * (size.width / 390)
+                        imageLayer.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+                        imageLayer.contents = image
+                        imageLayer.contentsGravity = .resizeAspect
+                        layer = imageLayer
+                    } else {
+                        continue
+                    }
+                } else {
+                    continue
+                }
             case .shape:
                 let shape = CAShapeLayer()
                 let side = 60 * item.scale * (size.width / 390)
@@ -300,6 +372,18 @@ final class VideoExportService: ObservableObject {
             layer.add(disappear, forKey: "disappear")
             root.addSublayer(layer)
         }
+    }
+
+    private static func loadCGImage(url: URL) -> CGImage? {
+        #if canImport(UIKit)
+        return UIImage(contentsOfFile: url.path)?.cgImage
+        #elseif canImport(AppKit)
+        guard let ns = NSImage(contentsOf: url) else { return nil }
+        var rect = NSRect(origin: .zero, size: ns.size)
+        return ns.cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        #else
+        return nil
+        #endif
     }
 
     private static func makeTextLayer(

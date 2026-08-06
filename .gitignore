@@ -17,6 +17,12 @@ xcuserdata/
 .build/
 .swiftpm/
 
-# Temporary exports / demos
+# Node enhancer
+enhancer-server/node_modules/
+enhancer-server/.env
+
+# Temporary exports / demos (keep AssetLibraries)
+/tmp/
 *.mp4
-!docs/**
+!AssetLibraries/**
+!CaptionStudio/Resources/Libraries/**

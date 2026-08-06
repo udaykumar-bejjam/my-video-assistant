@@ -157,15 +157,39 @@ struct LiveOverlayCanvas: View {
                 .font(.system(size: item.fontSize * item.scale))
                 .rotationEffect(.degrees(item.rotation))
         case .text, .watermark:
-            Text(item.text)
-                .font(.custom("AvenirNext-Bold", size: item.fontSize * item.scale * 0.7))
-                .foregroundStyle(item.color.color)
-                .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
+            stylishOrPlainText(item)
                 .rotationEffect(.degrees(item.rotation))
+        case .gif, .png:
+            if let url = editor.libraryFileURL(for: item) {
+                LibraryImage(url: url)
+                    .frame(width: 72 * item.scale, height: 72 * item.scale)
+                    .rotationEffect(.degrees(item.rotation))
+            }
         case .shape:
             shapeView(item)
                 .frame(width: 48 * item.scale, height: 48 * item.scale)
                 .rotationEffect(.degrees(item.rotation))
+        }
+    }
+
+    @ViewBuilder
+    private func stylishOrPlainText(_ item: OverlayItem) -> some View {
+        if let style = editor.stylishTextStyle(for: item) {
+            Text(item.text)
+                .font(.custom(style.fontName ?? "AvenirNext-Bold", size: (style.fontSize ?? 28) * item.scale * 0.55))
+                .foregroundStyle(Color(hex: style.textColor ?? "#FFFFFF") ?? .white)
+                .shadow(color: .black.opacity(0.45), radius: style.shadowRadius ?? 4, y: 2)
+                .padding(.horizontal, (style.backgroundColor != nil) ? 10 : 0)
+                .padding(.vertical, (style.backgroundColor != nil) ? 6 : 0)
+                .background(
+                    (Color(hex: style.backgroundColor ?? "#00000000") ?? .clear),
+                    in: RoundedRectangle(cornerRadius: style.cornerRadius ?? 8)
+                )
+        } else {
+            Text(item.text)
+                .font(.custom("AvenirNext-Bold", size: item.fontSize * item.scale * 0.7))
+                .foregroundStyle(item.color.color)
+                .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
         }
     }
 

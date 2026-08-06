@@ -3,6 +3,9 @@ import AVFoundation
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
+#if canImport(AVFAudio)
+import AVFAudio
+#endif
 
 @MainActor
 final class EditorViewModel: ObservableObject {
@@ -11,6 +14,7 @@ final class EditorViewModel: ObservableObject {
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
     @Published var isTranscribing = false
+    @Published var isEnhancing = false
     @Published var isExporting = false
     @Published var selectedCaptionID: CaptionSegment.ID?
     @Published var selectedOverlayID: OverlayItem.ID?
@@ -19,21 +23,27 @@ final class EditorViewModel: ObservableObject {
     @Published var exportURL: URL?
     @Published var showExporter = false
     @Published var editorTab: EditorTab = .captions
+    @Published var lastEnhancementNote: String?
+    @Published var libraryKind: MediaLibraryKind = .textStyles
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
+    let libraries = MediaLibraryStore()
+    let enhancer = CursorEnhancerClient()
 
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var sfxPlayers: [AVAudioPlayer] = []
 
     enum EditorTab: String, CaseIterable, Identifiable {
-        case captions, styles, overlays, export
+        case captions, styles, overlays, libraries, export
         var id: String { rawValue }
         var title: String {
             switch self {
             case .captions: return "Captions"
             case .styles: return "Styles"
             case .overlays: return "Overlays"
+            case .libraries: return "Library"
             case .export: return "Export"
             }
         }
@@ -42,6 +52,7 @@ final class EditorViewModel: ObservableObject {
             case .captions: return "text.bubble.fill"
             case .styles: return "paintpalette.fill"
             case .overlays: return "square.stack.3d.up.fill"
+            case .libraries: return "square.grid.2x2.fill"
             case .export: return "square.and.arrow.up.fill"
             }
         }
@@ -73,7 +84,11 @@ final class EditorViewModel: ObservableObject {
         project.title = url.deletingPathExtension().lastPathComponent
         project.captions = []
         project.overlays = []
+        project.soundEffects = []
+        project.enhancementSummary = nil
         project.captionStyle = selectedPreset.style
+        lastEnhancementNote = nil
+        Task { await enhancer.checkHealth() }
 
         let asset = AVURLAsset(url: localURL)
         if let duration = try? await asset.load(.duration) {
@@ -136,6 +151,225 @@ final class EditorViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Ask Cursor SDK (via enhancer server) where to place stylish text / GIFs / PNGs / SFX.
+    func enhanceWithCursorSDK() async {
+        guard !project.captions.isEmpty else {
+            errorMessage = "Generate captions first so the agent knows where to place assets."
+            return
+        }
+        isEnhancing = true
+        errorMessage = nil
+        defer { isEnhancing = false }
+
+        await enhancer.checkHealth()
+
+        let plan: EnhancementPlan
+        if enhancer.isHealthy {
+            do {
+                plan = try await enhancer.enhance(
+                    captions: project.captions,
+                    duration: project.duration
+                )
+            } catch {
+                plan = enhancer.localHeuristicPlan(
+                    captions: project.captions,
+                    duration: project.duration,
+                    libraries: libraries
+                )
+                lastEnhancementNote = "\(error.localizedDescription) — \(plan.note ?? "")"
+            }
+        } else {
+            plan = enhancer.localHeuristicPlan(
+                captions: project.captions,
+                duration: project.duration,
+                libraries: libraries
+            )
+        }
+
+        apply(plan: plan)
+        editorTab = .libraries
+    }
+
+    func apply(plan: EnhancementPlan) {
+        var newOverlays: [OverlayItem] = []
+        var newSFX: [SoundEffectCue] = []
+
+        for placement in plan.placements {
+            switch placement.kind {
+            case "text":
+                if let item = makeStylishText(from: placement) {
+                    newOverlays.append(item)
+                }
+            case "gif":
+                if let item = makeImageOverlay(from: placement, kind: .gif, library: .gifs) {
+                    newOverlays.append(item)
+                }
+            case "png":
+                if let item = makeImageOverlay(from: placement, kind: .png, library: .pngs) {
+                    newOverlays.append(item)
+                }
+            case "sfx":
+                if let cue = makeSFX(from: placement) {
+                    newSFX.append(cue)
+                }
+            default:
+                continue
+            }
+        }
+
+        // Keep manual emoji/shape overlays; replace previous AI-driven ones.
+        let manual = project.overlays.filter { $0.assetId == nil && $0.styleAssetId == nil && ($0.kind == .emoji || $0.kind == .shape || $0.kind == .watermark) }
+        project.overlays = manual + newOverlays
+        project.soundEffects = newSFX
+        project.enhancementSummary = plan.summary
+        lastEnhancementNote = plan.note ?? "Applied \(newOverlays.count) overlays + \(newSFX.count) SFX (\(plan.source ?? "unknown"))"
+        if let first = newOverlays.first {
+            selectedOverlayID = first.id
+            seek(to: first.startTime)
+        }
+    }
+
+    private func makeStylishText(from placement: EnhancementPlacement) -> OverlayItem? {
+        guard let style = libraries.item(kind: .textStyles, id: placement.assetId) else { return nil }
+        let color = Color(hex: style.textColor ?? "#FFFFFF") ?? .white
+        return OverlayItem(
+            kind: .text,
+            text: placement.text ?? style.previewText ?? "Look",
+            assetId: nil,
+            assetFileName: nil,
+            styleAssetId: style.id,
+            x: placement.x,
+            y: placement.y,
+            scale: placement.scale,
+            rotation: placement.rotation,
+            startTime: placement.startTime,
+            endTime: placement.endTime,
+            color: color.codable,
+            fontSize: style.fontSize ?? 34,
+            shape: .rectangle,
+            opacity: 1,
+            reason: placement.reason
+        )
+    }
+
+    private func makeImageOverlay(
+        from placement: EnhancementPlacement,
+        kind: OverlayKind,
+        library: MediaLibraryKind
+    ) -> OverlayItem? {
+        guard let asset = libraries.item(kind: library, id: placement.assetId),
+              let file = asset.file
+        else { return nil }
+        return OverlayItem(
+            kind: kind,
+            text: asset.name,
+            assetId: asset.id,
+            assetFileName: file,
+            styleAssetId: nil,
+            x: placement.x,
+            y: placement.y,
+            scale: placement.scale,
+            rotation: placement.rotation,
+            startTime: placement.startTime,
+            endTime: placement.endTime,
+            color: .white,
+            fontSize: 24,
+            shape: .rectangle,
+            opacity: 1,
+            reason: placement.reason
+        )
+    }
+
+    private func makeSFX(from placement: EnhancementPlacement) -> SoundEffectCue? {
+        guard let asset = libraries.item(kind: .sfx, id: placement.assetId) else { return nil }
+        return SoundEffectCue(
+            assetId: asset.id,
+            startTime: placement.startTime,
+            gain: asset.defaultGain ?? 0.8,
+            reason: placement.reason
+        )
+    }
+
+    func addLibraryItem(_ item: MediaLibraryItem, kind: MediaLibraryKind) {
+        switch kind {
+        case .textStyles:
+            let placement = EnhancementPlacement(
+                kind: "text",
+                assetId: item.id,
+                startTime: currentTime,
+                endTime: currentTime + (item.defaultDuration ?? 2),
+                x: 0.5,
+                y: 0.3,
+                scale: 1,
+                rotation: 0,
+                text: item.previewText,
+                reason: "Manual library pick"
+            )
+            if let overlay = makeStylishText(from: placement) {
+                project.overlays.append(overlay)
+                selectedOverlayID = overlay.id
+            }
+        case .gifs, .pngs:
+            let placement = EnhancementPlacement(
+                kind: kind == .gifs ? "gif" : "png",
+                assetId: item.id,
+                startTime: currentTime,
+                endTime: currentTime + (item.defaultDuration ?? 2),
+                x: 0.75,
+                y: 0.25,
+                scale: item.defaultScale ?? 1,
+                rotation: 0,
+                reason: "Manual library pick"
+            )
+            if let overlay = makeImageOverlay(
+                from: placement,
+                kind: kind == .gifs ? .gif : .png,
+                library: kind
+            ) {
+                project.overlays.append(overlay)
+                selectedOverlayID = overlay.id
+            }
+        case .sfx:
+            let cue = SoundEffectCue(
+                assetId: item.id,
+                startTime: currentTime,
+                gain: item.defaultGain ?? 0.8,
+                reason: "Manual library pick"
+            )
+            project.soundEffects.append(cue)
+            previewSFX(cue)
+        }
+        editorTab = .overlays
+    }
+
+    func previewSFX(_ cue: SoundEffectCue) {
+        guard let asset = libraries.item(kind: .sfx, id: cue.assetId),
+              let file = asset.file ?? asset.wav,
+              let url = libraries.fileURL(kind: .sfx, fileName: file)
+        else { return }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.volume = Float(cue.gain)
+            player.prepareToPlay()
+            player.play()
+            sfxPlayers.append(player)
+            sfxPlayers = sfxPlayers.filter(\.isPlaying)
+        } catch {
+            errorMessage = "Could not play SFX: \(error.localizedDescription)"
+        }
+    }
+
+    func libraryFileURL(for overlay: OverlayItem) -> URL? {
+        guard let file = overlay.assetFileName else { return nil }
+        let kind: MediaLibraryKind = overlay.kind == .gif ? .gifs : .pngs
+        return libraries.fileURL(kind: kind, fileName: file)
+    }
+
+    func stylishTextStyle(for overlay: OverlayItem) -> MediaLibraryItem? {
+        guard let id = overlay.styleAssetId else { return nil }
+        return libraries.item(kind: .textStyles, id: id)
     }
 
     // MARK: - Playback
@@ -218,7 +452,9 @@ final class EditorViewModel: ObservableObject {
                 videoURL: url,
                 captions: project.captions,
                 style: project.captionStyle,
-                overlays: project.overlays
+                overlays: project.overlays,
+                soundEffects: project.soundEffects,
+                libraryRoot: libraries.rootURL
             )
             exportURL = result
             showExporter = true

@@ -7,6 +7,8 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
     case emoji
     case shape
     case watermark
+    case gif
+    case png
 
     var id: String { rawValue }
 
@@ -16,6 +18,8 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
         case .emoji: return "Emoji"
         case .shape: return "Shape"
         case .watermark: return "Watermark"
+        case .gif: return "GIF"
+        case .png: return "PNG"
         }
     }
 
@@ -25,6 +29,8 @@ enum OverlayKind: String, CaseIterable, Identifiable, Codable {
         case .emoji: return "face.smiling"
         case .shape: return "square.on.circle"
         case .watermark: return "seal"
+        case .gif: return "livephoto.play"
+        case .png: return "photo"
         }
     }
 }
@@ -33,11 +39,17 @@ enum OverlayShapeType: String, CaseIterable, Codable {
     case rectangle, circle, line, arrow
 }
 
-/// A freeform overlay (sticker / text / shape) on the video canvas.
+/// A freeform overlay (sticker / text / shape / gif / png) on the video canvas.
 struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
     var id: UUID = UUID()
     var kind: OverlayKind
     var text: String
+    /// Library asset id when placed from catalogs / Cursor SDK.
+    var assetId: String? = nil
+    /// Relative file name inside AssetLibraries/{gifs|pngs}/
+    var assetFileName: String? = nil
+    /// Text-style preset id for stylish text overlays.
+    var styleAssetId: String? = nil
     /// Normalized center (0...1)
     var x: CGFloat
     var y: CGFloat
@@ -49,6 +61,7 @@ struct OverlayItem: Identifiable, Equatable, Codable, Hashable {
     var fontSize: CGFloat
     var shape: OverlayShapeType
     var opacity: Double
+    var reason: String? = nil
 
     static func textSticker(
         _ text: String,
@@ -105,6 +118,8 @@ struct VideoProject: Identifiable, Equatable {
     var captions: [CaptionSegment]
     var captionStyle: CaptionStyle
     var overlays: [OverlayItem]
+    var soundEffects: [SoundEffectCue]
+    var enhancementSummary: String?
     var createdAt: Date
 
     static func empty(title: String = "Untitled") -> VideoProject {
@@ -115,6 +130,8 @@ struct VideoProject: Identifiable, Equatable {
             captions: [],
             captionStyle: .default,
             overlays: [],
+            soundEffects: [],
+            enhancementSummary: nil,
             createdAt: .now
         )
     }

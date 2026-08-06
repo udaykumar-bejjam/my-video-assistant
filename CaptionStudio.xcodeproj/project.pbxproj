@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000011 /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* MediaLibrary.swift */; };
+		A10000000000000000000012 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ColorHex.swift */; };
+		A10000000000000000000013 /* MediaLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* MediaLibraryStore.swift */; };
+		A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* CursorEnhancerClient.swift */; };
+		A10000000000000000000015 /* LibraryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* LibraryBrowserView.swift */; };
+		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
 		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
 		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
 		2B5FE125AA0B4DAE8A6D56F3 /* Overlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142E6A9EEF23416C8AD79128 /* Overlay.swift */; };
@@ -22,6 +28,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000001 /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* MediaLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibraryStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* CursorEnhancerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorEnhancerClient.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* LibraryBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBrowserView.swift; sourceTree = "<group>"; };
+		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
 		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
 		46F567830C8F481597C10E04 /* Caption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Caption.swift; sourceTree = "<group>"; };
@@ -83,6 +95,8 @@
 			children = (
 				46F567830C8F481597C10E04 /* Caption.swift */,
 				142E6A9EEF23416C8AD79128 /* Overlay.swift */,
+				A10000000000000000000001 /* MediaLibrary.swift */,
+				A10000000000000000000002 /* ColorHex.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -92,6 +106,8 @@
 			children = (
 				73018BD2CB744246849221A7 /* TranscriptionService.swift */,
 				ECDCDC6984284FD8BE34308C /* VideoExportService.swift */,
+				A10000000000000000000003 /* MediaLibraryStore.swift */,
+				A10000000000000000000004 /* CursorEnhancerClient.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -112,6 +128,7 @@
 				3DEDC6A8D5FF4CE99CB0D887 /* CaptionOverlayView.swift */,
 				386983F2C5A0468FBFC08732 /* CaptionListView.swift */,
 				89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */,
+				A10000000000000000000005 /* LibraryBrowserView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -121,6 +138,7 @@
 			children = (
 				A39FC676D8C44E4BA2872CED /* Assets.xcassets */,
 				637654A63F53498B91097712 /* Info.plist */,
+				A10000000000000000000020 /* Libraries */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -184,6 +202,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8BFE9067525D4FDFBFD26741 /* Assets.xcassets in Resources */,
+				A10000000000000000000021 /* Libraries in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,6 +224,11 @@
 				AB5B47E835D44F2AB38086A0 /* CaptionOverlayView.swift in Sources */,
 				533F485510F04FB4AA3E7F46 /* CaptionListView.swift in Sources */,
 				FC28048E3B74402B8E7F52FD /* OverlayEditorView.swift in Sources */,
+				A10000000000000000000011 /* MediaLibrary.swift in Sources */,
+				A10000000000000000000012 /* ColorHex.swift in Sources */,
+				A10000000000000000000013 /* MediaLibraryStore.swift in Sources */,
+				A10000000000000000000014 /* CursorEnhancerClient.swift in Sources */,
+				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,7 +277,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CaptionStudio/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CaptionStudio;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CaptionStudio talks to the local Cursor SDK enhancer on your Mac.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access may be used when capturing audio for transcription.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your captioned videos to Photos.";
@@ -299,7 +325,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CaptionStudio/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CaptionStudio;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "CaptionStudio talks to the local Cursor SDK enhancer on your Mac.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access may be used when capturing audio for transcription.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your captioned videos to Photos.";

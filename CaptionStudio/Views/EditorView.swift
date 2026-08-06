@@ -61,7 +61,7 @@ struct EditorView: View {
 
             Spacer()
 
-            if editor.isTranscribing {
+            if editor.isTranscribing || editor.isEnhancing {
                 ProgressView()
                     .tint(Color(red: 0.4, green: 0.95, blue: 0.8))
                     .scaleEffect(0.85)
@@ -71,14 +71,27 @@ struct EditorView: View {
                 Task { await editor.generateCaptions() }
             } label: {
                 Label("AI Captions", systemImage: "waveform.badge.mic")
-                    .font(.custom("AvenirNext-DemiBold", size: 13))
-                    .padding(.horizontal, 12)
+                    .font(.custom("AvenirNext-DemiBold", size: 12))
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(Color(red: 0.15, green: 0.9, blue: 0.72), in: Capsule())
                     .foregroundStyle(.black)
             }
             .buttonStyle(.plain)
             .disabled(editor.isTranscribing)
+
+            Button {
+                Task { await editor.enhanceWithCursorSDK() }
+            } label: {
+                Label("AI Place", systemImage: "sparkles")
+                    .font(.custom("AvenirNext-DemiBold", size: 12))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(Color(red: 1.0, green: 0.92, blue: 0.35), in: Capsule())
+                    .foregroundStyle(.black)
+            }
+            .buttonStyle(.plain)
+            .disabled(editor.isEnhancing || editor.project.captions.isEmpty)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -166,6 +179,8 @@ struct EditorView: View {
             StylePickerView()
         case .overlays:
             OverlayEditorView()
+        case .libraries:
+            LibraryBrowserView()
         case .export:
             ExportPanelView()
         }

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "library": "pngs",
+  "items": [
+    {
+      "id": "starburst",
+      "name": "Starburst",
+      "tags": ["hype", "new", "highlight"],
+      "file": "starburst.png",
+      "defaultDuration": 2.0,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "arrow-pop",
+      "name": "Arrow Pop",
+      "tags": ["point", "cta", "direction"],
+      "file": "arrow-pop.png",
+      "defaultDuration": 2.0,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "flame",
+      "name": "Flame",
+      "tags": ["hot", "energy", "trend"],
+      "file": "flame.png",
+      "defaultDuration": 1.8,
+      "defaultScale": 1.1
+    },
+    {
+      "id": "heart",
+      "name": "Heart",
+      "tags": ["love", "emotional", "like"],
+      "file": "heart.png",
+      "defaultDuration": 1.8,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "bolt",
+      "name": "Bolt",
+      "tags": ["fast", "power", "impact"],
+      "file": "bolt.png",
+      "defaultDuration": 1.5,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "badge-new",
+      "name": "Badge",
+      "tags": ["label", "product", "info"],
+      "file": "badge-new.png",
+      "defaultDuration": 2.2,
+      "defaultScale": 0.95
+    },
+    {
+      "id": "sparkle",
+      "name": "Sparkle",
+      "tags": ["magic", "ai", "shine"],
+      "file": "sparkle.png",
+      "defaultDuration": 1.6,
+      "defaultScale": 1.0
+    },
+    {
+      "id": "target",
+      "name": "Target",
+      "tags": ["focus", "goal", "precision"],
+      "file": "target.png",
+      "defaultDuration": 2.0,
+      "defaultScale": 1.0
+    }
+  ]
+}

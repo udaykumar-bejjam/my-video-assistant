@@ -145,6 +145,12 @@ struct OverlayRow: View {
                     }
             }
 
+            if let reason = item.reason {
+                Text(reason)
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+
             HStack {
                 Text("Scale")
                     .font(.caption)
@@ -184,8 +190,15 @@ struct ExportPanelView: View {
             VStack(alignment: .leading, spacing: 8) {
                 summaryRow("Captions", "\(editor.project.captions.count)")
                 summaryRow("Overlays", "\(editor.project.overlays.count)")
+                summaryRow("Sound FX", "\(editor.project.soundEffects.count)")
                 summaryRow("Style", editor.selectedPreset.rawValue)
                 summaryRow("Duration", String(format: "%.1fs", editor.project.duration))
+                if let note = editor.lastEnhancementNote {
+                    Text(note)
+                        .font(.custom("AvenirNext-Medium", size: 11))
+                        .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8).opacity(0.8))
+                        .padding(.top, 4)
+                }
             }
             .padding(14)
             .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
