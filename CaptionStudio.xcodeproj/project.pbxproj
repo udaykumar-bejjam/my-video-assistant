@@ -240,8 +240,6 @@
 				A10000000000000000000016 /* PlacementAligner.swift in Sources */,
 				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
 				A10000000000000000000017 /* AspectRatio.swift in Sources */,
-				A10000000000000000000018 /* VideoStitchService.swift in Sources */,
-				A10000000000000000000017 /* AspectRatio.swift in Sources */,
 				A10000000000000000000015 /* LibraryBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
