@@ -200,7 +200,16 @@ struct LibraryTile: View {
                     .font(.custom("AvenirNext-Medium", size: 10))
                     .foregroundStyle(.white.opacity(0.7))
             }
-        case .gifs, .pngs:
+        case .gifs:
+            if let file = item.file,
+               let url = editor.libraries.fileURL(kind: kind, fileName: file) {
+                AnimatedGIFView(url: url)
+                    .padding(8)
+            } else {
+                Image(systemName: kind.systemImage)
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+        case .pngs:
             if let file = item.file,
                let url = editor.libraries.fileURL(kind: kind, fileName: file) {
                 LibraryImage(url: url)

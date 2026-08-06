@@ -161,7 +161,13 @@ struct LiveOverlayCanvas: View {
                 .rotationEffect(.degrees(item.rotation))
         case .wordHit:
             WordHitView(item: item, time: editor.currentTime)
-        case .gif, .png:
+        case .gif:
+            if let url = editor.libraryFileURL(for: item) {
+                AnimatedGIFView(url: url, time: editor.currentTime, startTime: item.startTime)
+                    .frame(width: 72 * item.scale, height: 72 * item.scale)
+                    .rotationEffect(.degrees(item.rotation))
+            }
+        case .png:
             if let url = editor.libraryFileURL(for: item) {
                 LibraryImage(url: url)
                     .frame(width: 72 * item.scale, height: 72 * item.scale)
