@@ -496,16 +496,36 @@ struct TimelineScrubber: View {
                 }
 
                 timelineLane(
+                    title: "Audio",
+                    color: TimelineLaneStyle.audio,
+                    spans: [
+                        TimelineSpan(
+                            id: "dialogue",
+                            start: 0,
+                            end: duration,
+                            selected: editor.isAudioLayerSelected
+                        )
+                    ]
+                ) { _ in
+                    editor.selectAudioLayer()
+                }
+
+                timelineLane(
                     title: "SFX",
                     color: TimelineLaneStyle.sfx,
-                    spans: editor.project.soundEffects.map {
-                        TimelineSpan(id: $0.id.uuidString, start: $0.startTime, end: min(duration, $0.startTime + 0.35), selected: false)
-                    },
-                    markerOnly: true
+                    spans: editor.timelineSoundEffects.map { cue in
+                        let len = editor.sfxDuration(for: cue)
+                        return TimelineSpan(
+                            id: cue.id.uuidString,
+                            start: cue.startTime,
+                            end: min(duration, cue.startTime + len),
+                            selected: editor.selectedSoundEffectID == cue.id
+                        )
+                    }
                 ) { span in
                     if let cue = editor.project.soundEffects.first(where: { $0.id.uuidString == span.id }) {
+                        editor.selectSoundEffect(cue.id)
                         editor.seek(to: cue.startTime)
-                        editor.editorTab = .overlays
                     }
                 }
 
@@ -540,6 +560,8 @@ struct TimelineScrubber: View {
     private func selectOverlay(idString: String) {
         guard let item = editor.project.overlays.first(where: { $0.id.uuidString == idString }) else { return }
         editor.selectedOverlayID = item.id
+        editor.selectedSoundEffectID = nil
+        editor.isAudioLayerSelected = false
         editor.seek(to: item.startTime)
         editor.editorTab = .overlays
     }

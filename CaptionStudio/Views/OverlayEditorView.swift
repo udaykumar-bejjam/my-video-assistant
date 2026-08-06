@@ -23,7 +23,7 @@ struct OverlayEditorView: View {
             }
             .padding(.horizontal, 16)
 
-            Text("Select a layer to scrub, retime, or delete. Drag on preview to reposition.")
+            Text("Audio layer controls dialogue + every SFX. Visual layers sit below.")
                 .font(.custom("AvenirNext-Medium", size: 11))
                 .foregroundStyle(.white.opacity(0.4))
                 .padding(.horizontal, 16)
@@ -66,15 +66,17 @@ struct OverlayEditorView: View {
                 .padding(.horizontal, 16)
             }
 
-            if editor.project.overlays.isEmpty && editor.project.soundEffects.isEmpty {
-                Text("Run AI Place or add stickers — they show up here as adjustable layers.")
-                    .font(.custom("AvenirNext-Medium", size: 13))
-                    .foregroundStyle(.white.opacity(0.4))
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    AudioLayerPanel()
+
+                    if !editor.timelineOverlays.isEmpty {
+                        Text("Visual layers")
+                            .font(.custom("AvenirNext-DemiBold", size: 12))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+
                         ForEach(editor.timelineOverlays) { item in
                             OverlayLayerRow(
                                 item: item,
@@ -83,6 +85,8 @@ struct OverlayEditorView: View {
                                 isSelected: editor.selectedOverlayID == item.id
                             ) {
                                 editor.selectedOverlayID = item.id
+                                editor.selectedSoundEffectID = nil
+                                editor.isAudioLayerSelected = false
                                 editor.seek(to: item.startTime)
                             } onDelete: {
                                 editor.deleteOverlay(item.id)
@@ -90,33 +94,15 @@ struct OverlayEditorView: View {
                                 editor.updateOverlay(updated)
                             }
                         }
-
-                        if !editor.project.soundEffects.isEmpty {
-                            Text("Sound effects")
-                                .font(.custom("AvenirNext-DemiBold", size: 12))
-                                .foregroundStyle(.white.opacity(0.5))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 8)
-
-                            ForEach(editor.project.soundEffects.sorted(by: { $0.startTime < $1.startTime })) { cue in
-                                SFXLayerRow(
-                                    cue: cue,
-                                    duration: max(editor.project.duration, 0.1),
-                                    currentTime: editor.currentTime
-                                ) {
-                                    editor.seek(to: cue.startTime)
-                                    editor.previewSFX(cue)
-                                } onDelete: {
-                                    editor.deleteSoundEffect(cue.id)
-                                } onChange: { updated in
-                                    editor.updateSoundEffect(updated)
-                                }
-                            }
-                        }
+                    } else if editor.project.soundEffects.isEmpty {
+                        Text("Run AI Place or add stickers — they show up here as adjustable layers.")
+                            .font(.custom("AvenirNext-Medium", size: 13))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .padding(.top, 4)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
             }
 
             Spacer(minLength: 0)
@@ -134,6 +120,211 @@ struct OverlayEditorView: View {
                 .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Dialogue enhancers + every SFX cue on the Audio layer.
+struct AudioLayerPanel: View {
+    @EnvironmentObject private var editor: EditorViewModel
+
+    private var audio: ProjectAudioSettings { editor.project.audio }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(TimelineLaneStyle.audio)
+                Text("Audio layer")
+                    .font(.custom("AvenirNext-Bold", size: 14))
+                    .foregroundStyle(.white)
+                Spacer()
+                Text(audio.enhancerPreset.title)
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(TimelineLaneStyle.audio.opacity(0.9))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(TimelineLaneStyle.audio.opacity(0.18), in: Capsule())
+            }
+
+            Text("Enhancers")
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.45))
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                ForEach(AudioEnhancerPreset.allCases) { preset in
+                    Button {
+                        editor.applyAudioEnhancer(preset)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label(preset.title, systemImage: preset.systemImage)
+                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .foregroundStyle(audio.enhancerPreset == preset ? .black : .white)
+                            Text(preset.subtitle)
+                                .font(.custom("AvenirNext-Medium", size: 9))
+                                .foregroundStyle(audio.enhancerPreset == preset ? .black.opacity(0.65) : .white.opacity(0.4))
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(
+                            audio.enhancerPreset == preset
+                            ? TimelineLaneStyle.audio
+                            : Color.white.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            audioSlider(
+                label: "Dialogue",
+                value: Binding(
+                    get: { audio.dialogueGain },
+                    set: { v in
+                        var next = audio
+                        next.dialogueGain = v
+                        editor.updateAudioSettings(next)
+                    }
+                ),
+                range: 0.25...2.0,
+                format: { String(format: "%.2f×", $0) }
+            )
+
+            audioSlider(
+                label: "SFX bus",
+                value: Binding(
+                    get: { audio.sfxMasterGain },
+                    set: { v in
+                        var next = audio
+                        next.sfxMasterGain = v
+                        editor.updateAudioSettings(next)
+                    }
+                ),
+                range: 0.1...1.5,
+                format: { String(format: "%.2f×", $0) }
+            )
+
+            Toggle(isOn: Binding(
+                get: { audio.normalizeLoudness },
+                set: { on in
+                    var next = audio
+                    next.normalizeLoudness = on
+                    editor.updateAudioSettings(next)
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Normalize loudness")
+                        .font(.custom("AvenirNext-DemiBold", size: 12))
+                        .foregroundStyle(.white)
+                    Text("Peak-match dialogue on export")
+                        .font(.custom("AvenirNext-Medium", size: 10))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .tint(TimelineLaneStyle.audio)
+
+            Toggle(isOn: Binding(
+                get: { audio.duckDialogueUnderSFX },
+                set: { on in
+                    var next = audio
+                    next.duckDialogueUnderSFX = on
+                    editor.updateAudioSettings(next)
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Duck under SFX")
+                        .font(.custom("AvenirNext-DemiBold", size: 12))
+                        .foregroundStyle(.white)
+                    Text("Lower dialogue while effects play")
+                        .font(.custom("AvenirNext-Medium", size: 10))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .tint(TimelineLaneStyle.audio)
+
+            if audio.duckDialogueUnderSFX {
+                audioSlider(
+                    label: "Duck",
+                    value: Binding(
+                        get: { audio.duckAmount },
+                        set: { v in
+                            var next = audio
+                            next.duckAmount = v
+                            editor.updateAudioSettings(next)
+                        }
+                    ),
+                    range: 0.1...0.85,
+                    format: { String(format: "%.0f%%", $0 * 100) }
+                )
+            }
+
+            HStack {
+                Text("Effects on this layer")
+                    .font(.custom("AvenirNext-DemiBold", size: 12))
+                    .foregroundStyle(.white.opacity(0.55))
+                Spacer()
+                Text("\(editor.project.soundEffects.count)")
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .padding(.top, 4)
+
+            if editor.timelineSoundEffects.isEmpty {
+                Text("Drop SFX from Library or run AI Place — every effect lands here.")
+                    .font(.custom("AvenirNext-Medium", size: 12))
+                    .foregroundStyle(.white.opacity(0.35))
+            } else {
+                ForEach(editor.timelineSoundEffects) { cue in
+                    SFXLayerRow(
+                        cue: cue,
+                        duration: max(editor.project.duration, 0.1),
+                        cueLength: editor.sfxDuration(for: cue),
+                        currentTime: editor.currentTime,
+                        isSelected: editor.selectedSoundEffectID == cue.id
+                    ) {
+                        editor.selectSoundEffect(cue.id)
+                        editor.seek(to: cue.startTime)
+                        editor.previewSFX(cue)
+                    } onDelete: {
+                        editor.deleteSoundEffect(cue.id)
+                    } onChange: { updated in
+                        editor.updateSoundEffect(updated)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(TimelineLaneStyle.audio.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func audioSlider(
+        label: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        format: @escaping (Double) -> String
+    ) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.4))
+                .frame(width: 58, alignment: .leading)
+            Slider(value: value, in: range)
+                .tint(TimelineLaneStyle.audio)
+            Text(format(value.wrappedValue))
+                .font(.custom("AvenirNext-Medium", size: 10))
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(width: 42, alignment: .trailing)
+        }
     }
 }
 
@@ -346,7 +537,9 @@ struct OverlayLayerRow: View {
 struct SFXLayerRow: View {
     let cue: SoundEffectCue
     var duration: TimeInterval
+    var cueLength: TimeInterval
     var currentTime: TimeInterval
+    var isSelected: Bool
     var onSelect: () -> Void
     var onDelete: () -> Void
     var onChange: (SoundEffectCue) -> Void
@@ -356,33 +549,39 @@ struct SFXLayerRow: View {
     init(
         cue: SoundEffectCue,
         duration: TimeInterval,
+        cueLength: TimeInterval,
         currentTime: TimeInterval,
+        isSelected: Bool,
         onSelect: @escaping () -> Void,
         onDelete: @escaping () -> Void,
         onChange: @escaping (SoundEffectCue) -> Void
     ) {
         self.cue = cue
         self.duration = duration
+        self.cueLength = cueLength
         self.currentTime = currentTime
+        self.isSelected = isSelected
         self.onSelect = onSelect
         self.onDelete = onDelete
         self.onChange = onChange
         _draft = State(initialValue: cue)
     }
 
-    private var isLive: Bool { abs(currentTime - cue.startTime) < 0.35 }
+    private var isLive: Bool {
+        currentTime >= cue.startTime && currentTime <= cue.startTime + cueLength
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "speaker.wave.2.fill")
+                Image(systemName: draft.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .font(.system(size: 12))
-                    .foregroundStyle(TimelineLaneStyle.sfx)
+                    .foregroundStyle(TimelineLaneStyle.sfx.opacity(draft.isMuted ? 0.4 : 1))
                 Text(cue.assetId)
                     .font(.custom("AvenirNext-DemiBold", size: 13))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.white.opacity(draft.isMuted ? 0.45 : 1))
                     .lineLimit(1)
-                if isLive {
+                if isLive && !draft.isMuted {
                     Text("LIVE")
                         .font(.custom("AvenirNext-Bold", size: 9))
                         .foregroundStyle(.black)
@@ -391,16 +590,52 @@ struct SFXLayerRow: View {
                         .background(TimelineLaneStyle.sfx, in: Capsule())
                 }
                 Spacer()
-                Button(action: onSelect) {
-                    Image(systemName: "play.fill")
-                        .foregroundStyle(TimelineLaneStyle.sfx)
+                Button {
+                    var updated = draft
+                    updated.isMuted.toggle()
+                    draft = updated
+                    onChange(updated)
+                } label: {
+                    Image(systemName: draft.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .foregroundStyle(draft.isMuted ? .white.opacity(0.35) : TimelineLaneStyle.sfx)
                 }
                 .buttonStyle(.plain)
+                Button(action: onSelect) {
+                    Image(systemName: "play.fill")
+                        .foregroundStyle(TimelineLaneStyle.sfx.opacity(draft.isMuted ? 0.35 : 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(draft.isMuted)
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
                         .foregroundStyle(.white.opacity(0.35))
                 }
                 .buttonStyle(.plain)
+            }
+
+            GeometryReader { geo in
+                let w = max(geo.size.width, 1)
+                let x = CGFloat(draft.startTime / duration) * w
+                let width = max(4, CGFloat(cueLength / duration) * w)
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule()
+                        .fill(TimelineLaneStyle.sfx.opacity(draft.isMuted ? 0.25 : (isSelected ? 0.95 : 0.55)))
+                        .frame(width: width)
+                        .offset(x: x)
+                    Rectangle()
+                        .fill(Color.white.opacity(0.7))
+                        .frame(width: 1.5)
+                        .offset(x: CGFloat(currentTime / duration) * w)
+                }
+            }
+            .frame(height: 8)
+
+            if let reason = cue.reason {
+                Text(reason)
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(2)
             }
 
             HStack {
@@ -442,15 +677,27 @@ struct SFXLayerRow: View {
                             onChange(updated)
                         }
                     ),
-                    in: 0.1...1.2
+                    in: 0.05...1.2
                 )
                 .tint(TimelineLaneStyle.sfx)
+                .disabled(draft.isMuted)
+                Text(String(format: "%.2f", draft.gain))
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .frame(width: 36, alignment: .trailing)
             }
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(isSelected ? 0.12 : 0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(
+                            isSelected ? TimelineLaneStyle.sfx.opacity(0.55) : Color.clear,
+                            lineWidth: 1
+                        )
+                )
         )
         .onTapGesture(perform: onSelect)
         .onChange(of: cue) { _, newValue in
@@ -466,6 +713,7 @@ enum TimelineLaneStyle {
     static let text = Color(red: 0.55, green: 0.75, blue: 1.0)
     static let trim = Color(red: 1.0, green: 0.55, blue: 0.2)
     static let sfx = Color(red: 0.7, green: 0.55, blue: 1.0)
+    static let audio = Color(red: 0.35, green: 0.85, blue: 0.95)
 
     static func color(for kind: OverlayKind) -> Color {
         switch kind {
@@ -583,6 +831,7 @@ struct ExportPanelView: View {
                 summaryRow("Captions", "\(editor.project.captions.count)")
                 summaryRow("Overlays", "\(editor.project.overlays.count)")
                 summaryRow("Sound FX", "\(editor.project.soundEffects.count)")
+                summaryRow("Audio", editor.project.audio.enhancerPreset.title)
                 summaryRow("Parts", "\(max(1, editor.project.chunkCount))")
                 summaryRow("Duration", String(format: "%.1fs", editor.project.duration))
                 if let note = editor.lastEnhancementNote {

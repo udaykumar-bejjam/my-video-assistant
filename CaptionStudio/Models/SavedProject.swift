@@ -14,6 +14,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
     var captionStyle: CaptionStyle
     var overlays: [OverlayItem]
     var soundEffects: [SoundEffectCue]
+    var audio: ProjectAudioSettings
     var enhancementSummary: String?
     var packId: String?
     var language: AppLanguage
@@ -46,6 +47,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
             captionStyle: project.captionStyle,
             overlays: project.overlays,
             soundEffects: project.soundEffects,
+            audio: project.audio,
             enhancementSummary: project.enhancementSummary,
             packId: project.packId,
             language: project.language,
@@ -67,12 +69,81 @@ struct SavedProject: Identifiable, Codable, Equatable {
             captionStyle: captionStyle,
             overlays: overlays,
             soundEffects: soundEffects,
+            audio: audio,
             enhancementSummary: enhancementSummary,
             packId: packId,
             language: language,
             chunkCount: chunkCount,
             createdAt: createdAt
         )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, videoFileName, duration, aspectRatio
+        case sourceWidth, sourceHeight, captions, captionStyle, overlays, soundEffects
+        case audio, enhancementSummary, packId, language, chunkCount, createdAt, updatedAt
+    }
+
+    init(
+        id: UUID,
+        title: String,
+        videoFileName: String,
+        duration: TimeInterval,
+        aspectRatio: AspectRatioPreset,
+        sourceWidth: Double,
+        sourceHeight: Double,
+        captions: [CaptionSegment],
+        captionStyle: CaptionStyle,
+        overlays: [OverlayItem],
+        soundEffects: [SoundEffectCue],
+        audio: ProjectAudioSettings = .default,
+        enhancementSummary: String?,
+        packId: String?,
+        language: AppLanguage,
+        chunkCount: Int,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.title = title
+        self.videoFileName = videoFileName
+        self.duration = duration
+        self.aspectRatio = aspectRatio
+        self.sourceWidth = sourceWidth
+        self.sourceHeight = sourceHeight
+        self.captions = captions
+        self.captionStyle = captionStyle
+        self.overlays = overlays
+        self.soundEffects = soundEffects
+        self.audio = audio
+        self.enhancementSummary = enhancementSummary
+        self.packId = packId
+        self.language = language
+        self.chunkCount = chunkCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        videoFileName = try c.decode(String.self, forKey: .videoFileName)
+        duration = try c.decode(TimeInterval.self, forKey: .duration)
+        aspectRatio = try c.decode(AspectRatioPreset.self, forKey: .aspectRatio)
+        sourceWidth = try c.decode(Double.self, forKey: .sourceWidth)
+        sourceHeight = try c.decode(Double.self, forKey: .sourceHeight)
+        captions = try c.decode([CaptionSegment].self, forKey: .captions)
+        captionStyle = try c.decode(CaptionStyle.self, forKey: .captionStyle)
+        overlays = try c.decode([OverlayItem].self, forKey: .overlays)
+        soundEffects = try c.decodeIfPresent([SoundEffectCue].self, forKey: .soundEffects) ?? []
+        audio = try c.decodeIfPresent(ProjectAudioSettings.self, forKey: .audio) ?? .default
+        enhancementSummary = try c.decodeIfPresent(String.self, forKey: .enhancementSummary)
+        packId = try c.decodeIfPresent(String.self, forKey: .packId)
+        language = try c.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .english
+        chunkCount = try c.decodeIfPresent(Int.self, forKey: .chunkCount) ?? 1
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
     }
 }
 

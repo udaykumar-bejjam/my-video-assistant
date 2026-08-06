@@ -39,7 +39,7 @@ final class VideoExportService: ObservableObject {
         aspect: AspectRatioPreset = .portrait9x16,
         sourceTimeRange: CMTimeRange? = nil,
         outputURL: URL? = nil,
-        normalizeLoudness: Bool = true,
+        audioSettings: ProjectAudioSettings = .default,
         brandSfxGain: Double = 0.8
     ) async throws -> URL {
         progress = 0.02
@@ -81,41 +81,38 @@ final class VideoExportService: ObservableObject {
 
         try compVideo.insertTimeRange(insertRange, of: videoTrack, at: .zero)
 
+        var dialogueTrack: AVMutableCompositionTrack?
         if let audioTrack = try await asset.loadTracks(withMediaType: .audio).first,
            let compAudio = composition.addMutableTrack(
             withMediaType: .audio,
             preferredTrackID: kCMPersistentTrackID_Invalid
            ) {
             try? compAudio.insertTimeRange(insertRange, of: audioTrack, at: .zero)
+            dialogueTrack = compAudio
         }
 
         var norm = AudioNormalizeService.Normalization(
             dialogueGain: 1,
             measuredPeak: AudioNormalizeService.targetPeak,
-            sfxGainScale: brandSfxGain
+            sfxGainScale: brandSfxGain * audioSettings.sfxMasterGain
         )
-        if normalizeLoudness {
+        if audioSettings.normalizeLoudness {
             statusMessage = "Measuring loudness…"
             let peak = try await AudioNormalizeService.analyzeDialoguePeak(videoURL: videoURL)
-            norm = AudioNormalizeService.normalization(measuredPeak: peak, brandSfxGain: brandSfxGain)
-        }
-
-        let scaledSFX = soundEffects.map {
-            SoundEffectCue(
-                id: $0.id,
-                assetId: $0.assetId,
-                startTime: $0.startTime,
-                gain: min(1.2, $0.gain * norm.sfxGainScale),
-                reason: $0.reason
+            norm = AudioNormalizeService.normalization(
+                measuredPeak: peak,
+                brandSfxGain: brandSfxGain * audioSettings.sfxMasterGain
             )
         }
 
         // Mix in library SFX cues (already shifted to local 0-based timeline when chunked).
-        try await mixSoundEffects(
+        let mixedSFX = try await mixSoundEffects(
             into: composition,
-            cues: scaledSFX,
+            cues: soundEffects,
             libraryRoot: libraryRoot,
-            timelineDuration: compositionDuration
+            timelineDuration: compositionDuration,
+            masterGain: audioSettings.sfxMasterGain * brandSfxGain,
+            normalizeScale: audioSettings.normalizeLoudness ? norm.sfxGainScale : 1.0
         )
 
         progress = 0.15
@@ -189,9 +186,31 @@ final class VideoExportService: ObservableObject {
         session.outputFileType = .mp4
         session.videoComposition = videoComposition
         session.shouldOptimizeForNetworkUse = true
-        if normalizeLoudness, let mix = AudioNormalizeService.audioMix(for: composition, dialogueGain: norm.dialogueGain) {
+
+        let dialogueVolume = Float(audioSettings.dialogueGain)
+            * (audioSettings.normalizeLoudness ? norm.dialogueGain : 1)
+        var mixGains: [AudioNormalizeService.TrackGain] = []
+        if let dialogueTrack {
+            var duckWindows: [(start: TimeInterval, end: TimeInterval, amount: Float)] = []
+            if audioSettings.duckDialogueUnderSFX {
+                duckWindows = mixedSFX.map {
+                    (
+                        start: $0.startTime,
+                        end: $0.startTime + $0.duration,
+                        amount: Float(max(0, min(0.85, audioSettings.duckAmount)))
+                    )
+                }
+            }
+            mixGains.append(
+                .init(track: dialogueTrack, volume: dialogueVolume, duckWindows: duckWindows)
+            )
+        }
+        for sfx in mixedSFX {
+            mixGains.append(.init(track: sfx.track, volume: sfx.volume))
+        }
+        if let mix = AudioNormalizeService.audioMix(gains: mixGains) {
             session.audioMix = mix
-            statusMessage = "Encoding \(aspect.rawValue) (loudness ×\(String(format: "%.2f", norm.dialogueGain)))…"
+            statusMessage = "Encoding \(aspect.rawValue) (audio ×\(String(format: "%.2f", dialogueVolume)))…"
         } else {
             statusMessage = "Encoding \(aspect.rawValue)…"
         }
@@ -273,20 +292,30 @@ final class VideoExportService: ObservableObject {
         }
     }
 
+    private struct MixedSFXTrack {
+        var track: AVMutableCompositionTrack
+        var volume: Float
+        var startTime: TimeInterval
+        var duration: TimeInterval
+    }
+
     private func mixSoundEffects(
         into composition: AVMutableComposition,
         cues: [SoundEffectCue],
         libraryRoot: URL?,
-        timelineDuration: CMTime
-    ) async throws {
-        guard let libraryRoot, !cues.isEmpty else { return }
+        timelineDuration: CMTime,
+        masterGain: Double,
+        normalizeScale: Double
+    ) async throws -> [MixedSFXTrack] {
+        guard let libraryRoot, !cues.isEmpty else { return [] }
         let catalogURL = libraryRoot.appendingPathComponent("sfx/catalog.json")
         guard
             let data = try? Data(contentsOf: catalogURL),
             let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data)
-        else { return }
+        else { return [] }
 
-        for cue in cues {
+        var mixed: [MixedSFXTrack] = []
+        for cue in cues where !cue.isMuted {
             guard let item = catalog.items.first(where: { $0.id == cue.assetId }) else { continue }
             let fileName = item.file ?? item.wav
             guard let fileName else { continue }
@@ -311,7 +340,17 @@ final class VideoExportService: ObservableObject {
                 of: track,
                 at: start
             )
+            let volume = Float(min(1.4, max(0.05, cue.gain * masterGain * normalizeScale)))
+            mixed.append(
+                MixedSFXTrack(
+                    track: compAudio,
+                    volume: volume,
+                    startTime: cue.startTime,
+                    duration: insertDuration.seconds
+                )
+            )
         }
+        return mixed
     }
 
     private func addOverlayLayers(

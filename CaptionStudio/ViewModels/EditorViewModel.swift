@@ -18,6 +18,9 @@ final class EditorViewModel: ObservableObject {
     @Published var isExporting = false
     @Published var selectedCaptionID: CaptionSegment.ID?
     @Published var selectedOverlayID: OverlayItem.ID?
+    @Published var selectedSoundEffectID: SoundEffectCue.ID?
+    /// True when the Audio (dialogue) layer inspector should show as focused.
+    @Published var isAudioLayerSelected = false
     @Published var selectedPreset: CaptionPreset = .boldWhite
     @Published var errorMessage: String?
     @Published var exportURL: URL?
@@ -39,7 +42,14 @@ final class EditorViewModel: ObservableObject {
     @Published var showSafeZone = true
     @Published var distribution: DistributionPackage?
     @Published var coverURL: URL?
-    @Published var normalizeLoudness = true
+    /// Mirrors `project.audio.normalizeLoudness` for Export panel binding.
+    @Published var normalizeLoudness = true {
+        didSet {
+            if project.audio.normalizeLoudness != normalizeLoudness {
+                project.audio.normalizeLoudness = normalizeLoudness
+            }
+        }
+    }
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
@@ -64,6 +74,8 @@ final class EditorViewModel: ObservableObject {
 
     init() {
         language = brandKit.kit.appLanguage
+        project.audio.sfxMasterGain = brandKit.kit.defaultSfxGain
+        normalizeLoudness = project.audio.normalizeLoudness
         if let defaultPack = brandKit.kit.defaultPackId {
             project.packId = defaultPack
             if let pack = packs.pack(id: defaultPack) {
@@ -399,6 +411,7 @@ final class EditorViewModel: ObservableObject {
             tearDownPlayer()
             project = draft.toProject(videoURL: videoURL)
             language = draft.language
+            normalizeLoudness = project.audio.normalizeLoudness
             selectedPreset = packs.pack(id: draft.packId)?.captionPreset ?? selectedPreset
             lastEnhancementNote = draft.enhancementSummary
             refreshTrimSuggestions()
@@ -447,6 +460,10 @@ final class EditorViewModel: ObservableObject {
         let packId = project.packId
         project = .empty()
         project.packId = packId
+        project.audio.sfxMasterGain = brandKit.kit.defaultSfxGain
+        normalizeLoudness = project.audio.normalizeLoudness
+        isAudioLayerSelected = false
+        selectedSoundEffectID = nil
         if let pack = selectedPack {
             applyPackSideEffects(pack)
         }
@@ -825,13 +842,14 @@ final class EditorViewModel: ObservableObject {
     }
 
     func previewSFX(_ cue: SoundEffectCue) {
+        guard !cue.isMuted else { return }
         guard let asset = libraries.item(kind: .sfx, id: cue.assetId),
               let file = asset.file ?? asset.wav,
               let url = libraries.fileURL(kind: .sfx, fileName: file)
         else { return }
         do {
             let player = try AVAudioPlayer(contentsOf: url)
-            player.volume = Float(cue.gain)
+            player.volume = Float(min(1.4, cue.gain * project.audio.sfxMasterGain))
             player.prepareToPlay()
             player.play()
             sfxPlayers.append(player)
@@ -897,6 +915,8 @@ final class EditorViewModel: ObservableObject {
         let item = OverlayItem.textSticker(text, at: currentTime)
         project.overlays.append(item)
         selectedOverlayID = item.id
+        selectedSoundEffectID = nil
+        isAudioLayerSelected = false
         editorTab = .overlays
     }
 
@@ -904,6 +924,8 @@ final class EditorViewModel: ObservableObject {
         let item = OverlayItem.emoji(emoji, at: currentTime)
         project.overlays.append(item)
         selectedOverlayID = item.id
+        selectedSoundEffectID = nil
+        isAudioLayerSelected = false
     }
 
     func updateOverlay(_ item: OverlayItem) {
@@ -916,6 +938,20 @@ final class EditorViewModel: ObservableObject {
         if selectedOverlayID == id { selectedOverlayID = nil }
     }
 
+    func selectAudioLayer() {
+        isAudioLayerSelected = true
+        selectedSoundEffectID = nil
+        selectedOverlayID = nil
+        editorTab = .overlays
+    }
+
+    func selectSoundEffect(_ id: SoundEffectCue.ID) {
+        selectedSoundEffectID = id
+        selectedOverlayID = nil
+        isAudioLayerSelected = false
+        editorTab = .overlays
+    }
+
     func updateSoundEffect(_ cue: SoundEffectCue) {
         guard let index = project.soundEffects.firstIndex(where: { $0.id == cue.id }) else { return }
         project.soundEffects[index] = cue
@@ -923,11 +959,32 @@ final class EditorViewModel: ObservableObject {
 
     func deleteSoundEffect(_ id: SoundEffectCue.ID) {
         project.soundEffects.removeAll { $0.id == id }
+        if selectedSoundEffectID == id { selectedSoundEffectID = nil }
+    }
+
+    func updateAudioSettings(_ settings: ProjectAudioSettings) {
+        project.audio = settings
+        normalizeLoudness = settings.normalizeLoudness
+    }
+
+    func applyAudioEnhancer(_ preset: AudioEnhancerPreset) {
+        var settings = project.audio
+        settings.apply(preset: preset)
+        updateAudioSettings(settings)
+    }
+
+    /// Resolved play length for a cue from the SFX library (fallback 0.35s).
+    func sfxDuration(for cue: SoundEffectCue) -> TimeInterval {
+        libraries.item(kind: .sfx, id: cue.assetId)?.playLength ?? 0.35
     }
 
     /// Overlays sorted by start time for the layers timeline / inspector.
     var timelineOverlays: [OverlayItem] {
         project.overlays.sorted { $0.startTime < $1.startTime }
+    }
+
+    var timelineSoundEffects: [SoundEffectCue] {
+        project.soundEffects.sorted { $0.startTime < $1.startTime }
     }
 
     // MARK: - Export
@@ -984,18 +1041,10 @@ final class EditorViewModel: ObservableObject {
                         captions: project.captions,
                         style: project.captionStyle,
                         overlays: overlays,
-                        soundEffects: project.soundEffects.map {
-                            SoundEffectCue(
-                                id: $0.id,
-                                assetId: $0.assetId,
-                                startTime: $0.startTime,
-                                gain: $0.gain * brandKit.kit.defaultSfxGain,
-                                reason: $0.reason
-                            )
-                        },
+                        soundEffects: project.soundEffects,
                         libraryRoot: libraries.rootURL,
                         aspect: aspect,
-                        normalizeLoudness: normalizeLoudness,
+                        audioSettings: project.audio,
                         brandSfxGain: brandKit.kit.defaultSfxGain
                     )
                 } else {
@@ -1006,14 +1055,6 @@ final class EditorViewModel: ObservableObject {
                         }
                         let sfx = project.soundEffects.filter {
                             $0.startTime >= chunk.startTime && $0.startTime < chunk.endTime
-                        }.map {
-                            SoundEffectCue(
-                                id: $0.id,
-                                assetId: $0.assetId,
-                                startTime: $0.startTime,
-                                gain: $0.gain * brandKit.kit.defaultSfxGain,
-                                reason: $0.reason
-                            )
                         }
                         return .init(
                             chunk: chunk,
@@ -1029,7 +1070,7 @@ final class EditorViewModel: ObservableObject {
                         style: project.captionStyle,
                         segments: segments,
                         libraryRoot: libraries.rootURL,
-                        normalizeLoudness: normalizeLoudness,
+                        audioSettings: project.audio,
                         brandSfxGain: brandKit.kit.defaultSfxGain
                     )
                     exporter.progress = stitcher.progress

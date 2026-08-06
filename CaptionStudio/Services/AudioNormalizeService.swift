@@ -15,6 +15,13 @@ enum AudioNormalizeService {
         var sfxGainScale: Double
     }
 
+    struct TrackGain {
+        var track: AVAssetTrack
+        var volume: Float
+        /// Optional duck windows on this track (usually dialogue).
+        var duckWindows: [(start: TimeInterval, end: TimeInterval, amount: Float)] = []
+    }
+
     static func analyzeDialoguePeak(videoURL: URL) async throws -> Float {
         let asset = AVURLAsset(url: videoURL)
         guard let track = try await asset.loadTracks(withMediaType: .audio).first else {
@@ -67,23 +74,58 @@ enum AudioNormalizeService {
         )
     }
 
+    /// Legacy helper — uniform SFX volume under dialogue.
     static func audioMix(
         for composition: AVMutableComposition,
         dialogueGain: Float
     ) -> AVMutableAudioMix? {
         let audioTracks = composition.tracks(withMediaType: .audio)
         guard let first = audioTracks.first else { return nil }
-        var all: [AVMutableAudioMixInputParameters] = []
-        let dialogue = AVMutableAudioMixInputParameters(track: first)
-        dialogue.setVolume(dialogueGain, at: .zero)
-        all.append(dialogue)
+        var gains: [TrackGain] = [
+            TrackGain(track: first, volume: dialogueGain)
+        ]
         for track in audioTracks.dropFirst() {
-            let p = AVMutableAudioMixInputParameters(track: track)
-            p.setVolume(min(1.0, dialogueGain * 0.85), at: .zero)
-            all.append(p)
+            gains.append(TrackGain(track: track, volume: min(1.0, dialogueGain * 0.85)))
+        }
+        return audioMix(gains: gains)
+    }
+
+    /// Per-track volumes + optional dialogue duck windows around SFX.
+    static func audioMix(gains: [TrackGain]) -> AVMutableAudioMix? {
+        guard !gains.isEmpty else { return nil }
+        var params: [AVMutableAudioMixInputParameters] = []
+        for gain in gains {
+            let p = AVMutableAudioMixInputParameters(track: gain.track)
+            let base = max(0, min(1.5, gain.volume))
+            p.setVolume(base, at: .zero)
+            for window in gain.duckWindows {
+                let ducked = max(0.05, base * (1 - min(0.85, window.amount)))
+                let start = CMTime(seconds: max(0, window.start), preferredTimescale: 600)
+                let end = CMTime(seconds: max(window.start + 0.05, window.end), preferredTimescale: 600)
+                let fade: TimeInterval = 0.05
+                let duckIn = CMTime(seconds: max(0, window.start - fade), preferredTimescale: 600)
+                let duckOut = CMTime(seconds: window.end + fade, preferredTimescale: 600)
+                let fadeIn = CMTimeRange(
+                    start: duckIn,
+                    duration: CMTimeMaximum(.zero, CMTimeSubtract(start, duckIn))
+                )
+                let fadeOut = CMTimeRange(
+                    start: end,
+                    duration: CMTimeMaximum(.zero, CMTimeSubtract(duckOut, end))
+                )
+                if fadeIn.duration.seconds > 0 {
+                    p.setVolumeRamp(fromStartVolume: base, toEndVolume: ducked, timeRange: fadeIn)
+                }
+                p.setVolume(ducked, at: start)
+                if fadeOut.duration.seconds > 0 {
+                    p.setVolumeRamp(fromStartVolume: ducked, toEndVolume: base, timeRange: fadeOut)
+                }
+                p.setVolume(base, at: duckOut)
+            }
+            params.append(p)
         }
         let mix = AVMutableAudioMix()
-        mix.inputParameters = all
+        mix.inputParameters = params
         return mix
     }
 }

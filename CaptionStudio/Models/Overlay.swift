@@ -130,6 +130,8 @@ struct VideoProject: Identifiable, Equatable {
     var captionStyle: CaptionStyle
     var overlays: [OverlayItem]
     var soundEffects: [SoundEffectCue]
+    /// Dialogue + SFX enhancer / mix controls (Audio layer).
+    var audio: ProjectAudioSettings
     var enhancementSummary: String?
     /// Selected Shorts Pack id (`hook`, `hype`, …) — drives enhance biases + default aspect.
     var packId: String?
@@ -149,6 +151,7 @@ struct VideoProject: Identifiable, Equatable {
             captionStyle: .default,
             overlays: [],
             soundEffects: [],
+            audio: .default,
             enhancementSummary: nil,
             packId: nil,
             language: .english,

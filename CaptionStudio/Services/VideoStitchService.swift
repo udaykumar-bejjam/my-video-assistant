@@ -24,7 +24,7 @@ final class VideoStitchService: ObservableObject {
         segments: [SegmentSpec],
         libraryRoot: URL?,
         outputURL: URL? = nil,
-        normalizeLoudness: Bool = true,
+        audioSettings: ProjectAudioSettings = .default,
         brandSfxGain: Double = 0.8
     ) async throws -> URL {
         guard !segments.isEmpty else {
@@ -88,7 +88,7 @@ final class VideoStitchService: ObservableObject {
                 ),
                 outputURL: FileManager.default.temporaryDirectory
                     .appendingPathComponent("CaptionStudio-part-\(offset)-\(UUID().uuidString).mp4"),
-                normalizeLoudness: normalizeLoudness,
+                audioSettings: audioSettings,
                 brandSfxGain: brandSfxGain
             )
             partURLs.append(partURL)
