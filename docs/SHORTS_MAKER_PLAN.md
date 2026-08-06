@@ -21,6 +21,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | Shorts Packs + opening hooks + batch export | Done |
 | Auto B-roll / sticker moments on strong words | Done |
 | Animated GIF preview + export burn-in | Done |
+| Expanded GIF library + B-roll GIF bias (power/emotion/reveal) | Done |
 | Drafts / brand kit / language lock / trim assist | Done |
 | Distribution copy + cover / safe zones / loudness | Done |
 
@@ -112,12 +113,13 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 **Rules:**
 - Max N stickers per 15s to avoid clutter  
 - Prefer library tags matching mood  
+- Prefer animated GIF over PNG for power / emotion / reveal when tagged GIFs exist  
 - Place in safe corners (see C2)  
 - Time to word start; length = asset `lengthSeconds`
 
 **AI contract:** existing `placements[]` with stronger “must pair wordHit ↔ gif/png” rule  
 
-**Acceptance:** Strong words get a sticker+SFX ≥70% of the time in heuristic/SDK tests  
+**Acceptance:** Strong words get a sticker+SFX ≥70% of the time in heuristic/SDK tests; power/emotion/reveal stickers are GIFs ≥70% when assets exist  
 
 ---
 

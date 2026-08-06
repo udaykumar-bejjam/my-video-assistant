@@ -1,91 +1,83 @@
 {
-  "version": 1,
-  "library": "gifs",
+  "version": 2,
+  "kind": "gif",
   "items": [
     {
-      "id": "pop-burst",
-      "name": "Pop Burst",
-      "tags": [
-        "hype",
-        "impact",
-        "reveal"
-      ],
+      "id": "gif-pop-burst",
       "file": "pop-burst.gif",
-      "defaultDuration": 0.84,
-      "defaultScale": 1.1,
-      "width": 192,
-      "height": 192,
-      "frameCount": 12,
-      "durationSeconds": 0.84,
-      "frameDurationMs": 70
+      "tags": ["pop", "burst", "impact", "power", "emphasis", "reveal", "wow", "fire", "boom", "hit"],
+      "hasAlpha": true,
+      "loop": true
     },
     {
-      "id": "pulse-ring",
-      "name": "Pulse Ring",
-      "tags": [
-        "focus",
-        "tech",
-        "highlight"
-      ],
+      "id": "gif-pulse-ring",
       "file": "pulse-ring.gif",
-      "defaultDuration": 0.84,
-      "defaultScale": 1.0,
-      "width": 192,
-      "height": 192,
-      "frameCount": 12,
-      "durationSeconds": 0.84,
-      "frameDurationMs": 70
+      "tags": ["pulse", "ring", "focus", "emotion", "reveal", "love", "glow", "attention"],
+      "hasAlpha": true,
+      "loop": true
     },
     {
-      "id": "confetti",
-      "name": "Confetti",
-      "tags": [
-        "celebration",
-        "win",
-        "cheer"
-      ],
+      "id": "gif-confetti",
       "file": "confetti.gif",
-      "defaultDuration": 0.84,
-      "defaultScale": 1.2,
-      "width": 192,
-      "height": 192,
-      "frameCount": 12,
-      "durationSeconds": 0.84,
-      "frameDurationMs": 70
+      "tags": ["confetti", "celebrate", "win", "party", "power", "emotion", "success", "yay"],
+      "hasAlpha": true,
+      "loop": true
     },
     {
-      "id": "shine-sweep",
-      "name": "Shine Sweep",
-      "tags": [
-        "product",
-        "premium",
-        "cta"
-      ],
+      "id": "gif-shine-sweep",
       "file": "shine-sweep.gif",
-      "defaultDuration": 0.84,
-      "defaultScale": 1.0,
-      "width": 192,
-      "height": 192,
-      "frameCount": 12,
-      "durationSeconds": 0.84,
-      "frameDurationMs": 70
+      "tags": ["shine", "sweep", "reveal", "power", "emphasis", "wow", "gloss"],
+      "hasAlpha": true,
+      "loop": true
     },
     {
-      "id": "bounce-dot",
-      "name": "Bounce Dot",
-      "tags": [
-        "playful",
-        "point",
-        "ui"
-      ],
+      "id": "gif-bounce-dot",
       "file": "bounce-dot.gif",
-      "defaultDuration": 0.84,
-      "defaultScale": 0.9,
-      "width": 192,
-      "height": 192,
-      "frameCount": 12,
-      "durationSeconds": 0.84,
-      "frameDurationMs": 70
+      "tags": ["bounce", "dot", "fun", "emotion", "pop", "energy"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-sparkle-twinkle",
+      "file": "sparkle-twinkle.gif",
+      "tags": ["sparkle", "twinkle", "magic", "reveal", "emotion", "wow", "shine", "star"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-slam-stomp",
+      "file": "slam-stomp.gif",
+      "tags": ["slam", "stomp", "impact", "power", "emphasis", "hit", "boom", "fire", "strong"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-arrow-bounce",
+      "file": "arrow-bounce.gif",
+      "tags": ["arrow", "point", "cta", "reveal", "direction", "look", "here"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-heart-pulse",
+      "file": "heart-pulse.gif",
+      "tags": ["heart", "love", "pulse", "emotion", "like", "romance", "feel"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-star-pop",
+      "file": "star-pop.gif",
+      "tags": ["star", "pop", "win", "power", "celebrate", "success", "wow", "favorite"],
+      "hasAlpha": true,
+      "loop": true
+    },
+    {
+      "id": "gif-hash-pulse",
+      "file": "hash-pulse.gif",
+      "tags": ["hashtag", "trend", "viral", "social", "reveal", "power", "tag"],
+      "hasAlpha": true,
+      "loop": true
     }
   ]
 }

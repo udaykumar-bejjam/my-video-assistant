@@ -89,15 +89,15 @@ export function scoreWordSignificance(text, language = "en-US") {
 export function tagsForCategory(category) {
   switch (category) {
     case "power":
-      return ["power", "impact", "hype", "energy", "hot", "celebration"];
+      return ["power", "impact", "hype", "energy", "hot", "celebration", "win", "boom", "fire", "slam"];
     case "reveal":
-      return ["reveal", "focus", "highlight", "new", "premium"];
+      return ["reveal", "focus", "highlight", "new", "premium", "sparkle", "wow", "shine"];
     case "emotion":
-      return ["love", "emotional", "celebration", "cheer", "like"];
+      return ["love", "emotion", "emotional", "celebration", "cheer", "like", "heart", "pulse"];
     case "numbers":
       return ["point", "highlight", "focus", "ui", "label"];
     case "cta":
-      return ["cta", "direction", "point", "product", "premium"];
+      return ["cta", "direction", "point", "product", "premium", "arrow"];
     default:
       return ["hype", "impact", "focus"];
   }
