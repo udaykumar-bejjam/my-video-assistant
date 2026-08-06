@@ -148,6 +148,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### B2. Brand kit
+**Status:** Shipped (on-device UserDefaults)
+
 **What:** User defaults applied to every new project.
 
 ```json
@@ -173,6 +175,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### B3. Language lock per project
+**Status:** Shipped (`VideoProject.language` sticky with editor language)
+
 **What:** Language is sticky on the project (already partially there via `editor.language`).
 
 **Finish:**

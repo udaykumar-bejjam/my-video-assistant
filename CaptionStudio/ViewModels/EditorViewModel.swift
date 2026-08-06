@@ -26,7 +26,9 @@ final class EditorViewModel: ObservableObject {
     @Published var lastEnhancementNote: String?
     @Published var libraryKind: MediaLibraryKind = .textStyles
     @Published var chunkProgressLabel: String?
-    @Published var language: AppLanguage = .english
+    @Published var language: AppLanguage = .english {
+        didSet { project.language = language }
+    }
     @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
     @Published var batchExportURLs: [URL] = []
     @Published var showBrandKit = false
