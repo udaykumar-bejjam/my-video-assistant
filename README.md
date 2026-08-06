@@ -96,6 +96,8 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 **Export burn-in:** Captions, word hits, stickers, and stylish text use Core Animation keyframe opacity (macOS-safe) so overlays actually appear in the MP4 — not only in preview.
 
+**Canvas alignment:** Preview captions/overlays use the same aspect canvas as export (9:16 / 16:9 fill). Positions and font scale match the export frame — not a smaller player-intrinsic rect.
+
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  
 3. Run on iPhone / simulator / My Mac  

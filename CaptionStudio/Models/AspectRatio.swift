@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import AVFoundation
 
-/// Output / editor canvas aspect. Source video is fitted into this frame.
+/// Output / editor canvas aspect. Source video is center-cropped to fill this frame.
 enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
     case portrait9x16 = "9:16"
     case landscape16x9 = "16:9"
@@ -183,23 +183,51 @@ enum VideoChunkPlanner {
     }
 }
 
-/// Fit a source frame into a target aspect canvas (center crop to fill).
+/// Fit a source frame into a target aspect canvas (center **crop to fill**).
+/// Matches preview `videoGravity = .resizeAspectFill`.
 enum AspectFit {
+    /// - Returns: layer instruction transform mapping track natural pixels → `targetSize`.
+    static func transform(
+        naturalSize: CGSize,
+        preferredTransform: CGAffineTransform,
+        targetSize: CGSize
+    ) -> CGAffineTransform {
+        // preferredTransform can leave a non-zero origin; neutralize before scale/center
+        // or the video sits in a sub-rect of the render canvas.
+        let orientedRect = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
+        let oriented = CGSize(width: abs(orientedRect.width), height: abs(orientedRect.height))
+
+        let scale = max(
+            targetSize.width / max(oriented.width, 1),
+            targetSize.height / max(oriented.height, 1)
+        )
+        let scaled = CGSize(width: oriented.width * scale, height: oriented.height * scale)
+        let tx = (targetSize.width - scaled.width) / 2
+        let ty = (targetSize.height - scaled.height) / 2
+
+        return preferredTransform
+            .concatenating(
+                CGAffineTransform(translationX: -orientedRect.origin.x, y: -orientedRect.origin.y)
+            )
+            .concatenating(CGAffineTransform(scaleX: scale, y: scale))
+            .concatenating(CGAffineTransform(translationX: tx, y: ty))
+    }
+
+    /// Compatibility wrapper when only the oriented size is available.
     static func transform(
         sourceOrientedSize: CGSize,
         sourcePreferredTransform: CGAffineTransform,
         targetSize: CGSize
     ) -> (displayTransform: CGAffineTransform, layerInstructionTransform: CGAffineTransform) {
-        // First apply preferred orientation, then scale-to-fill target.
-        let oriented = sourceOrientedSize
-        let scale = max(targetSize.width / max(oriented.width, 1), targetSize.height / max(oriented.height, 1))
-        let scaled = CGSize(width: oriented.width * scale, height: oriented.height * scale)
-        let tx = (targetSize.width - scaled.width) / 2
-        let ty = (targetSize.height - scaled.height) / 2
-
-        var t = sourcePreferredTransform
-        t = t.concatenating(CGAffineTransform(scaleX: scale, y: scale))
-        t = t.concatenating(CGAffineTransform(translationX: tx, y: ty))
+        // Best-effort: recover natural size by inverting preferredTransform.
+        let probe = CGRect(origin: .zero, size: sourceOrientedSize)
+            .applying(sourcePreferredTransform.inverted())
+        let natural = CGSize(width: abs(probe.width), height: abs(probe.height))
+        let t = transform(
+            naturalSize: natural.width > 1 ? natural : sourceOrientedSize,
+            preferredTransform: sourcePreferredTransform,
+            targetSize: targetSize
+        )
         return (t, t)
     }
 }
