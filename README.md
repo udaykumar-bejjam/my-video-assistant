@@ -94,6 +94,8 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 **Animated GIFs (Phase 2):** Expanded transparent GIF library (11 loops) with mood tags; B-roll prefers GIF over PNG for power / emotion / reveal when a tagged GIF exists.
 
+**Export burn-in:** Captions, word hits, stickers, and stylish text use Core Animation keyframe opacity (macOS-safe) so overlays actually appear in the MP4 — not only in preview.
+
 1. Open `CaptionStudio.xcodeproj` in Xcode 15+  
 2. Start the enhancer (`npm start` above)  
 3. Run on iPhone / simulator / My Mac  

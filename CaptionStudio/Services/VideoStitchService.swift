@@ -48,9 +48,31 @@ final class VideoStitchService: ObservableObject {
 
             // Shift timeline so this part starts at t=0 for the segment exporter.
             let delta = -chunk.startTime
-            let localCaptions = VideoChunkPlanner.shiftCaptions(segment.captions, by: delta)
-            let localOverlays = VideoChunkPlanner.shiftOverlays(segment.overlays, by: delta)
-            let localSFX = VideoChunkPlanner.shiftSFX(segment.soundEffects, by: delta)
+            let localCaptions = VideoChunkPlanner.shiftCaptions(segment.captions, by: delta).map { cap -> CaptionSegment in
+                var c = cap
+                c.startTime = max(0, min(chunk.duration, c.startTime))
+                c.endTime = max(c.startTime + 0.05, min(chunk.duration, c.endTime))
+                c.words = c.words.map { w in
+                    var word = w
+                    word.startTime = max(0, min(chunk.duration, w.startTime))
+                    word.endTime = max(word.startTime, min(chunk.duration, w.endTime))
+                    return word
+                }
+                return c
+            }
+            let localOverlays = VideoChunkPlanner.shiftOverlays(segment.overlays, by: delta).compactMap { item -> OverlayItem? in
+                var o = item
+                o.startTime = max(0, o.startTime)
+                o.endTime = min(chunk.duration, o.endTime)
+                guard o.endTime > o.startTime else { return nil }
+                return o
+            }
+            let localSFX = VideoChunkPlanner.shiftSFX(segment.soundEffects, by: delta).compactMap { cue -> SoundEffectCue? in
+                var s = cue
+                s.startTime = max(0, s.startTime)
+                guard s.startTime < chunk.duration else { return nil }
+                return s
+            }
 
             let partURL = try await exporter.export(
                 videoURL: videoURL,

@@ -698,6 +698,7 @@ final class EditorViewModel: ObservableObject {
             assetId: nil,
             assetFileName: nil,
             styleAssetId: style.id,
+            fontName: style.fontName,
             x: aligned.x,
             y: aligned.y,
             scale: placement.scale,
