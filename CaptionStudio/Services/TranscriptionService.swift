@@ -236,12 +236,20 @@ final class TranscriptionService: ObservableObject {
         statusMessage = "Extracting audio for Whisper…"
         let audioURL = try await extractAudio(from: videoURL)
         defer { try? FileManager.default.removeItem(at: audioURL) }
+        // Prefer the source video duration — extracted M4A can report 0/short before load,
+        // which used to pack all captions into ~10s (captions raced ahead of A/V).
+        let timelineDuration = max(
+            await Self.loadDuration(of: videoURL),
+            await Self.loadDuration(of: audioURL),
+            1
+        )
 
         do {
             let result = try await WhisperTranscriptionClient.transcribeDetailed(
                 audioURL: audioURL,
                 apiKey: key,
-                languageHint: language
+                languageHint: language,
+                timelineDuration: timelineDuration
             ) { [weak self] value, message in
                 self?.progress = value
                 self?.statusMessage = message
@@ -256,7 +264,12 @@ final class TranscriptionService: ObservableObject {
                     localeId: "whisper"
                 )
             }
-            let segments = Self.buildSegments(from: tokens, language: language)
+            var segments = Self.buildSegments(from: tokens, language: language)
+            segments = Self.paceCaptionsToTimeline(
+                segments,
+                timelineDuration: timelineDuration,
+                language: language
+            )
             progress = 1
             guard !segments.isEmpty else {
                 if useDemoFallback {
@@ -265,7 +278,8 @@ final class TranscriptionService: ObservableObject {
                 }
                 return []
             }
-            statusMessage = "Whisper done — \(segments.count) captions · \(result.note ?? "")"
+            let last = segments.last?.endTime ?? 0
+            statusMessage = "Whisper done — \(segments.count) captions · \(String(format: "%.1fs", last))/\(String(format: "%.1fs", timelineDuration)) · \(result.note ?? "")"
             return segments
         } catch {
             if useDemoFallback {
@@ -442,18 +456,20 @@ final class TranscriptionService: ObservableObject {
         }
         guard !words.isEmpty else { return [] }
 
-        let maxWords = language == .english ? 5 : 4
+        let maxWords = language == .english ? 5 : 3
         var captions: [CaptionSegment] = []
         var buffer: [CaptionWord] = []
 
         func flush() {
             guard let first = buffer.first, let last = buffer.last else { return }
             let text = buffer.map(\.text).joined(separator: " ")
+            // Keep each phrase readable — Telugu lines need more on-screen time.
+            let minHold = language == .english ? 0.55 : 1.1
             captions.append(
                 CaptionSegment(
                     text: text,
                     startTime: first.startTime,
-                    endTime: max(last.endTime, first.startTime + 0.4),
+                    endTime: max(last.endTime, first.startTime + minHold),
                     words: buffer
                 )
             )
@@ -481,6 +497,82 @@ final class TranscriptionService: ObservableObject {
         }
 
         return captions
+    }
+
+    /// Hold each caption until the next one starts, and stretch to the full video length
+    /// when timings came from text-only ASR (gpt-transcribe has no real word clocks).
+    nonisolated private static func paceCaptionsToTimeline(
+        _ captions: [CaptionSegment],
+        timelineDuration: TimeInterval,
+        language: AppLanguage
+    ) -> [CaptionSegment] {
+        guard !captions.isEmpty, timelineDuration > 0.5 else { return captions }
+        var paced = captions.sorted { $0.startTime < $1.startTime }
+
+        // 1) Hold each line until the next line begins (no flash-cuts).
+        for i in 0..<paced.count {
+            let nextStart = i + 1 < paced.count ? paced[i + 1].startTime : timelineDuration
+            let minHold = language == .english ? 0.7 : 1.25
+            let holdEnd = max(paced[i].endTime, paced[i].startTime + minHold)
+            paced[i].endTime = min(timelineDuration, max(holdEnd, nextStart - 0.04))
+            // Stretch word clocks inside the phrase to fill the held window.
+            if !paced[i].words.isEmpty {
+                let w0 = paced[i].words.first!.startTime
+                let w1 = max(paced[i].words.last!.endTime, w0 + 0.05)
+                let srcSpan = max(0.05, w1 - w0)
+                let dstStart = paced[i].startTime
+                let dstSpan = max(0.05, paced[i].endTime - paced[i].startTime)
+                paced[i].words = paced[i].words.map { word in
+                    let local0 = (word.startTime - w0) / srcSpan
+                    let local1 = (word.endTime - w0) / srcSpan
+                    return CaptionWord(
+                        text: word.text,
+                        startTime: dstStart + local0 * dstSpan,
+                        endTime: dstStart + max(local0 + 0.05, local1) * dstSpan
+                    )
+                }
+            }
+        }
+
+        // 2) If the whole transcript still ends early, linearly stretch to the timeline.
+        let lastEnd = paced.last?.endTime ?? 0
+        if lastEnd > 0.2, lastEnd < timelineDuration * 0.85 {
+            let scale = timelineDuration / lastEnd
+            paced = paced.map { cap in
+                var copy = cap
+                copy.startTime *= scale
+                copy.endTime = min(timelineDuration, copy.endTime * scale)
+                copy.words = copy.words.map {
+                    CaptionWord(
+                        text: $0.text,
+                        startTime: $0.startTime * scale,
+                        endTime: min(timelineDuration, $0.endTime * scale)
+                    )
+                }
+                return copy
+            }
+            if var last = paced.last {
+                last.endTime = timelineDuration
+                paced[paced.count - 1] = last
+            }
+        } else if let lastIdx = paced.indices.last {
+            paced[lastIdx].endTime = max(paced[lastIdx].endTime, timelineDuration)
+        }
+
+        return paced
+    }
+
+    nonisolated private static func loadDuration(of url: URL) async -> TimeInterval {
+        let asset = AVURLAsset(url: url)
+        do {
+            let duration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(duration)
+            if seconds.isFinite, seconds > 0.2 { return seconds }
+        } catch {
+            let seconds = CMTimeGetSeconds(asset.duration)
+            if seconds.isFinite, seconds > 0.2 { return seconds }
+        }
+        return 0
     }
 
     // MARK: - Audio extract

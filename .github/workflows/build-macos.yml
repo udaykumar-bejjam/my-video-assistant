@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.21') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.21') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.22') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.22') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,13 +54,13 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.21
-            - Fix Whisper 400 `Language 'te' is not supported` — OpenAI whisper-1 has no Telugu
-            - Telugu captions use **gpt-transcribe** with `languages[]=te,en` (Tanglish)
-            - Never send `language=te` to whisper-1
+            ### v1.0.22
+            - Fix captions/word-hits racing ahead of video (gpt-transcribe timing used a wrong/short duration)
+            - Pace captions to the full video timeline; hold each line until the next
+            - Longer word-hit on-screen time
 
             - Requires **macOS 14+**
-            - Telugu: Add API Key → తెలుగు + EN → AI Captions
+            - Telugu: Add API Key → తెలుగు + EN → AI Captions (re-run after update)
             - Optional enhancer: `cd enhancer-server && npm install && npm start`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

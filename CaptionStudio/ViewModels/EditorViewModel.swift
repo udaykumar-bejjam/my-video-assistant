@@ -817,7 +817,8 @@ final class EditorViewModel: ObservableObject {
         var cy = min(yMaxHit - halfH, max(yMinHit + halfH, placement.y))
         (cx, cy) = SafeZone(xMin: zone.xMin, xMax: zone.xMax, yMin: yMinHit, yMax: yMaxHit).clamp(x: cx, y: cy)
         let start = max(0, placement.startTime)
-        let minHold = max(0.45, min(0.9, placement.lengthSeconds ?? 0.7))
+        // Keep punch words readable — estimated ASR clocks can be short.
+        let minHold = max(0.85, min(1.6, placement.lengthSeconds ?? 1.1))
         let end = max(start + minHold, placement.endTime)
         return OverlayItem(
             kind: .wordHit,

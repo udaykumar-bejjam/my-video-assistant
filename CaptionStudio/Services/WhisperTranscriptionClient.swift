@@ -62,6 +62,7 @@ enum WhisperTranscriptionClient {
         audioURL: URL,
         apiKey: String,
         languageHint: AppLanguage,
+        timelineDuration: TimeInterval? = nil,
         onProgress: (@MainActor (Double, String) -> Void)? = nil
     ) async throws -> Result {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -69,7 +70,9 @@ enum WhisperTranscriptionClient {
 
         let audioData = try Data(contentsOf: audioURL)
         let filename = audioURL.lastPathComponent
-        let duration = max(0.5, audioDuration(url: audioURL))
+        let loadedAudio = await loadDurationAsync(url: audioURL)
+        // Always prefer the caller-provided video timeline — never fall back to a tiny default.
+        let duration = max(timelineDuration ?? 0, loadedAudio, 1)
 
         await onProgress?(0.35, "Uploading audio…")
 
@@ -370,25 +373,71 @@ enum WhisperTranscriptionClient {
     private static func audioDuration(url: URL) -> TimeInterval {
         let asset = AVURLAsset(url: url)
         let seconds = CMTimeGetSeconds(asset.duration)
-        return seconds.isFinite && seconds > 0 ? seconds : 10
+        return seconds.isFinite && seconds > 0.2 ? seconds : 0
+    }
+
+    private static func loadDurationAsync(url: URL) async -> TimeInterval {
+        let asset = AVURLAsset(url: url)
+        do {
+            let duration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(duration)
+            if seconds.isFinite, seconds > 0.2 { return seconds }
+        } catch {
+            let seconds = audioDuration(url: url)
+            if seconds > 0.2 { return seconds }
+        }
+        return 0
     }
 
     /// Approximate word timings when the model returns text only (gpt-transcribe).
+    /// Spreads words across the *video* timeline with a small lead-in/out so lines
+    /// don't finish before the spoken audio.
     private static func stampWords(from text: String, duration: TimeInterval) -> [WordStamp] {
         let parts = text
             .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
             .map { String($0).trimmingCharacters(in: .punctuationCharacters) }
             .filter { !$0.isEmpty }
         guard !parts.isEmpty else { return [] }
-        let weights = parts.map { max(1.0, Double($0.count)) }
+
+        let safeDuration = max(duration, Double(parts.count) * 0.35, 1)
+        // Leave a little head/tail so captions aren't glued to frame 0 / cut off early.
+        let leadIn = min(0.45, safeDuration * 0.03)
+        let leadOut = min(0.6, safeDuration * 0.04)
+        let usable = max(0.5, safeDuration - leadIn - leadOut)
+
+        // Telugu glyphs are denser — weight by unicode scalar count so long spoken
+        // words get more time than short Latin particles.
+        let weights = parts.map { part -> Double in
+            let scalars = Double(part.unicodeScalars.count)
+            let isTelugu = part.unicodeScalars.contains { (0x0C00...0x0C7F).contains($0.value) }
+            return max(1.0, scalars * (isTelugu ? 1.35 : 1.0))
+        }
         let totalWeight = weights.reduce(0, +)
-        var t = 0.0
+        var t = leadIn
         var stamps: [WordStamp] = []
         for (i, part) in parts.enumerated() {
-            let span = duration * (weights[i] / totalWeight)
-            let end = i == parts.count - 1 ? duration : min(duration, t + max(0.08, span))
-            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.05, end)))
-            t = end
+            let span = usable * (weights[i] / totalWeight)
+            // Minimum readable dwell per word (~spoken cadence).
+            let dwell = max(0.22, span)
+            let end: TimeInterval
+            if i == parts.count - 1 {
+                end = safeDuration - leadOut * 0.25
+            } else {
+                end = min(safeDuration - leadOut, t + dwell)
+            }
+            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.12, end)))
+            t = stamps[stamps.count - 1].end
+        }
+        // If minimum dwell pushed us past the timeline, rescale back into the window.
+        if let last = stamps.last, last.end > safeDuration, last.end > 0.2 {
+            let scale = (safeDuration - leadIn) / (last.end - leadIn)
+            stamps = stamps.map { w in
+                WordStamp(
+                    text: w.text,
+                    start: leadIn + (w.start - leadIn) * scale,
+                    end: leadIn + (w.end - leadIn) * scale
+                )
+            }
         }
         return stamps
     }
