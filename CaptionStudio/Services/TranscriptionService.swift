@@ -537,8 +537,8 @@ final class TranscriptionService: ObservableObject {
         guard !captions.isEmpty, timelineDuration > 0.5 else { return captions }
         var paced = captions.sorted { $0.startTime < $1.startTime }
 
-        // Anticipation so estimated / aligned clocks don't sit 1–2s behind speech.
-        let lead = language == .english ? 0.25 : 0.45
+        // Small extra lead — main anticipation is applied when aligning to whisper clocks.
+        let lead = language == .english ? 0.12 : 0.18
         paced = paced.map { cap in
             var copy = cap
             copy.startTime = max(0, cap.startTime - lead)
