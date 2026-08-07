@@ -392,14 +392,8 @@ final class CursorEnhancerClient: ObservableObject {
     private static func scriptFonts(_ fonts: [MediaLibraryItem], language: AppLanguage) -> [MediaLibraryItem] {
         let filtered = fonts.filter { item in
             let scripts = item.scripts ?? []
-            switch language {
-            case .hindi:
-                return scripts.contains(where: { ["hi", "hindi", "devanagari"].contains($0) })
-            case .telugu:
-                return scripts.contains(where: { ["te", "telugu"].contains($0) })
-            case .english:
-                return scripts.contains(where: { ["en", "latin"].contains($0) })
-            }
+            // TE/HI videos are code-switched — allow primary script fonts + Latin for English inserts.
+            return scripts.contains(where: { language.scriptTags.contains($0) })
         }
         return filtered.isEmpty ? fonts : filtered
     }

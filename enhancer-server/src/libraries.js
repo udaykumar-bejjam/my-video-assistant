@@ -821,8 +821,13 @@ export function ensureOpeningHook({
 
   const scriptFonts = fonts.filter((f) => {
     const scripts = f.scripts || [];
-    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
-    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
+    // Code-switched TE/HI also needs Latin fonts for English inserts.
+    if (language.startsWith("hi")) {
+      return scripts.some((s) => ["hi", "hindi", "devanagari", "en", "latin"].includes(s));
+    }
+    if (language.startsWith("te")) {
+      return scripts.some((s) => ["te", "telugu", "en", "latin"].includes(s));
+    }
     return scripts.some((s) => ["en", "latin"].includes(s));
   });
   const fontPool = scriptFonts.length ? scriptFonts : fonts;
@@ -1150,8 +1155,12 @@ function appendMissingCaptionWordHits({
 
   const scriptFonts = fontLib.filter((f) => {
     const scripts = f.scripts || [];
-    if (language.startsWith("hi")) return scripts.some((s) => ["hi", "hindi", "devanagari"].includes(s));
-    if (language.startsWith("te")) return scripts.some((s) => ["te", "telugu"].includes(s));
+    if (language.startsWith("hi")) {
+      return scripts.some((s) => ["hi", "hindi", "devanagari", "en", "latin"].includes(s));
+    }
+    if (language.startsWith("te")) {
+      return scripts.some((s) => ["te", "telugu", "en", "latin"].includes(s));
+    }
     return scripts.some((s) => ["en", "latin"].includes(s));
   });
   const fonts = scriptFonts.length ? scriptFonts : fontLib;

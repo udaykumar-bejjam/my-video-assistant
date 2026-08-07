@@ -11,18 +11,40 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .english: return "English"
-        case .hindi: return "हिन्दी Hindi"
-        case .telugu: return "తెలుగు Telugu"
+        case .hindi: return "हिन्दी + EN"
+        case .telugu: return "తెలుగు + EN"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .english: return "EN"
+        case .hindi: return "HI"
+        case .telugu: return "TE"
         }
     }
 
     var localeIdentifier: String { rawValue }
 
+    /// Locales to run for ASR. Telugu/Hindi always dual-pass with English because
+    /// creators code-switch constantly; a single `te-IN` pass mangles English words.
+    var transcriptionLocaleIdentifiers: [String] {
+        switch self {
+        case .english:
+            return ["en-US"]
+        case .hindi:
+            return ["hi-IN", "en-US"]
+        case .telugu:
+            return ["te-IN", "en-US"]
+        }
+    }
+
     var scriptTags: [String] {
         switch self {
         case .english: return ["latin", "en"]
-        case .hindi: return ["devanagari", "hi", "hindi"]
-        case .telugu: return ["telugu", "te"]
+        // Include latin so mixed TE/HI + English word-hits can use Latin fonts too.
+        case .hindi: return ["devanagari", "hi", "hindi", "latin", "en"]
+        case .telugu: return ["telugu", "te", "latin", "en"]
         }
     }
 
@@ -31,6 +53,15 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
         case .english: return "latin-heavy"
         case .hindi: return "hindi-bold"
         case .telugu: return "telugu-bold"
+        }
+    }
+
+    /// System font that can render the primary script (Latin fonts tofu Telugu).
+    var captionFontName: String {
+        switch self {
+        case .english: return "AvenirNext-Heavy"
+        case .hindi: return "KohinoorDevanagari-Bold"
+        case .telugu: return "KohinoorTelugu-Bold"
         }
     }
 

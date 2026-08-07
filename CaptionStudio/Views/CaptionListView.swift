@@ -47,7 +47,7 @@ struct CaptionListView: View {
             Image(systemName: "waveform")
                 .font(.system(size: 28))
                 .foregroundStyle(Color(red: 0.3, green: 0.92, blue: 0.75).opacity(0.7))
-            Text("Tap AI Captions to transcribe your video.")
+            Text("Pick తెలుగు + EN (or हिन्दी + EN) for mixed speech, then tap AI Captions.")
                 .font(.custom("AvenirNext-Medium", size: 13))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)

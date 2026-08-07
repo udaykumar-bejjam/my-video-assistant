@@ -116,7 +116,7 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 ## Languages, fonts & significant word hits
 
-- **Languages:** English, Hindi (`hi-IN`), Telugu (`te-IN`) — Speech locale + demo captions
+- **Languages:** English; Hindi + English; Telugu + English — Apple Speech dual-pass for code-switched TE/HI videos (single-locale ASR mangles mixed speech)
 - **Fonts library:** Latin + Kohinoor Devanagari + Kohinoor Telugu (and ITF Devanagari)
 - **Effects library:** slam, bounce, zoom, shake, spin, flash, rise, glitch, typepop, pulse
 - **AI Place** returns a precise JSON plan:

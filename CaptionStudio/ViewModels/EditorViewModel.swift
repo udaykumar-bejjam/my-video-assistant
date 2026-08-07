@@ -30,7 +30,10 @@ final class EditorViewModel: ObservableObject {
     @Published var libraryKind: MediaLibraryKind = .textStyles
     @Published var chunkProgressLabel: String?
     @Published var language: AppLanguage = .english {
-        didSet { project.language = language }
+        didSet {
+            project.language = language
+            applyLanguageCaptionDefaults()
+        }
     }
     @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
     @Published var batchExportURLs: [URL] = []
@@ -216,14 +219,30 @@ final class EditorViewModel: ObservableObject {
         defer { isTranscribing = false }
 
         transcription.language = language
+        // Latin presets (Avenir/Georgia) cannot render Telugu/Hindi glyphs — looks like
+        // "broken captions" even when ASR is fine. Lock script font + leave case as-is.
+        applyLanguageCaptionDefaults()
         do {
             let captions = try await transcription.transcribe(videoURL: url)
             project.captions = captions
             selectedCaptionID = captions.first?.id
-            editorTab = .styles
+            // Surface ASR status (incl. demo-fallback warnings) in the editor chrome.
+            if !transcription.statusMessage.isEmpty {
+                lastEnhancementNote = transcription.statusMessage
+            }
+            editorTab = .captions
             refreshTrimSuggestions()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Match caption style font/casing to the active language script.
+    func applyLanguageCaptionDefaults() {
+        project.captionStyle.fontName = language.captionFontName
+        // UPPER/lower transforms are Latin-centric and wreck mixed TE/HI lines.
+        if language != .english {
+            project.captionStyle.textCase = .asIs
         }
     }
 
@@ -1144,6 +1163,8 @@ final class EditorViewModel: ObservableObject {
     func applyPreset(_ preset: CaptionPreset) {
         selectedPreset = preset
         project.captionStyle = preset.style
+        // Presets ship with Latin fonts + UPPER case — re-apply script defaults for TE/HI.
+        applyLanguageCaptionDefaults()
     }
 
     func updateCaption(_ caption: CaptionSegment) {

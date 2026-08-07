@@ -121,7 +121,7 @@ struct EditorView: View {
                     Button(lang.title) { editor.language = lang }
                 }
             } label: {
-                Text(editor.language == .english ? "EN" : (editor.language == .hindi ? "हि" : "తె"))
+                Text(editor.language.shortLabel)
                     .font(.custom("AvenirNext-DemiBold", size: 11))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
