@@ -98,7 +98,7 @@ enum WhisperTranscriptionClient {
         }
     }
 
-    // MARK: - Telugu (gpt-transcribe)
+    // MARK: - Telugu (gpt-transcribe text + whisper-1 clocks)
 
     private static func transcribeTelugu(
         audioData: Data,
@@ -107,41 +107,74 @@ enum WhisperTranscriptionClient {
         duration: TimeInterval,
         onProgress: (@MainActor (Double, String) -> Void)?
     ) async throws -> Result {
-        await onProgress?(0.5, "gpt-transcribe (తెలుగు + EN)…")
+        await onProgress?(0.45, "gpt-transcribe text + whisper timing…")
 
         // Prefer gpt-transcribe — supports Telugu; whisper-1 does not accept language=te.
         do {
-            let text = try await runGPTTranscribe(
+            // Parallel: correct Telugu text + real word clocks from whisper-1 (timing only).
+            async let textTask = runGPTTranscribe(
                 audioData: audioData,
                 filename: filename,
                 apiKey: apiKey,
                 languages: ["te", "en"],
                 prompt: teluguPrompt(strong: false)
             )
+            async let clockTask = runWhisper1(
+                audioData: audioData,
+                filename: filename,
+                apiKey: apiKey,
+                languageCode: nil, // never "te"
+                prompt: teluguPrompt(strong: false),
+                wantWordTimestamps: true
+            )
+
+            var text = try await textTask
+            let clockPass = try? await clockTask
+
             var words = stampWords(from: text, duration: duration)
             if isKannadaHeavy(words) {
-                await onProgress?(0.65, "Kannada script detected — retrying stronger Telugu bias…")
-                let retry = try await runGPTTranscribe(
+                await onProgress?(0.62, "Kannada script detected — retrying stronger Telugu bias…")
+                text = try await runGPTTranscribe(
                     audioData: audioData,
                     filename: filename,
                     apiKey: apiKey,
                     languages: ["te", "en"],
                     prompt: teluguPrompt(strong: true)
                 )
-                words = stampWords(from: retry, duration: duration)
+                words = stampWords(from: text, duration: duration)
             }
             if isKannadaHeavy(words) {
                 throw WhisperError.wrongScript(
                     "Model returned Kannada script for Telugu audio. Retry AI Captions; if it persists the clip may be mis-labeled."
                 )
             }
+
+            // Snap Telugu words onto whisper-1 speech clocks so lines aren't 1–2s late.
+            let skeleton = clockPass?.words ?? []
+            if skeleton.count >= 2 {
+                words = alignTextOntoTimingSkeleton(
+                    text: text,
+                    skeleton: skeleton,
+                    duration: duration,
+                    anticipation: 0.55
+                )
+                await onProgress?(0.85, "Aligned \(words.count) words to whisper clocks…")
+            } else {
+                // No clocks — estimate + pull earlier (rate estimates often lag speech).
+                words = shiftWords(words, by: -0.85)
+                words = clampWordsToTimeline(words, duration: duration)
+            }
+
             let te = words.filter { script(of: $0.text) == .telugu }.count
             let kn = words.filter { script(of: $0.text) == .kannada }.count
             let la = words.filter { script(of: $0.text) == .latin }.count
+            let timed = skeleton.count >= 2
             return Result(
                 words: words,
                 detectedLanguage: "te+en",
-                note: "gpt-transcribe · TE:\(te) KN:\(kn) EN:\(la)"
+                note: timed
+                    ? "gpt-transcribe+whisper-clocks · TE:\(te) KN:\(kn) EN:\(la)"
+                    : "gpt-transcribe · TE:\(te) KN:\(kn) EN:\(la)"
             )
         } catch let err as WhisperError {
             if case .badStatus(400, let body) = err,
@@ -197,6 +230,9 @@ enum WhisperTranscriptionClient {
                 "OpenAI whisper-1 does not officially support Telugu and fell back to Kannada. Try again later or use a Telugu-capable model (gpt-transcribe)."
             )
         }
+        // Pull clocks earlier — whisper text path still trails speech for TE.
+        pass.words = shiftWords(pass.words, by: -0.55)
+        pass.words = clampWordsToTimeline(pass.words, duration: duration)
         let te = pass.words.filter { script(of: $0.text) == .telugu }.count
         let kn = pass.words.filter { script(of: $0.text) == .kannada }.count
         let la = pass.words.filter { script(of: $0.text) == .latin }.count
@@ -393,10 +429,7 @@ enum WhisperTranscriptionClient {
     /// Uses a natural speaking rate capped by the video length — does NOT stretch a
     /// short transcript across the full video (that made on-timeline captions late).
     private static func stampWords(from text: String, duration: TimeInterval) -> [WordStamp] {
-        let parts = text
-            .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
-            .map { String($0).trimmingCharacters(in: .punctuationCharacters) }
-            .filter { !$0.isEmpty }
+        let parts = tokenize(text)
         guard !parts.isEmpty else { return [] }
 
         let videoDuration = max(duration, 1)
@@ -405,17 +438,16 @@ enum WhisperTranscriptionClient {
             let scalars = Double(part.unicodeScalars.count)
             let isTelugu = part.unicodeScalars.contains { (0x0C00...0x0C7F).contains($0.value) }
             let isHindi = part.unicodeScalars.contains { (0x0900...0x097F).contains($0.value) }
-            let boost = isTelugu ? 1.45 : (isHindi ? 1.3 : 1.0)
-            return max(isTelugu || isHindi ? 1.2 : 1.0, scalars * boost)
+            let boost = isTelugu ? 1.35 : (isHindi ? 1.25 : 1.0)
+            return max(isTelugu || isHindi ? 1.1 : 1.0, scalars * boost)
         }
         let totalWeight = max(weights.reduce(0, +), 0.01)
 
-        // ~11 weighted glyphs/sec Latin, slower for Indic — matches spoken cadence better
-        // than spreading every transcript across the entire clip.
-        let glyphsPerSecond = 11.0
+        // Slightly faster than real speech so estimates don't lag 1–2s behind audio.
+        let glyphsPerSecond = 14.0
         let naturalSpeech = totalWeight / glyphsPerSecond
-        let leadIn = min(0.2, videoDuration * 0.01)
-        let window = min(videoDuration - leadIn, max(naturalSpeech, Double(parts.count) * 0.28))
+        let leadIn = min(0.12, videoDuration * 0.008)
+        let window = min(videoDuration - leadIn, max(naturalSpeech, Double(parts.count) * 0.24))
 
         return distributeByWeight(
             parts: parts,
@@ -424,6 +456,95 @@ enum WhisperTranscriptionClient {
             speechWindow: window,
             leadIn: leadIn
         )
+    }
+
+    /// Place gpt-transcribe tokens onto whisper-1 word clocks (timing backbone).
+    /// Whisper text may be wrong-script; we only keep its start/end times.
+    private static func alignTextOntoTimingSkeleton(
+        text: String,
+        skeleton: [WordStamp],
+        duration: TimeInterval,
+        anticipation: TimeInterval
+    ) -> [WordStamp] {
+        let parts = tokenize(text)
+        guard !parts.isEmpty else { return [] }
+        let sorted = skeleton.sorted { $0.start < $1.start }
+        guard let first = sorted.first, let last = sorted.last else {
+            return shiftWords(stampWords(from: text, duration: duration), by: -anticipation)
+        }
+
+        let speechStart = max(0, first.start)
+        let speechEnd = max(speechStart + 0.4, min(duration, last.end))
+        let speechSpan = max(0.4, speechEnd - speechStart)
+
+        let weights = parts.map { part -> Double in
+            let scalars = Double(max(1, part.unicodeScalars.count))
+            let isIndic = part.unicodeScalars.contains {
+                (0x0C00...0x0C7F).contains($0.value) || (0x0900...0x097F).contains($0.value)
+            }
+            return scalars * (isIndic ? 1.35 : 1.0)
+        }
+        let totalWeight = max(weights.reduce(0, +), 0.01)
+
+        // Map each token into the whisper speech window by cumulative weight.
+        var stamps: [WordStamp] = []
+        var cum: Double = 0
+        for (i, part) in parts.enumerated() {
+            let w0 = cum / totalWeight
+            cum += weights[i]
+            let w1 = cum / totalWeight
+            var start = speechStart + w0 * speechSpan - anticipation
+            var end = speechStart + w1 * speechSpan - anticipation
+            start = max(0, start)
+            end = max(start + 0.12, end)
+            // Prefer snapping to nearest skeleton slot when counts are close.
+            if parts.count <= sorted.count * 2, sorted.count >= 2 {
+                let idx = min(sorted.count - 1, Int((w0 * Double(sorted.count - 1)).rounded()))
+                let sk = sorted[idx]
+                let skStart = max(0, sk.start - anticipation)
+                let skEnd = max(skStart + 0.12, sk.end - anticipation)
+                // Blend: 65% skeleton clock, 35% weight map — cuts late drift.
+                start = skStart * 0.65 + start * 0.35
+                end = skEnd * 0.65 + end * 0.35
+                end = max(start + 0.12, end)
+            }
+            stamps.append(WordStamp(text: part, start: start, end: min(duration, end)))
+        }
+
+        // Ensure monotonic non-overlapping-ish sequence.
+        for i in 1..<stamps.count {
+            if stamps[i].start < stamps[i - 1].start {
+                let prev = stamps[i - 1]
+                stamps[i] = WordStamp(
+                    text: stamps[i].text,
+                    start: prev.start,
+                    end: max(prev.start + 0.12, stamps[i].end)
+                )
+            }
+            if stamps[i].start < stamps[i - 1].end - 0.02 {
+                let bumped = stamps[i - 1].end
+                stamps[i] = WordStamp(
+                    text: stamps[i].text,
+                    start: bumped,
+                    end: max(bumped + 0.12, stamps[i].end)
+                )
+            }
+        }
+        return clampWordsToTimeline(stamps, duration: duration)
+    }
+
+    private static func tokenize(_ text: String) -> [String] {
+        text
+            .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+            .map { String($0).trimmingCharacters(in: .punctuationCharacters) }
+            .filter { !$0.isEmpty }
+    }
+
+    private static func shiftWords(_ words: [WordStamp], by delta: TimeInterval) -> [WordStamp] {
+        words.map { w in
+            let start = max(0, w.start + delta)
+            return WordStamp(text: w.text, start: start, end: max(start + 0.1, w.end + delta))
+        }
     }
 
     /// Compress word clocks that overrun the video. Never expand to fill empty tail.
@@ -467,14 +588,14 @@ enum WhisperTranscriptionClient {
             let isIndic = part.unicodeScalars.contains {
                 (0x0C00...0x0C7F).contains($0.value) || (0x0900...0x097F).contains($0.value)
             }
-            let dwell = max(isIndic ? 0.3 : 0.22, span)
+            let dwell = max(isIndic ? 0.26 : 0.18, span)
             let end: TimeInterval
             if i == parts.count - 1 {
                 end = min(duration, leadIn + usable)
             } else {
                 end = min(duration, t + dwell)
             }
-            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.12, end)))
+            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.1, end)))
             t = stamps[stamps.count - 1].end
         }
         return clampWordsToTimeline(stamps, duration: duration)

@@ -39,9 +39,9 @@ and never sends `language=te` to whisper-1.
 
 ## Timing (no word clocks from gpt-transcribe)
 `gpt-transcribe` returns text only. CaptionStudio:
-1. Uses the **video timeline duration** as a **cap** (never pack into a wrong short window)
-2. Stamps words at a **natural speaking rate** — does **not** stretch a short transcript across the full video (that made on-timeline captions late)
-3. Holds each caption line until the next (extends end only); slight anticipation so overlays aren't late
-4. Word hits hold ~1.6–2.8s through the caption window
+1. Runs **gpt-transcribe** for Telugu+EN text and **whisper-1** (no `language=te`) for word clocks in parallel
+2. Aligns Telugu tokens onto the whisper speech window (timing backbone) with ~0.55s anticipation
+3. Falls back to a faster speaking-rate estimate + ~0.85s pull-forward if clocks are missing
+4. Holds each caption line until the next (extends end only)
 
 **After updating the app, re-run AI Captions** (then AI Place) — old timings stay baked in the project.

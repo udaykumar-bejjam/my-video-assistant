@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.24') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.24') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.25') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.25') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,14 +54,14 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.24
-            - On-timeline captions were **too late** after v1.0.23 stretched them across the full video
-            - Timing now follows a natural speaking rate (no stretch-to-fill); slight anticipation so overlays hit with speech
+            ### v1.0.25
+            - Some captions still lagged speech by ~1–2s (estimated clocks drift)
+            - Telugu now uses **gpt-transcribe text + whisper-1 word clocks** aligned together
+            - Stronger anticipation so overlays hit with audio
             - **Re-run AI Captions** (then AI Place) after installing
 
-            ### v1.0.23
-            - Captions + word hits were racing ahead of video/audio — remapped to full timeline
-            - Longer caption/hit holds
+            ### v1.0.24
+            - Stopped stretch-to-fill that made on-timeline captions late
 
             - Requires **macOS 14+**
             - Telugu: Add API Key → తెలుగు + EN → AI Captions (re-run after update)
