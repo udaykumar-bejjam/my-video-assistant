@@ -12,7 +12,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .english: return "English"
         case .hindi: return "हिन्दी + EN"
-        case .telugu: return "తెలుగు + EN"
+        case .telugu: return "తెలుగు + EN (Whisper)"
         }
     }
 
