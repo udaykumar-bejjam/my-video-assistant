@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.19') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.19') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.20') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.20') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,11 +54,12 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.19
-            - OpenAI key entry on **Home screen** and editor **Add API Key** button (before AI Captions)
-            - Telugu captions still use Whisper; English uses Apple Speech
+            ### v1.0.20
+            - Fix Whisper Telugu→Kannada mix-up: force `language=te`, Telugu prompt, Kannada-heavy retry
+            - Status shows TE/KN/EN script counts after Whisper
 
             - Requires **macOS 14+**
+            - Telugu: Add API Key → తెలుగు + EN → AI Captions
             - Optional enhancer: `cd enhancer-server && npm install && npm start`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

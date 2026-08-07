@@ -25,7 +25,10 @@ English still uses on-device Apple Speech (no API key).
 
 ## User setup
 1. Get an API key from https://platform.openai.com/api-keys
-2. CaptionStudio → Brand Kit → **OpenAI API key**
-3. Select **తెలుగు + EN** → **AI Captions**
+2. Home screen / **Add API Key** → paste OpenAI key
+3. Select **తెలుగు + EN (Whisper)** → **AI Captions**
 
 Optional: `export OPENAI_API_KEY=...` and run enhancer (`POST /transcribe`) as a localhost proxy.
+
+## Kannada mix-up
+Whisper auto-detect often labels Telugu as Kannada. CaptionStudio **forces `language=te`**, uses a Telugu-script prompt, and retries if Kannada glyphs dominate the result.

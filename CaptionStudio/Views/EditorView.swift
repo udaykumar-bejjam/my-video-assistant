@@ -153,7 +153,6 @@ struct EditorView: View {
                 .foregroundStyle(editor.apiKeys.hasOpenAIKey ? .white : .black)
             }
             .buttonStyle(.plain)
-            .help("OpenAI key for Telugu Whisper captions")
 
             Menu {
                 Button("None") { editor.selectPack(nil) }

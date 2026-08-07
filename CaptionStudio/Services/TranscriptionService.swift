@@ -238,7 +238,7 @@ final class TranscriptionService: ObservableObject {
         defer { try? FileManager.default.removeItem(at: audioURL) }
 
         do {
-            let words = try await WhisperTranscriptionClient.transcribe(
+            let result = try await WhisperTranscriptionClient.transcribeDetailed(
                 audioURL: audioURL,
                 apiKey: key,
                 languageHint: language
@@ -247,7 +247,7 @@ final class TranscriptionService: ObservableObject {
                 self?.statusMessage = message
             }
 
-            let tokens = words.map {
+            let tokens = result.words.map {
                 TimedToken(
                     text: $0.text,
                     startTime: $0.start,
@@ -265,10 +265,7 @@ final class TranscriptionService: ObservableObject {
                 }
                 return []
             }
-            let teCount = tokens.filter { Self.script(of: $0.text) == .telugu }.count
-            let hiCount = tokens.filter { Self.script(of: $0.text) == .devanagari }.count
-            let laCount = tokens.filter { Self.script(of: $0.text) == .latin }.count
-            statusMessage = "Whisper done — \(segments.count) captions · TE:\(teCount) HI:\(hiCount) EN:\(laCount)"
+            statusMessage = "Whisper done — \(segments.count) captions · \(result.note ?? "")"
             return segments
         } catch {
             if useDemoFallback {
