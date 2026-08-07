@@ -937,19 +937,27 @@ final class EditorViewModel: ObservableObject {
 
     func previewSFX(_ cue: SoundEffectCue) {
         guard !cue.isMuted else { return }
-        guard let asset = libraries.item(kind: .sfx, id: cue.assetId),
-              let file = asset.file ?? asset.wav,
-              let url = libraries.fileURL(kind: .sfx, fileName: file)
+        guard let asset = libraries.item(kind: .sfx, id: cue.assetId) else { return }
+        // Prefer WAV — AVAudioPlayer on macOS is more reliable with PCM than AAC/m4a.
+        let fileName = asset.wav ?? asset.file
+        guard let fileName,
+              let url = libraries.fileURL(kind: .sfx, fileName: fileName)
         else { return }
         Self.activatePlaybackAudioSessionIfNeeded()
         do {
             let player = try AVAudioPlayer(contentsOf: url)
-            let master = project.audio.sfxMasterGain
-            player.volume = Float(min(1.4, max(0.05, cue.gain * master)))
+            player.volume = Float(min(1.4, max(0.05, cue.gain * project.audio.sfxMasterGain)))
             player.prepareToPlay()
-            player.play()
+            let started = player.play()
+            guard started else {
+                errorMessage = "Could not start SFX playback."
+                return
+            }
+            // Keep a strong reference. Do NOT filter by isPlaying on the same turn —
+            // macOS often reports isPlaying=false for a few ms after play(), which
+            // would deallocate the player and produce silence.
             sfxPlayers.append(player)
-            sfxPlayers = sfxPlayers.filter(\.isPlaying)
+            pruneFinishedSFXPlayers(keeping: player)
         } catch {
             errorMessage = "Could not play SFX: \(error.localizedDescription)"
         }
@@ -968,10 +976,12 @@ final class EditorViewModel: ObservableObject {
         }
 
         let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
+        // Callback already runs on the main queue — update synchronously so
+        // timeline SFX crossing detection sees ordered samples (no Task hop).
         timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             let seconds = CMTimeGetSeconds(time)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
+            guard let self else { return }
+            MainActor.assumeIsolated {
                 self.currentTime = seconds
                 self.syncTimelineSFX(at: seconds)
             }
@@ -982,9 +992,10 @@ final class EditorViewModel: ObservableObject {
             object: item,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.isPlaying = false
-                self?.seek(to: 0)
+            guard let self else { return }
+            MainActor.assumeIsolated {
+                self.isPlaying = false
+                self.seek(to: 0)
             }
         }
     }
@@ -1003,7 +1014,7 @@ final class EditorViewModel: ObservableObject {
     /// On play, allow cues in a small look-back window so a cue at the resume
     /// playhead still fires once (seek alone must not auto-play SFX).
     private func prepareTimelineSFXForPlayback(at time: TimeInterval) {
-        let lookback: TimeInterval = 0.05
+        let lookback: TimeInterval = 0.08
         lastSFXCheckTime = time - lookback
         triggeredSFXIds = Set(
             project.soundEffects
@@ -1018,12 +1029,25 @@ final class EditorViewModel: ObservableObject {
         sfxPlayers = []
     }
 
+    private func pruneFinishedSFXPlayers(keeping newest: AVAudioPlayer? = nil) {
+        sfxPlayers = sfxPlayers.filter { player in
+            if let newest, player === newest { return true }
+            return player.isPlaying
+        }
+        // Cap retained finished players to avoid unbounded growth if isPlaying flakes.
+        if sfxPlayers.count > 24 {
+            sfxPlayers.removeFirst(sfxPlayers.count - 24)
+        }
+    }
+
     /// Fire one-shot SFX when the playhead crosses each cue's startTime during playback.
     private func syncTimelineSFX(at time: TimeInterval) {
         guard isPlaying else {
             lastSFXCheckTime = time
             return
         }
+
+        pruneFinishedSFXPlayers()
 
         if time < lastSFXCheckTime - 0.02 {
             // Scrubbed backwards while playing — allow future cues to fire again.
@@ -1079,11 +1103,11 @@ final class EditorViewModel: ObservableObject {
             if currentTime >= project.duration - 0.05 {
                 seek(to: 0)
             }
-            // Don't replay cues that already started before the resume point.
+            // Set playing BEFORE play() so the first time-observer tick can fire SFX.
             prepareTimelineSFXForPlayback(at: currentTime)
+            isPlaying = true
             Self.activatePlaybackAudioSessionIfNeeded()
             player.play()
-            isPlaying = true
         }
     }
 

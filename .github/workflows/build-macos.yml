@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.11') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.11') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.12') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.12') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,11 +54,10 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.11
-            - Preview plays timeline SFX in sync with the playhead
-            - Export burn-in: full-timeline opacity keyframes so overlays + karaoke highlights appear in the MP4
-            - Fix loudness-normalize double-attenuating export SFX
-            - Word hits keep a readable minimum on-screen duration
+            ### v1.0.12
+            - **Export burn-in (hard fix):** rasterize captions/overlays to images; fail-open opacity so MP4 is never blank if CA anims are ignored
+            - Use standard bottom-left CA coords (no isGeometryFlipped) for reliable offline compose
+            - **Preview SFX (hard fix):** stop discarding AVAudioPlayer before playback starts; prefer WAV; sync playhead without Task reordering
 
             - Requires **macOS 14+**
             - Optional enhancer: `cd enhancer-server && npm install && npm start`

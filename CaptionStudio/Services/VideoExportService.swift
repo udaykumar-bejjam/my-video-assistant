@@ -129,6 +129,7 @@ final class VideoExportService: ObservableObject {
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = renderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+        videoComposition.renderScale = 1.0
 
         let instruction = AVMutableVideoCompositionInstruction()
         instruction.timeRange = CMTimeRange(start: .zero, duration: compositionDuration)
@@ -144,11 +145,12 @@ final class VideoExportService: ObservableObject {
         videoComposition.instructions = [instruction]
 
         // Core Animation overlay pipeline on the target aspect canvas.
-        // isGeometryFlipped = true → UIKit/SwiftUI coords (origin top-left, Y down),
-        // matching CaptionOverlayView / LiveOverlayCanvas normalized positions.
+        // Use DEFAULT (bottom-left) Core Animation coords — the Apple sample-code
+        // pattern for AVVideoCompositionCoreAnimationTool. Map SwiftUI/top-left
+        // normalized Y with `height * (1 - y)`. Avoid isGeometryFlipped: it breaks
+        // offline text burn-in on macOS (blank or upside-down CATextLayer).
         let parentLayer = CALayer()
         parentLayer.frame = CGRect(origin: .zero, size: renderSize)
-        parentLayer.isGeometryFlipped = true
         parentLayer.backgroundColor = PlatformColor.black.cgColor
 
         let videoLayer = CALayer()
@@ -277,7 +279,8 @@ final class VideoExportService: ObservableObject {
             guard end > start, start < duration || duration <= 0 else { continue }
 
             let midX = size.width * style.positionX
-            let midY = size.height * style.positionY
+            // Bottom-left CA coords: invert SwiftUI/top-left normalized Y.
+            let midY = size.height * (1 - style.positionY)
             let fontSize = style.fontSize * (size.width / 390)
             let maxWidth = size.width * 0.88
 
@@ -677,7 +680,7 @@ final class VideoExportService: ObservableObject {
 
             layer.position = CGPoint(
                 x: size.width * item.x,
-                y: size.height * item.y
+                y: size.height * (1 - item.y)
             )
             layer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(item.rotation * .pi / 180)))
             Self.scheduleVisibility(
@@ -691,9 +694,12 @@ final class VideoExportService: ObservableObject {
         }
     }
 
-    /// macOS/Catalyst often ignore deferred `beginTime` opacity animations during
-    /// `AVAssetExportSession` offline render. Drive opacity across the **full**
-    /// composition timeline so layers actually appear in the MP4.
+    /// Schedule when a layer is visible during offline export.
+    ///
+    /// CRITICAL: model `opacity` is set to the **visible** value (fail-open).
+    /// macOS `AVAssetExportSession` often ignores Core Animation opacity
+    /// animations entirely — if we leave model opacity at 0, the MP4 is blank
+    /// (no captions, no overlays). Prefer wrong timing over a blank export.
     private static func scheduleVisibility(
         on layer: CALayer,
         startTime: TimeInterval,
@@ -712,7 +718,6 @@ final class VideoExportService: ObservableObject {
         let fade = end
         let gone = min(total, end + fadeOut)
 
-        // Build strictly increasing key times over the full composition.
         var samples: [(t: Double, v: Float)] = [
             (0, 0),
             (appear / total, 0),
@@ -727,7 +732,6 @@ final class VideoExportService: ObservableObject {
         for sample in samples {
             let t = min(1, max(0, sample.t))
             if t <= lastT + 0.0005 {
-                // Keep last value for duplicate/near-duplicate times.
                 if !values.isEmpty {
                     values[values.count - 1] = sample.v
                 }
@@ -751,7 +755,8 @@ final class VideoExportService: ObservableObject {
         anim.fillMode = .both
         anim.isRemovedOnCompletion = false
 
-        layer.opacity = 0
+        // Fail-open: if the animation is ignored, captions/overlays still burn in.
+        layer.opacity = opacity
         layer.add(anim, forKey: "visibility")
     }
 
@@ -837,67 +842,165 @@ final class VideoExportService: ObservableObject {
         shadowRadius: CGFloat,
         maxWidth: CGFloat
     ) -> CALayer {
-        let textLayer = CATextLayer()
-        textLayer.string = text
-        textLayer.font = CTFontCreateWithName(fontName as CFString, fontSize, nil)
-        textLayer.fontSize = fontSize
-        textLayer.foregroundColor = textColor.cgColor
-        textLayer.alignmentMode = .center
-        textLayer.contentsScale = 3
-        textLayer.isWrapped = true
-
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: PlatformFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: .bold)
-        ]
-        let bound = (text as NSString).boundingRect(
-            with: CGSize(width: maxWidth, height: 400),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: attrs,
-            context: nil
+        // Rasterize to CGImage — live CATextLayer often renders blank/upside-down
+        // under AVVideoCompositionCoreAnimationTool on macOS offline export.
+        let image = rasterizeText(
+            text: text,
+            fontName: fontName,
+            fontSize: fontSize,
+            textColor: textColor,
+            strokeColor: strokeColor,
+            strokeWidth: strokeWidth,
+            backgroundColor: backgroundColor,
+            cornerRadius: cornerRadius,
+            shadowColor: shadowColor,
+            shadowRadius: shadowRadius,
+            maxWidth: maxWidth
         )
-        let pad: CGFloat = backgroundColor.cgColor.alpha > 0.01 ? 16 : 4
-        let size = CGSize(width: ceil(bound.width) + pad * 2, height: ceil(bound.height) + pad * 2)
-        textLayer.frame = CGRect(origin: .zero, size: size)
+        let layer = CALayer()
+        if let image {
+            let w = CGFloat(image.width) / 3
+            let h = CGFloat(image.height) / 3
+            layer.bounds = CGRect(x: 0, y: 0, width: w, height: h)
+            layer.contents = image
+            layer.contentsScale = 3
+            layer.contentsGravity = .resize
+        } else {
+            layer.bounds = CGRect(x: 0, y: 0, width: 40, height: 20)
+        }
+        layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        return layer
+    }
 
-        let container = CALayer()
-        container.bounds = CGRect(origin: .zero, size: size)
-        container.backgroundColor = backgroundColor.cgColor
-        container.cornerRadius = cornerRadius
-        container.shadowColor = shadowColor.cgColor
-        container.shadowRadius = shadowRadius
-        container.shadowOpacity = shadowRadius > 0 ? 1 : 0
-        container.shadowOffset = CGSize(width: 0, height: 2)
+    /// Draw caption/overlay text into a bitmap. Offline export reliably burns
+    /// `CALayer.contents` images; it often drops live `CATextLayer.string`.
+    private static func rasterizeText(
+        text: String,
+        fontName: String,
+        fontSize: CGFloat,
+        textColor: PlatformColor,
+        strokeColor: PlatformColor,
+        strokeWidth: CGFloat,
+        backgroundColor: PlatformColor,
+        cornerRadius: CGFloat,
+        shadowColor: PlatformColor,
+        shadowRadius: CGFloat,
+        maxWidth: CGFloat
+    ) -> CGImage? {
+        let font = PlatformFont(name: fontName, size: fontSize)
+            ?? .systemFont(ofSize: fontSize, weight: .bold)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byWordWrapping
 
+        var attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: textColor,
+            .paragraphStyle: paragraph
+        ]
         if strokeWidth > 0 {
-            let stroke = CATextLayer()
-            stroke.string = text
-            stroke.font = textLayer.font
-            stroke.fontSize = fontSize
-            stroke.foregroundColor = strokeColor.cgColor
-            stroke.alignmentMode = .center
-            stroke.contentsScale = 3
-            stroke.isWrapped = true
-            stroke.frame = textLayer.frame.insetBy(dx: -strokeWidth, dy: -strokeWidth)
-            // Approximate outline via slight offsets
-            for dx in [-strokeWidth, 0, strokeWidth] {
-                for dy in [-strokeWidth, 0, strokeWidth] where !(dx == 0 && dy == 0) {
-                    let clone = CATextLayer()
-                    clone.string = text
-                    clone.font = textLayer.font
-                    clone.fontSize = fontSize
-                    clone.foregroundColor = strokeColor.cgColor
-                    clone.alignmentMode = .center
-                    clone.contentsScale = 3
-                    clone.isWrapped = true
-                    clone.frame = textLayer.frame.offsetBy(dx: dx, dy: dy)
-                    container.addSublayer(clone)
-                }
-            }
+            attrs[.strokeColor] = strokeColor
+            // Negative width = fill + stroke (AppKit/UIKit convention).
+            attrs[.strokeWidth] = -strokeWidth
         }
 
-        container.addSublayer(textLayer)
-        container.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-        return container
+        let attributed = NSAttributedString(string: text, attributes: attrs)
+        let textBound = attributed.boundingRect(
+            with: CGSize(width: maxWidth, height: 800),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            context: nil
+        )
+        let pad: CGFloat = backgroundColor.cgColor.alpha > 0.01 ? 16 : 8
+        let shadowPad = max(shadowRadius * 2.5, 6)
+        let size = CGSize(
+            width: max(8, ceil(textBound.width) + pad * 2 + shadowPad),
+            height: max(8, ceil(textBound.height) + pad * 2 + shadowPad)
+        )
+
+        let scale: CGFloat = 3
+        let pixelW = max(1, Int(size.width * scale))
+        let pixelH = max(1, Int(size.height * scale))
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: pixelW,
+            height: pixelH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        ctx.scaleBy(x: scale, y: scale)
+
+        #if canImport(AppKit)
+        NSGraphicsContext.saveGraphicsState()
+        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: true)
+        NSGraphicsContext.current = nsCtx
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        let drawRect = CGRect(origin: .zero, size: size)
+        if backgroundColor.cgColor.alpha > 0.01 {
+            let path = NSBezierPath(
+                roundedRect: drawRect.insetBy(dx: shadowPad / 2, dy: shadowPad / 2),
+                xRadius: cornerRadius,
+                yRadius: cornerRadius
+            )
+            backgroundColor.setFill()
+            path.fill()
+        }
+
+        if shadowRadius > 0 {
+            let shadow = NSShadow()
+            shadow.shadowColor = shadowColor
+            shadow.shadowBlurRadius = shadowRadius
+            shadow.shadowOffset = NSSize(width: 0, height: -2)
+            attrs[.shadow] = shadow
+        }
+        let drawn = NSAttributedString(string: text, attributes: attrs)
+        let textRect = CGRect(
+            x: (size.width - textBound.width) / 2,
+            y: (size.height - textBound.height) / 2,
+            width: textBound.width,
+            height: textBound.height
+        )
+        drawn.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
+        #elseif canImport(UIKit)
+        UIGraphicsPushContext(ctx)
+        defer { UIGraphicsPopContext() }
+        // Flip so UIKit top-left drawing matches bitmap.
+        ctx.translateBy(x: 0, y: size.height)
+        ctx.scaleBy(x: 1, y: -1)
+
+        let drawRect = CGRect(origin: .zero, size: size)
+        if backgroundColor.cgColor.alpha > 0.01 {
+            let path = UIBezierPath(
+                roundedRect: drawRect.insetBy(dx: shadowPad / 2, dy: shadowPad / 2),
+                cornerRadius: cornerRadius
+            )
+            backgroundColor.setFill()
+            path.fill()
+        }
+        if shadowRadius > 0 {
+            attrs[.shadow] = {
+                let s = NSShadow()
+                s.shadowColor = shadowColor
+                s.shadowBlurRadius = shadowRadius
+                s.shadowOffset = CGSize(width: 0, height: 2)
+                return s
+            }()
+        }
+        let drawn = NSAttributedString(string: text, attributes: attrs)
+        let textRect = CGRect(
+            x: (size.width - textBound.width) / 2,
+            y: (size.height - textBound.height) / 2,
+            width: textBound.width,
+            height: textBound.height
+        )
+        drawn.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+        #endif
+
+        return ctx.makeImage()
     }
 
     private static func orientedSize(_ size: CGSize, transform: CGAffineTransform) -> CGSize {
