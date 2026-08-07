@@ -1263,7 +1263,6 @@ final class EditorViewModel: ObservableObject {
         case .caption(let id):
             applyCaptionTimelineDrag(
                 id: id,
-                fromLane: fromLane,
                 toLane: toLane,
                 start: clampedStart,
                 end: clampedEnd
@@ -1297,7 +1296,6 @@ final class EditorViewModel: ObservableObject {
 
     private func applyCaptionTimelineDrag(
         id: UUID,
-        fromLane: TimelineLaneID,
         toLane: TimelineLaneID,
         start: TimeInterval,
         end: TimeInterval
