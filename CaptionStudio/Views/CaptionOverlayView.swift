@@ -20,7 +20,8 @@ struct CaptionOverlayView: View {
                     style: style,
                     time: editor.currentTime,
                     layoutScale: scale,
-                    maxTextWidth: geo.size.width * 0.88
+                    maxTextWidth: geo.size.width * 0.88,
+                    suppressKaraoke: editor.project.overlays.contains(where: { $0.kind == .wordHit })
                 )
                 .position(
                     x: geo.size.width * style.positionX,
@@ -55,15 +56,18 @@ struct AnimatedCaptionText: View {
     /// Canvas width / 390 — same basis as `VideoExportService` caption font scaling.
     var layoutScale: CGFloat = 1
     var maxTextWidth: CGFloat = 320
+    /// When word-hit overlays are present, skip karaoke/typewriter so we don't
+    /// double-highlight the same words (matches export).
+    var suppressKaraoke: Bool = false
 
     private var fontSize: CGFloat { style.fontSize * layoutScale }
 
     var body: some View {
         Group {
             switch style.animation {
-            case .karaoke where !caption.words.isEmpty:
+            case .karaoke where !caption.words.isEmpty && !suppressKaraoke:
                 karaokeText
-            case .typewriter:
+            case .typewriter where !suppressKaraoke:
                 typewriterText
             default:
                 plainText(style.textCase.apply(caption.text))

@@ -162,12 +162,16 @@ final class VideoExportService: ObservableObject {
         parentLayer.addSublayer(overlayRoot)
 
         let timelineSeconds = CMTimeGetSeconds(compositionDuration)
+        // Word hits already punch significant words — karaoke on the same words
+        // reads as "double highlights". Prefer plain captions when hits exist.
+        let hasWordHits = overlays.contains { $0.kind == .wordHit }
         addCaptionLayers(
             to: overlayRoot,
             captions: captions,
             style: style,
             size: renderSize,
-            duration: timelineSeconds
+            duration: timelineSeconds,
+            suppressKaraoke: hasWordHits
         )
         addOverlayLayers(
             to: overlayRoot,
@@ -271,7 +275,8 @@ final class VideoExportService: ObservableObject {
         captions: [CaptionSegment],
         style: CaptionStyle,
         size: CGSize,
-        duration: TimeInterval
+        duration: TimeInterval,
+        suppressKaraoke: Bool = false
     ) {
         for caption in captions {
             let start = max(0, caption.startTime)
@@ -285,7 +290,8 @@ final class VideoExportService: ObservableObject {
             let maxWidth = size.width * 0.88
 
             // Match preview: karaoke / typewriter when word timings exist.
-            if style.animation == .karaoke, !caption.words.isEmpty {
+            // Skip karaoke when word-hit overlays already highlight words.
+            if style.animation == .karaoke, !caption.words.isEmpty, !suppressKaraoke {
                 addKaraokeCaptionLayers(
                     to: root,
                     caption: caption,
@@ -301,7 +307,7 @@ final class VideoExportService: ObservableObject {
                 continue
             }
 
-            if style.animation == .typewriter {
+            if style.animation == .typewriter, !suppressKaraoke {
                 addTypewriterCaptionLayers(
                     to: root,
                     caption: caption,
@@ -344,6 +350,9 @@ final class VideoExportService: ObservableObject {
     }
 
     /// Word-by-word karaoke burn-in (parity with `AnimatedCaptionText` preview).
+    ///
+    /// One layer per word (not dim/highlight/full stacks). Stacked layers plus
+    /// fail-open opacity produced "double highlights" when Core Animation was ignored.
     private func addKaraokeCaptionLayers(
         to root: CALayer,
         caption: CaptionSegment,
@@ -384,6 +393,7 @@ final class VideoExportService: ObservableObject {
             return
         }
 
+        // Match preview HStack spacing: 5 * (fontSize/42) ≈ 5 * layoutScale when fontSize = 42 * scale.
         let spacing: CGFloat = 5 * (fontSize / 42)
         var wordSizes: [CGSize] = []
         var totalWidth: CGFloat = 0
@@ -396,6 +406,7 @@ final class VideoExportService: ObservableObject {
         totalWidth += spacing * CGFloat(max(0, words.count - 1))
         var cursorX = midX - min(totalWidth, maxWidth) / 2
         let highlight = PlatformColor(red: 1, green: 0.92, blue: 0.35, alpha: 1)
+        let base = style.textColor.platformColor
 
         for (index, word) in words.enumerated() {
             let text = style.textCase.apply(word.text)
@@ -404,36 +415,89 @@ final class VideoExportService: ObservableObject {
             let wordStart = max(clipStart, min(clipEnd, word.startTime))
             let wordEnd = max(wordStart + 0.05, min(clipEnd, word.endTime))
 
-            func place(_ color: PlatformColor, from t0: TimeInterval, to t1: TimeInterval, opacity: Float) {
-                guard t1 > t0 + 0.02 else { return }
-                let layer = Self.makeTextLayer(
-                    text: text,
-                    fontName: style.fontName,
-                    fontSize: fontSize,
-                    textColor: color,
-                    strokeColor: style.strokeColor.platformColor,
-                    strokeWidth: style.strokeWidth,
-                    backgroundColor: .clear,
-                    cornerRadius: 0,
-                    shadowColor: style.shadowColor.platformColor,
-                    shadowRadius: style.shadowRadius,
-                    maxWidth: maxWidth
-                )
-                layer.position = center
-                Self.scheduleVisibility(
-                    on: layer,
-                    startTime: t0,
-                    endTime: t1,
-                    opacity: opacity,
-                    timelineDuration: timelineDuration
-                )
-                root.addSublayer(layer)
+            // Pre-rasterize the three visual states; swap `contents` on one layer.
+            let dimImg = Self.rasterizeText(
+                text: text,
+                fontName: style.fontName,
+                fontSize: fontSize,
+                textColor: base.withAlphaComponent(0.35),
+                strokeColor: style.strokeColor.platformColor,
+                strokeWidth: style.strokeWidth,
+                backgroundColor: .clear,
+                cornerRadius: 0,
+                shadowColor: style.shadowColor.platformColor,
+                shadowRadius: style.shadowRadius * 0.5,
+                maxWidth: maxWidth
+            )
+            let hitImg = Self.rasterizeText(
+                text: text,
+                fontName: style.fontName,
+                fontSize: fontSize,
+                textColor: highlight,
+                strokeColor: style.strokeColor.platformColor,
+                strokeWidth: style.strokeWidth,
+                backgroundColor: .clear,
+                cornerRadius: 0,
+                shadowColor: style.shadowColor.platformColor,
+                shadowRadius: style.shadowRadius,
+                maxWidth: maxWidth
+            )
+            let fullImg = Self.rasterizeText(
+                text: text,
+                fontName: style.fontName,
+                fontSize: fontSize,
+                textColor: base,
+                strokeColor: style.strokeColor.platformColor,
+                strokeWidth: style.strokeWidth,
+                backgroundColor: .clear,
+                cornerRadius: 0,
+                shadowColor: style.shadowColor.platformColor,
+                shadowRadius: style.shadowRadius,
+                maxWidth: maxWidth
+            )
+
+            let layer = CALayer()
+            let ref = fullImg ?? hitImg ?? dimImg
+            if let ref {
+                let w = CGFloat(ref.width) / 3
+                let h = CGFloat(ref.height) / 3
+                layer.bounds = CGRect(x: 0, y: 0, width: w, height: h)
+                layer.contentsScale = 3
+            } else {
+                layer.bounds = CGRect(x: 0, y: 0, width: wSize.width, height: wSize.height)
+            }
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            layer.position = center
+            // Fail-open: readable settled word (not stacked dim+highlight+full).
+            layer.contents = fullImg ?? hitImg ?? dimImg
+            layer.opacity = 1
+
+            let total = max(timelineDuration, clipEnd + 0.1, 0.05)
+            func t(_ seconds: TimeInterval) -> NSNumber {
+                NSNumber(value: min(1, max(0, seconds / total)))
             }
 
-            // Dim before spoken → highlight while active → full after (matches preview).
-            place(style.textColor.platformColor, from: clipStart, to: wordStart, opacity: 0.35)
-            place(highlight, from: wordStart, to: wordEnd, opacity: 1)
-            place(style.textColor.platformColor, from: wordEnd, to: clipEnd, opacity: 1)
+            // contents: dim → highlight → full across the caption window.
+            if let dimImg, let hitImg, let fullImg {
+                let contents = CAKeyframeAnimation(keyPath: "contents")
+                contents.values = [dimImg, hitImg, fullImg, fullImg]
+                contents.keyTimes = [t(0), t(wordStart), t(wordEnd), t(total)]
+                contents.duration = total
+                contents.beginTime = AVCoreAnimationBeginTimeAtZero
+                contents.calculationMode = .discrete
+                contents.fillMode = .both
+                contents.isRemovedOnCompletion = false
+                layer.add(contents, forKey: "karaokeContents")
+            }
+
+            Self.scheduleVisibility(
+                on: layer,
+                startTime: clipStart,
+                endTime: clipEnd,
+                opacity: 1,
+                timelineDuration: timelineDuration
+            )
+            root.addSublayer(layer)
 
             cursorX += wSize.width + spacing
         }
@@ -564,29 +628,40 @@ final class VideoExportService: ObservableObject {
             switch item.kind {
             case .emoji, .text, .watermark, .wordHit:
                 let fontName = Self.resolveFontName(for: item, libraryRoot: libraryRoot)
-                let fontSize = (item.kind == .wordHit ? item.fontSize * 0.95 : item.fontSize)
-                    * item.scale * (size.width / 390)
+                // Match preview: fontSize * scale * (width/390). No extra 0.95 shrink.
+                let fontSize = item.fontSize * item.scale * (size.width / 390)
                 let isHit = item.kind == .wordHit
-                let fill = item.color.platformColor
+                let catalogStyle = Self.resolveTextStyle(for: item, libraryRoot: libraryRoot)
+                let fill: PlatformColor = {
+                    if isHit { return item.color.platformColor }
+                    return Self.platformColor(hex: catalogStyle?.textColor) ?? item.color.platformColor
+                }()
                 #if canImport(UIKit)
-                let redStroke = UIColor(red: 1, green: 0.18, blue: 0.18, alpha: 1)
+                let blackStroke = UIColor.black.withAlphaComponent(0.9)
                 let yellowGlow = UIColor(red: 1, green: 0.94, blue: 0.35, alpha: 0.9)
                 #else
-                let redStroke = NSColor(srgbRed: 1, green: 0.18, blue: 0.18, alpha: 1)
+                let blackStroke = NSColor.black.withAlphaComponent(0.9)
                 let yellowGlow = NSColor(srgbRed: 1, green: 0.94, blue: 0.35, alpha: 0.9)
                 #endif
+                let bg: PlatformColor = Self.platformColor(hex: catalogStyle?.backgroundColor) ?? .clear
+                let stroke: PlatformColor = isHit ? blackStroke : .clear
+                let strokeW: CGFloat = isHit ? 2.5 : 0
+                let shadow: PlatformColor = isHit ? yellowGlow : PlatformColor.black.withAlphaComponent(0.45)
+                let shadowR: CGFloat = isHit ? 10 : (catalogStyle?.shadowRadius ?? 6)
+                let resolvedFontSize = catalogStyle?.fontSize.map { $0 * item.scale * (size.width / 390) } ?? fontSize
+
                 // Outer host owns opacity + rotation; inner content can punch-scale without fighting transforms.
                 let content = Self.makeTextLayer(
                     text: item.text,
-                    fontName: fontName,
-                    fontSize: fontSize,
+                    fontName: catalogStyle?.fontName ?? fontName,
+                    fontSize: isHit ? fontSize : resolvedFontSize,
                     textColor: fill,
-                    strokeColor: isHit ? redStroke : .clear,
-                    strokeWidth: isHit ? 3.5 : 0,
-                    backgroundColor: .clear,
-                    cornerRadius: 0,
-                    shadowColor: isHit ? yellowGlow : PlatformColor.black.withAlphaComponent(0.45),
-                    shadowRadius: isHit ? 12 : 6,
+                    strokeColor: stroke,
+                    strokeWidth: strokeW,
+                    backgroundColor: isHit ? .clear : bg,
+                    cornerRadius: catalogStyle?.cornerRadius ?? 0,
+                    shadowColor: shadow,
+                    shadowRadius: shadowR,
                     maxWidth: size.width * 0.8
                 )
                 let host = CALayer()
@@ -594,11 +669,19 @@ final class VideoExportService: ObservableObject {
                 content.position = CGPoint(x: host.bounds.midX, y: host.bounds.midY)
                 host.addSublayer(content)
                 if isHit {
+                    // Punch scale over the hit window (full-timeline, fail-soft).
+                    let total = max(duration, end + 0.05, 0.05)
                     let punch = CAKeyframeAnimation(keyPath: "transform.scale")
-                    punch.values = [0.45, 1.28, 1.0]
-                    punch.keyTimes = [0, 0.55, 1]
-                    punch.duration = 0.22
-                    punch.beginTime = AVCoreAnimationBeginTimeAtZero + start
+                    punch.values = [0.45, 1.28, 1.0, 1.0]
+                    punch.keyTimes = [
+                        NSNumber(value: 0),
+                        NSNumber(value: min(1, start / total)),
+                        NSNumber(value: min(1, (start + 0.22) / total)),
+                        NSNumber(value: 1)
+                    ]
+                    punch.duration = total
+                    punch.beginTime = AVCoreAnimationBeginTimeAtZero
+                    punch.calculationMode = .linear
                     punch.fillMode = .both
                     punch.isRemovedOnCompletion = false
                     content.add(punch, forKey: "punchScale")
@@ -800,6 +883,41 @@ final class VideoExportService: ObservableObject {
         return "AvenirNext-Heavy"
     }
 
+    private static func resolveTextStyle(for item: OverlayItem, libraryRoot: URL?) -> MediaLibraryItem? {
+        guard let libraryRoot, let styleId = item.styleAssetId else { return nil }
+        guard let data = try? Data(contentsOf: libraryRoot.appendingPathComponent("text-styles/catalog.json")),
+              let catalog = try? JSONDecoder().decode(MediaLibraryCatalog.self, from: data)
+        else { return nil }
+        return catalog.items.first(where: { $0.id == styleId })
+    }
+
+    private static func platformColor(hex: String?) -> PlatformColor? {
+        guard var cleaned = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+              !cleaned.isEmpty
+        else { return nil }
+        if cleaned.hasPrefix("#") { cleaned.removeFirst() }
+        guard cleaned.count == 6 || cleaned.count == 8 else { return nil }
+        var value: UInt64 = 0
+        guard Scanner(string: cleaned).scanHexInt64(&value) else { return nil }
+        let a, r, g, b: CGFloat
+        if cleaned.count == 8 {
+            a = CGFloat((value & 0xFF00_0000) >> 24) / 255
+            r = CGFloat((value & 0x00FF_0000) >> 16) / 255
+            g = CGFloat((value & 0x0000_FF00) >> 8) / 255
+            b = CGFloat(value & 0x0000_00FF) / 255
+        } else {
+            a = 1
+            r = CGFloat((value & 0xFF0000) >> 16) / 255
+            g = CGFloat((value & 0x00FF00) >> 8) / 255
+            b = CGFloat(value & 0x0000FF) / 255
+        }
+        #if canImport(UIKit)
+        return UIColor(red: r, green: g, blue: b, alpha: a)
+        #elseif canImport(AppKit)
+        return NSColor(srgbRed: r, green: g, blue: b, alpha: a)
+        #endif
+    }
+
     private static func loadCGImage(url: URL) -> CGImage? {
         #if canImport(UIKit)
         return UIImage(contentsOfFile: url.path)?.cgImage
@@ -892,12 +1010,11 @@ final class VideoExportService: ObservableObject {
         shadowRadius: CGFloat,
         maxWidth: CGFloat
     ) -> CGImage? {
-        let ctFont = CTFontCreateWithName(fontName as CFString, fontSize, nil)
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byWordWrapping
 
-        // Prefer PlatformFont for measurement; CTFont is toll-free bridged.
+        // Prefer PlatformFont for measurement; toll-free bridged for Core Text draw.
         let uiFont = PlatformFont(name: fontName, size: fontSize)
             ?? .systemFont(ofSize: fontSize, weight: .bold)
         var attrs: [NSAttributedString.Key: Any] = [
