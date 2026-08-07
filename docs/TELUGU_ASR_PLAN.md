@@ -30,5 +30,9 @@ English still uses on-device Apple Speech (no API key).
 
 Optional: `export OPENAI_API_KEY=...` and run enhancer (`POST /transcribe`) as a localhost proxy.
 
-## Kannada mix-up
-Whisper auto-detect often labels Telugu as Kannada. CaptionStudio **forces `language=te`**, uses a Telugu-script prompt, and retries if Kannada glyphs dominate the result.
+## Kannada mix-up / `language=te` 400
+OpenAI **whisper-1 does not support Telugu** (`language=te` → `unsupported_language`).
+It *does* support Kannada — so auto-detect often emits Kannada for Telugu audio.
+
+CaptionStudio therefore uses **`gpt-transcribe`** with `languages[]=te` + `languages[]=en` for Telugu,
+and never sends `language=te` to whisper-1.
