@@ -106,13 +106,21 @@ final class VideoExportService: ObservableObject {
         }
 
         // Mix in library SFX cues (already shifted to local 0-based timeline when chunked).
+        // `norm.sfxGainScale` already folds brand × master when loudness-normalize is on —
+        // pass peak compensation only so we don't multiply those factors twice (which could
+        // crush SFX toward silence).
+        let sfxMaster = audioSettings.sfxMasterGain * brandSfxGain
+        let peakCompensation: Double = {
+            guard audioSettings.normalizeLoudness else { return 1.0 }
+            return norm.sfxGainScale / max(sfxMaster, 0.01)
+        }()
         let mixedSFX = try await mixSoundEffects(
             into: composition,
             cues: soundEffects,
             libraryRoot: libraryRoot,
             timelineDuration: compositionDuration,
-            masterGain: audioSettings.sfxMasterGain * brandSfxGain,
-            normalizeScale: audioSettings.normalizeLoudness ? norm.sfxGainScale : 1.0
+            masterGain: sfxMaster,
+            normalizeScale: peakCompensation
         )
 
         progress = 0.15
@@ -300,7 +308,8 @@ final class VideoExportService: ObservableObject {
                     midX: midX,
                     midY: midY,
                     clipStart: start,
-                    clipEnd: end
+                    clipEnd: end,
+                    timelineDuration: duration
                 )
                 continue
             }
@@ -320,7 +329,13 @@ final class VideoExportService: ObservableObject {
                 maxWidth: maxWidth
             )
             layer.position = CGPoint(x: midX, y: midY)
-            Self.scheduleVisibility(on: layer, startTime: start, endTime: end, opacity: 1)
+            Self.scheduleVisibility(
+                on: layer,
+                startTime: start,
+                endTime: end,
+                opacity: 1,
+                timelineDuration: duration
+            )
             root.addSublayer(layer)
         }
     }
@@ -355,7 +370,13 @@ final class VideoExportService: ObservableObject {
                 maxWidth: maxWidth
             )
             layer.position = CGPoint(x: midX, y: midY)
-            Self.scheduleVisibility(on: layer, startTime: clipStart, endTime: clipEnd, opacity: 1)
+            Self.scheduleVisibility(
+                on: layer,
+                startTime: clipStart,
+                endTime: clipEnd,
+                opacity: 1,
+                timelineDuration: timelineDuration
+            )
             root.addSublayer(layer)
             return
         }
@@ -396,7 +417,13 @@ final class VideoExportService: ObservableObject {
                     maxWidth: maxWidth
                 )
                 layer.position = center
-                Self.scheduleVisibility(on: layer, startTime: t0, endTime: t1, opacity: opacity)
+                Self.scheduleVisibility(
+                    on: layer,
+                    startTime: t0,
+                    endTime: t1,
+                    opacity: opacity,
+                    timelineDuration: timelineDuration
+                )
                 root.addSublayer(layer)
             }
 
@@ -406,7 +433,6 @@ final class VideoExportService: ObservableObject {
             place(style.textColor.platformColor, from: wordEnd, to: clipEnd, opacity: 1)
 
             cursorX += wSize.width + spacing
-            _ = timelineDuration
         }
     }
 
@@ -419,7 +445,8 @@ final class VideoExportService: ObservableObject {
         midX: CGFloat,
         midY: CGFloat,
         clipStart: TimeInterval,
-        clipEnd: TimeInterval
+        clipEnd: TimeInterval,
+        timelineDuration: TimeInterval
     ) {
         let full = style.textCase.apply(caption.text)
         guard !full.isEmpty else { return }
@@ -444,7 +471,13 @@ final class VideoExportService: ObservableObject {
             layer.position = CGPoint(x: midX, y: midY)
             let t0 = clipStart + span * Double(step - 1) / Double(steps)
             let t1 = step == steps ? clipEnd : clipStart + span * Double(step) / Double(steps)
-            Self.scheduleVisibility(on: layer, startTime: t0, endTime: t1, opacity: 1)
+            Self.scheduleVisibility(
+                on: layer,
+                startTime: t0,
+                endTime: t1,
+                opacity: 1,
+                timelineDuration: timelineDuration
+            )
             root.addSublayer(layer)
         }
     }
@@ -651,33 +684,69 @@ final class VideoExportService: ObservableObject {
                 on: layer,
                 startTime: start,
                 endTime: end,
-                opacity: Float(max(0, min(1, item.opacity)))
+                opacity: Float(max(0, min(1, item.opacity))),
+                timelineDuration: duration
             )
             root.addSublayer(layer)
         }
     }
 
-    /// macOS/Catalyst often ignore `CABasicAnimation` during `AVAssetExportSession`
-    /// offline render — use a single opacity keyframe timeline instead.
+    /// macOS/Catalyst often ignore deferred `beginTime` opacity animations during
+    /// `AVAssetExportSession` offline render. Drive opacity across the **full**
+    /// composition timeline so layers actually appear in the MP4.
     private static func scheduleVisibility(
         on layer: CALayer,
         startTime: TimeInterval,
         endTime: TimeInterval,
-        opacity: Float
+        opacity: Float,
+        timelineDuration: TimeInterval
     ) {
         let fadeIn: TimeInterval = 0.08
         let fadeOut: TimeInterval = 0.1
         let start = max(0, startTime)
         let end = max(start + 0.05, endTime)
-        let duration = max(0.05, (end + fadeOut) - start)
-        let tFadeIn = min(fadeIn, duration * 0.25) / duration
-        let tFadeOut = max(tFadeIn + 0.01, (duration - fadeOut) / duration)
+        let total = max(timelineDuration, end + fadeOut, 0.05)
+
+        let appear = start
+        let visible = min(end, start + min(fadeIn, max(0.02, (end - start) * 0.25)))
+        let fade = end
+        let gone = min(total, end + fadeOut)
+
+        // Build strictly increasing key times over the full composition.
+        var samples: [(t: Double, v: Float)] = [
+            (0, 0),
+            (appear / total, 0),
+            (visible / total, opacity),
+            (fade / total, opacity),
+            (gone / total, 0),
+            (1, 0)
+        ]
+        var keyTimes: [NSNumber] = []
+        var values: [Float] = []
+        var lastT: Double = -1
+        for sample in samples {
+            let t = min(1, max(0, sample.t))
+            if t <= lastT + 0.0005 {
+                // Keep last value for duplicate/near-duplicate times.
+                if !values.isEmpty {
+                    values[values.count - 1] = sample.v
+                }
+                continue
+            }
+            keyTimes.append(NSNumber(value: t))
+            values.append(sample.v)
+            lastT = t
+        }
+        if keyTimes.count < 2 {
+            keyTimes = [0, 1]
+            values = [opacity, opacity]
+        }
 
         let anim = CAKeyframeAnimation(keyPath: "opacity")
-        anim.values = [0, opacity, opacity, 0]
-        anim.keyTimes = [0, tFadeIn, tFadeOut, 1].map { NSNumber(value: Double($0)) }
-        anim.duration = duration
-        anim.beginTime = AVCoreAnimationBeginTimeAtZero + start
+        anim.values = values
+        anim.keyTimes = keyTimes
+        anim.duration = total
+        anim.beginTime = AVCoreAnimationBeginTimeAtZero
         anim.calculationMode = .linear
         anim.fillMode = .both
         anim.isRemovedOnCompletion = false

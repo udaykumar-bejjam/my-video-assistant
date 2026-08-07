@@ -89,6 +89,10 @@ final class EditorViewModel: ObservableObject {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var sfxPlayers: [AVAudioPlayer] = []
+    /// SFX cues already fired for the current play-through (timeline-synced preview).
+    private var triggeredSFXIds: Set<UUID> = []
+    /// Last playhead sample used to detect cue crossings (and backwards seeks).
+    private var lastSFXCheckTime: TimeInterval = -1
 
     enum EditorTab: String, CaseIterable, Identifiable {
         case captions, styles, overlays, libraries, trim, export
@@ -184,24 +188,8 @@ final class EditorViewModel: ObservableObject {
         currentTime = 0
         isPlaying = false
 
-        let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
-        timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            let seconds = CMTimeGetSeconds(time)
-            Task { @MainActor [weak self] in
-                self?.currentTime = seconds
-            }
-        }
-
-        endObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: item,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.isPlaying = false
-                self?.seek(to: 0)
-            }
-        }
+        attachPlaybackObservers(to: newPlayer, item: item)
+        resetTimelineSFXTracking(at: 0)
     }
 
     private static func copyIntoCaches(_ url: URL) throws -> URL {
@@ -503,26 +491,11 @@ final class EditorViewModel: ObservableObject {
             player = newPlayer
             isPlaying = false
 
-            let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
-            timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-                let seconds = CMTimeGetSeconds(time)
-                Task { @MainActor [weak self] in
-                    self?.currentTime = seconds
-                }
-            }
-            endObserver = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: item,
-                queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.isPlaying = false
-                    self?.seek(to: 0)
-                }
-            }
+            attachPlaybackObservers(to: newPlayer, item: item)
 
             // Resume exactly where the project was left.
             applySession(draft.session, project: project)
+            resetTimelineSFXTracking(at: currentTime)
             draftMessage = "Opened “\(draft.title)” · resume \(draft.resumeClock)"
         } catch {
             errorMessage = error.localizedDescription
@@ -670,23 +643,8 @@ final class EditorViewModel: ObservableObject {
             player = newPlayer
             currentTime = 0
             isPlaying = false
-            let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
-            timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-                let seconds = CMTimeGetSeconds(time)
-                Task { @MainActor [weak self] in
-                    self?.currentTime = seconds
-                }
-            }
-            endObserver = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: item,
-                queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.isPlaying = false
-                    self?.seek(to: 0)
-                }
-            }
+            attachPlaybackObservers(to: newPlayer, item: item)
+            resetTimelineSFXTracking(at: 0)
 
             refreshTrimSuggestions()
             draftMessage = "Applied \(cuts.count) trim(s) — \(String(format: "%.1fs", project.duration))"
@@ -792,6 +750,10 @@ final class EditorViewModel: ObservableObject {
             ?? "#FFEF5A"
         let color = Color(hex: primaryHex) ?? (effect?.palette.first ?? .yellow)
         let (cx, cy) = activeSafeZone.clamp(x: placement.x, y: placement.y)
+        let start = max(0, placement.startTime)
+        // Word hits must stay on-screen long enough to read — never collapse to a hairline.
+        let minHold = max(0.55, placement.lengthSeconds ?? 0.9)
+        let end = max(start + minHold, placement.endTime)
         return OverlayItem(
             kind: .wordHit,
             text: placement.displayText.isEmpty ? (font.previewText ?? "!") : placement.displayText,
@@ -806,8 +768,8 @@ final class EditorViewModel: ObservableObject {
             y: cy,
             scale: max(placement.scale, 1.25),
             rotation: placement.rotation,
-            startTime: placement.startTime,
-            endTime: placement.endTime,
+            startTime: start,
+            endTime: end,
             color: color.codable,
             fontSize: 52,
             shape: .rectangle,
@@ -979,9 +941,11 @@ final class EditorViewModel: ObservableObject {
               let file = asset.file ?? asset.wav,
               let url = libraries.fileURL(kind: .sfx, fileName: file)
         else { return }
+        Self.activatePlaybackAudioSessionIfNeeded()
         do {
             let player = try AVAudioPlayer(contentsOf: url)
-            player.volume = Float(min(1.4, cue.gain * project.audio.sfxMasterGain))
+            let master = project.audio.sfxMasterGain
+            player.volume = Float(min(1.4, max(0.05, cue.gain * master)))
             player.prepareToPlay()
             player.play()
             sfxPlayers.append(player)
@@ -989,6 +953,108 @@ final class EditorViewModel: ObservableObject {
         } catch {
             errorMessage = "Could not play SFX: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Playback observers / timeline SFX
+
+    private func attachPlaybackObservers(to newPlayer: AVPlayer, item: AVPlayerItem) {
+        if let timeObserver {
+            player?.removeTimeObserver(timeObserver)
+            self.timeObserver = nil
+        }
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
+        }
+
+        let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
+        timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            let seconds = CMTimeGetSeconds(time)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.currentTime = seconds
+                self.syncTimelineSFX(at: seconds)
+            }
+        }
+
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.isPlaying = false
+                self?.seek(to: 0)
+            }
+        }
+    }
+
+    /// Mark cues at/before `time` as already fired so resume/seek doesn't replay the past.
+    private func resetTimelineSFXTracking(at time: TimeInterval) {
+        lastSFXCheckTime = time
+        triggeredSFXIds = Set(
+            project.soundEffects
+                .filter { $0.startTime <= time + 0.001 }
+                .map(\.id)
+        )
+        stopPreviewSFXPlayers()
+    }
+
+    /// On play, allow cues in a small look-back window so a cue at the resume
+    /// playhead still fires once (seek alone must not auto-play SFX).
+    private func prepareTimelineSFXForPlayback(at time: TimeInterval) {
+        let lookback: TimeInterval = 0.05
+        lastSFXCheckTime = time - lookback
+        triggeredSFXIds = Set(
+            project.soundEffects
+                .filter { $0.startTime < time - lookback }
+                .map(\.id)
+        )
+        stopPreviewSFXPlayers()
+    }
+
+    private func stopPreviewSFXPlayers() {
+        for player in sfxPlayers { player.stop() }
+        sfxPlayers = []
+    }
+
+    /// Fire one-shot SFX when the playhead crosses each cue's startTime during playback.
+    private func syncTimelineSFX(at time: TimeInterval) {
+        guard isPlaying else {
+            lastSFXCheckTime = time
+            return
+        }
+
+        if time < lastSFXCheckTime - 0.02 {
+            // Scrubbed backwards while playing — allow future cues to fire again.
+            triggeredSFXIds = Set(
+                project.soundEffects
+                    .filter { $0.startTime <= time + 0.001 }
+                    .map(\.id)
+            )
+        }
+
+        let from = lastSFXCheckTime
+        let to = time
+        lastSFXCheckTime = time
+
+        for cue in project.soundEffects where !cue.isMuted {
+            guard !triggeredSFXIds.contains(cue.id) else { continue }
+            // Crossing detection covers hitchy observers that jump past startTime.
+            let crossed = cue.startTime > from && cue.startTime <= to + 0.001
+            let landedOn = from < 0 && abs(cue.startTime - to) <= 0.05
+            guard crossed || landedOn else { continue }
+            triggeredSFXIds.insert(cue.id)
+            previewSFX(cue)
+        }
+    }
+
+    private static func activatePlaybackAudioSessionIfNeeded() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .moviePlayback, options: [.mixWithOthers])
+        try? session.setActive(true)
+        #endif
     }
 
     func libraryFileURL(for overlay: OverlayItem) -> URL? {
@@ -1013,6 +1079,9 @@ final class EditorViewModel: ObservableObject {
             if currentTime >= project.duration - 0.05 {
                 seek(to: 0)
             }
+            // Don't replay cues that already started before the resume point.
+            prepareTimelineSFXForPlayback(at: currentTime)
+            Self.activatePlaybackAudioSessionIfNeeded()
             player.play()
             isPlaying = true
         }
@@ -1022,6 +1091,7 @@ final class EditorViewModel: ObservableObject {
         let cm = CMTime(seconds: max(0, time), preferredTimescale: 600)
         player?.seek(to: cm, toleranceBefore: .zero, toleranceAfter: .zero)
         currentTime = max(0, time)
+        resetTimelineSFXTracking(at: currentTime)
     }
 
     // MARK: - Captions / style
@@ -1305,6 +1375,8 @@ final class EditorViewModel: ObservableObject {
 
     func tearDownPlayer() {
         player?.pause()
+        stopPreviewSFXPlayers()
+        resetTimelineSFXTracking(at: 0)
         if let timeObserver {
             player?.removeTimeObserver(timeObserver)
         }
