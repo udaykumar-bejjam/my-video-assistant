@@ -7,6 +7,25 @@ struct BrandKitSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Telugu / Hindi captions (Whisper)") {
+                    SecureField("OpenAI API key", text: Binding(
+                        get: { editor.apiKeys.openAIAPIKey },
+                        set: { editor.apiKeys.openAIAPIKey = $0 }
+                    ))
+                    Text("Apple Dictation has no Telugu. CaptionStudio uses OpenAI Whisper for తెలుగు + EN (and Hindi when hi-IN is missing).")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if editor.apiKeys.hasOpenAIKey {
+                        Text("Key saved — select తెలుగు + EN, then AI Captions.")
+                            .font(.footnote)
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("Get a key at platform.openai.com/api-keys")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
+                }
+
                 Section("Fonts") {
                     TextField("Latin font id", text: Binding(
                         get: { editor.brandKit.kit.primaryFontId },

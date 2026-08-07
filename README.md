@@ -5,7 +5,10 @@ AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effect
 ## Architecture
 
 ```
-Captions (Apple Speech)
+Captions
+  EN → Apple Speech
+  TE → OpenAI Whisper (Apple has no Telugu Dictation)
+  HI → Apple Speech, else Whisper
         │
         ▼
 Enhancer server  ── @cursor/sdk (composer-2.5)
@@ -19,7 +22,8 @@ SwiftUI editor + AVFoundation export (burn-in + SFX mix)
 
 | Piece | What it does |
 |--------|----------------|
-| Apple Speech | Timed captions from video audio |
+| Apple Speech | English (and Hindi when available) captions |
+| OpenAI Whisper | Telugu + English mixed captions — paste API key in Brand Kit |
 | `@cursor/sdk` | Agent decides **precise** placements from the transcript + catalogs |
 | `AssetLibraries/` | Bundled libraries for stylish text, GIFs, PNGs, SFX |
 | Swift app | Preview, manual library picks, export MP4 |
@@ -61,12 +65,23 @@ Local build on a Mac:
 cd enhancer-server
 npm install
 export CURSOR_API_KEY="your-key"   # from https://cursor.com/dashboard/api
+export OPENAI_API_KEY="sk-..."     # optional — Whisper proxy at POST /transcribe
 npm start                          # http://127.0.0.1:8787
 ```
 
-- `GET /health` — SDK status  
+### Telugu captions (Whisper)
+
+Apple Dictation does **not** include Telugu. In the Mac app:
+
+1. Open **Brand Kit**
+2. Paste an **OpenAI API key** ([create one](https://platform.openai.com/api-keys))
+3. Select **తెలుగు + EN** → **AI Captions**
+
+- `GET /health` — SDK status (+ `hasOpenAIKey`)  
 - `GET /libraries` — catalogs  
 - `POST /enhance` — `{ captions, duration, packId? }` → placement plan  
+- `POST /transcribe` — Whisper proxy (`audioBase64`, needs `OPENAI_API_KEY`)  
+
 
 CLI smoke test (offline heuristic):
 
@@ -116,7 +131,7 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 ## Languages, fonts & significant word hits
 
-- **Languages:** English; Hindi + English; Telugu + English — Apple Speech dual-pass for code-switched TE/HI videos (single-locale ASR mangles mixed speech)
+- **Languages:** English (Apple Speech); **Telugu + EN via OpenAI Whisper** (Apple has no Telugu Dictation); Hindi via Apple or Whisper fallback — see `docs/TELUGU_ASR_PLAN.md`
 - **Fonts library:** Latin + Kohinoor Devanagari + Kohinoor Telugu (and ITF Devanagari)
 - **Effects library:** slam, bounce, zoom, shake, spin, flash, rise, glitch, typepop, pulse
 - **AI Place** returns a precise JSON plan:

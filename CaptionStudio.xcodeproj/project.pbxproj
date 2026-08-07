@@ -33,6 +33,8 @@
 		A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* SafeZoneAndDistribution.swift */; };
 		A10000000000000000000043 /* CoverExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000042 /* CoverExportService.swift */; };
 		A10000000000000000000045 /* AudioNormalizeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000044 /* AudioNormalizeService.swift */; };
+		A10000000000000000000071 /* WhisperTranscriptionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000070 /* WhisperTranscriptionClient.swift */; };
+		A10000000000000000000073 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* APIKeyStore.swift */; };
 		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
 		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
 		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
@@ -75,6 +77,8 @@
 		A10000000000000000000040 /* SafeZoneAndDistribution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeZoneAndDistribution.swift; sourceTree = "<group>"; };
 		A10000000000000000000042 /* CoverExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverExportService.swift; sourceTree = "<group>"; };
 		A10000000000000000000044 /* AudioNormalizeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizeService.swift; sourceTree = "<group>"; };
+		A10000000000000000000070 /* WhisperTranscriptionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTranscriptionClient.swift; sourceTree = "<group>"; };
+		A10000000000000000000072 /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
 		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
@@ -166,6 +170,8 @@
 				A10000000000000000000060 /* AnimatedGIFDecoder.swift */,
 				A10000000000000000000042 /* CoverExportService.swift */,
 				A10000000000000000000044 /* AudioNormalizeService.swift */,
+				A10000000000000000000070 /* WhisperTranscriptionClient.swift */,
+				A10000000000000000000072 /* APIKeyStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -313,6 +319,8 @@
 				A10000000000000000000041 /* SafeZoneAndDistribution.swift in Sources */,
 				A10000000000000000000043 /* CoverExportService.swift in Sources */,
 				A10000000000000000000045 /* AudioNormalizeService.swift in Sources */,
+				A10000000000000000000071 /* WhisperTranscriptionClient.swift in Sources */,
+				A10000000000000000000073 /* APIKeyStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,7 +395,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.17;
+				MARKETING_VERSION = 1.0.18;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -435,7 +443,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.17;
+				MARKETING_VERSION = 1.0.18;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

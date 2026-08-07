@@ -60,6 +60,7 @@ final class EditorViewModel: ObservableObject {
     let libraries = MediaLibraryStore()
     let packs = PackLibrary()
     let brandKit = BrandKitStore()
+    let apiKeys = APIKeyStore()
     let projectStore = ProjectStore()
     let enhancer = CursorEnhancerClient()
 
@@ -219,11 +220,12 @@ final class EditorViewModel: ObservableObject {
         defer { isTranscribing = false }
 
         transcription.language = language
+        transcription.openAIAPIKey = apiKeys.trimmedOpenAIKey
         // Latin presets (Avenir/Georgia) cannot render Telugu/Hindi glyphs — looks like
         // "broken captions" even when ASR is fine. Lock script font + leave case as-is.
         applyLanguageCaptionDefaults()
         do {
-            // Don't silently fall back to English-only / demo for TE/HI — surface real errors.
+            // Never demo-fallback for TE/HI — surface Whisper key / API errors clearly.
             let useDemo = language == .english
             let captions = try await transcription.transcribe(videoURL: url, useDemoFallback: useDemo)
             project.captions = captions

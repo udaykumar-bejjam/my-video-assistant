@@ -46,9 +46,24 @@ final class TranscriptionService: ObservableObject {
     @Published var statusMessage: String = ""
 
     var language: AppLanguage = .english
+    /// OpenAI key for Whisper (Telugu / Hindi when Apple Speech has no pack).
+    var openAIAPIKey: String = ""
 
     init(language: AppLanguage = .english) {
         self.language = language
+    }
+
+    /// Telugu is not in Apple Dictation on most Macs — always use Whisper.
+    /// Hindi uses Whisper when `hi-IN` is unavailable.
+    private var prefersWhisper: Bool {
+        switch language {
+        case .telugu:
+            return true
+        case .hindi:
+            return Self.makeRecognizer(for: "hi-IN") == nil
+        case .english:
+            return false
+        }
     }
 
     func requestAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
@@ -62,6 +77,12 @@ final class TranscriptionService: ObservableObject {
     /// Transcribe a local video URL into timed caption segments.
     func transcribe(videoURL: URL, useDemoFallback: Bool = true) async throws -> [CaptionSegment] {
         progress = 0.05
+
+        // Telugu (and Hindi without Apple pack) → OpenAI Whisper.
+        if prefersWhisper {
+            return try await transcribeWithWhisper(videoURL: videoURL, useDemoFallback: useDemoFallback)
+        }
+
         statusMessage = "Checking permissions…"
 
         let status = await requestAuthorization()
@@ -77,19 +98,9 @@ final class TranscriptionService: ObservableObject {
         let companionIds = language.transcriptionLocaleIdentifiers.filter { $0 != primaryId }
 
         guard let primaryRecognizer = Self.makeRecognizer(for: primaryId) else {
-            // Without the primary pack, English-only output is guaranteed — fail loudly
-            // instead of silently captioning Telugu audio as English gibberish.
-            let supported = SFSpeechRecognizer.supportedLocales()
-                .map(\.identifier)
-                .filter { $0.lowercased().hasPrefix(String(primaryId.prefix(2)).lowercased()) }
-            let hint = supported.isEmpty
-                ? "not in supportedLocales"
-                : "supported variants: \(supported.joined(separator: ", "))"
-            statusMessage = "Primary locale \(primaryId) unavailable (\(hint))."
-            if useDemoFallback, language != .english {
-                // Demo is better than English-hallucinated Telugu audio.
-                statusMessage += " Showing demo — install \(primaryId) Dictation language, then retry."
-                return demoCaptions(for: videoURL)
+            // Fall through to Whisper if we have a key (e.g. rare EN locale miss).
+            if !openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return try await transcribeWithWhisper(videoURL: videoURL, useDemoFallback: useDemoFallback)
             }
             throw TranscriptionError.primaryLocaleUnavailable(primaryId)
         }
@@ -205,6 +216,67 @@ final class TranscriptionService: ObservableObject {
             }
         }
         return nil
+    }
+
+    // MARK: - Whisper (Telugu / multilingual)
+
+    private func transcribeWithWhisper(
+        videoURL: URL,
+        useDemoFallback: Bool
+    ) async throws -> [CaptionSegment] {
+        let key = openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            statusMessage = "OpenAI API key required for \(language.shortLabel) captions."
+            throw TranscriptionError.failed(
+                "Telugu is not available in Apple Dictation. Add an OpenAI API key in Brand Kit, then tap AI Captions again."
+            )
+        }
+
+        progress = 0.12
+        statusMessage = "Extracting audio for Whisper…"
+        let audioURL = try await extractAudio(from: videoURL)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+
+        do {
+            let words = try await WhisperTranscriptionClient.transcribe(
+                audioURL: audioURL,
+                apiKey: key,
+                languageHint: language
+            ) { [weak self] value, message in
+                self?.progress = value
+                self?.statusMessage = message
+            }
+
+            let tokens = words.map {
+                TimedToken(
+                    text: $0.text,
+                    startTime: $0.start,
+                    endTime: $0.end,
+                    confidence: 1,
+                    localeId: "whisper"
+                )
+            }
+            let segments = Self.buildSegments(from: tokens, language: language)
+            progress = 1
+            guard !segments.isEmpty else {
+                if useDemoFallback {
+                    statusMessage = "Whisper returned empty — demo captions."
+                    return demoCaptions(for: videoURL)
+                }
+                return []
+            }
+            let teCount = tokens.filter { Self.script(of: $0.text) == .telugu }.count
+            let hiCount = tokens.filter { Self.script(of: $0.text) == .devanagari }.count
+            let laCount = tokens.filter { Self.script(of: $0.text) == .latin }.count
+            statusMessage = "Whisper done — \(segments.count) captions · TE:\(teCount) HI:\(hiCount) EN:\(laCount)"
+            return segments
+        } catch {
+            if useDemoFallback {
+                statusMessage = "Whisper failed — demo captions. (\(error.localizedDescription))"
+                return demoCaptions(for: videoURL)
+            }
+            throw TranscriptionError.failed(error.localizedDescription)
+        }
     }
 
     // MARK: - Recognition
