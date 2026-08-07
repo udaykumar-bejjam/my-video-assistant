@@ -473,14 +473,14 @@ ${JSON.stringify(catalog, null, 2)}
 
 SIGNIFICANT WORD RULES
 1. Pick ${pack ? wordHitsPerCaption(pack) : "1–2"} high-impact words per caption (names, verbs of power, emotion, numbers, CTAs). Skip filler.
-2. For each wordHit use the word's OWN startTime/endTime when words[] is present; else use caption start + short span.
+2. For each wordHit use the word's OWN startTime; hold endTime for ≥1.8s (or through most of the caption) so hits don't flash ahead of audio.
 3. Prefer PUNCHY colourful effects${pack?.effectBias?.length ? ` from effectBias ${JSON.stringify(pack.effectBias)}` : " — punch, color-pulse, fire-pulse, stomp, slam, shake, neon-pulse"} — not plain bold.
 4. Randomise effectId within the allowed pool; do not reuse the same effect for every word.
 5. Set color to the effect's first palette colour (or brand kit primary/secondary when provided). Optionally set secondaryColor.
 6. Pair each effect with an sfxId — prefer pack sfxBias then that effect's preferredSfx list.
 7. fontId MUST match the language script (${scriptHint})${brandKit ? "; prefer brand kit font ids when they match the script" : ""}.
 8. assetId for wordHit = fontId (required for validation).
-9. endTime for wordHit = min(word.end, start + effect.lengthSeconds, caption.end).
+9. endTime for wordHit = min(caption.end, max(word.end, start + max(1.8, effect.lengthSeconds))).
 10. HOOK: guarantee ≥1 wordHit (or stylish text + sfx) with startTime < ${hookWindow}s. Prefer riser/bass-hit for the opening.
 11. Also emit supporting placements (gif/png/text/sfx) when helpful — gif density = ${pack?.gifDensity || "medium"}.
 12. B-ROLL: for every strong wordHit (power / reveal / emotion / numbers / CTA lexicon), also emit a gif OR png timed to that word's startTime, placed in a safe corner (x≈0.18/0.72, y≈0.2/0.55), tags matching the mood. Prefer gif (animated) over png for power / emotion / reveal when a matching gif exists. Cap ≈3 stickers per 15s. Pair sticker with sfx (wordHit.sfxId counts).

@@ -229,8 +229,18 @@ final class EditorViewModel: ObservableObject {
         errorMessage = nil
         defer { isTranscribing = false }
 
+        // Re-measure duration before ASR — a 0/stale project.duration packs captions too fast.
+        if let measured = try? await AVURLAsset(url: url).load(.duration) {
+            let seconds = CMTimeGetSeconds(measured)
+            if seconds.isFinite, seconds > 0.2 {
+                project.duration = max(project.duration, seconds)
+            }
+        }
+
         transcription.language = language
         transcription.openAIAPIKey = apiKeys.trimmedOpenAIKey
+        // Floor ASR timing to the imported video length (avoids short/0 asset duration).
+        transcription.knownTimelineDuration = max(project.duration, resolvedTimelineDuration())
         // Latin presets (Avenir/Georgia) cannot render Telugu/Hindi glyphs — looks like
         // "broken captions" even when ASR is fine. Lock script font + leave case as-is.
         applyLanguageCaptionDefaults()
@@ -239,6 +249,10 @@ final class EditorViewModel: ObservableObject {
             let useDemo = language == .english
             let captions = try await transcription.transcribe(videoURL: url, useDemoFallback: useDemo)
             project.captions = captions
+            // Keep project duration ≥ caption span / measured video (playback scrubber sync).
+            if let lastEnd = captions.last?.endTime, lastEnd > project.duration {
+                project.duration = lastEnd
+            }
             selectedCaptionID = captions.first?.id
             // Surface ASR status (incl. locale pack warnings) in the editor chrome.
             if !transcription.statusMessage.isEmpty {
@@ -817,8 +831,9 @@ final class EditorViewModel: ObservableObject {
         var cy = min(yMaxHit - halfH, max(yMinHit + halfH, placement.y))
         (cx, cy) = SafeZone(xMin: zone.xMin, xMax: zone.xMax, yMin: yMinHit, yMax: yMaxHit).clamp(x: cx, y: cy)
         let start = max(0, placement.startTime)
-        // Keep punch words readable — estimated ASR clocks can be short.
-        let minHold = max(0.85, min(1.6, placement.lengthSeconds ?? 1.1))
+        // Estimated ASR clocks are short — hold punch words long enough to read with speech.
+        let requested = placement.lengthSeconds ?? 2.0
+        let minHold = max(1.6, min(2.8, requested))
         let end = max(start + minHold, placement.endTime)
         return OverlayItem(
             kind: .wordHit,

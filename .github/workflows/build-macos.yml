@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.22') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.22') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.23') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.23') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -53,6 +53,12 @@ jobs:
             ## CaptionStudio for macOS
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
+
+            ### v1.0.23
+            - Captions + word hits were racing ahead of video/audio — now remapped to the full timeline
+            - Longer caption line holds and slower estimated word clocks (Telugu/gpt-transcribe)
+            - Word hits stay on screen ~1.6–2.8s (held through the caption window)
+            - **Re-run AI Captions** (then AI Place) after installing — old timings are baked into the project
 
             ### v1.0.22
             - Fix captions/word-hits racing ahead of video (gpt-transcribe timing used a wrong/short duration)

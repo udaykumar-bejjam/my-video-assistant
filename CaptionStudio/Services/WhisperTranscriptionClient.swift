@@ -390,8 +390,7 @@ enum WhisperTranscriptionClient {
     }
 
     /// Approximate word timings when the model returns text only (gpt-transcribe).
-    /// Spreads words across the *video* timeline with a small lead-in/out so lines
-    /// don't finish before the spoken audio.
+    /// Spreads words across the *video* timeline at a readable speaking cadence.
     private static func stampWords(from text: String, duration: TimeInterval) -> [WordStamp] {
         let parts = text
             .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
@@ -399,45 +398,77 @@ enum WhisperTranscriptionClient {
             .filter { !$0.isEmpty }
         guard !parts.isEmpty else { return [] }
 
-        let safeDuration = max(duration, Double(parts.count) * 0.35, 1)
-        // Leave a little head/tail so captions aren't glued to frame 0 / cut off early.
-        let leadIn = min(0.45, safeDuration * 0.03)
-        let leadOut = min(0.6, safeDuration * 0.04)
-        let usable = max(0.5, safeDuration - leadIn - leadOut)
+        // Never invent a shorter window than the video — that races captions ahead of A/V.
+        // (Older builds used max(duration, count*0.35) which was fine; the bug was duration≈0/10.)
+        let safeDuration = max(duration, 1)
 
         // Telugu glyphs are denser — weight by unicode scalar count so long spoken
         // words get more time than short Latin particles.
         let weights = parts.map { part -> Double in
             let scalars = Double(part.unicodeScalars.count)
             let isTelugu = part.unicodeScalars.contains { (0x0C00...0x0C7F).contains($0.value) }
-            return max(1.0, scalars * (isTelugu ? 1.35 : 1.0))
+            let isHindi = part.unicodeScalars.contains { (0x0900...0x097F).contains($0.value) }
+            let boost = isTelugu ? 1.55 : (isHindi ? 1.4 : 1.0)
+            // Floor weight so tiny particles don't flash by.
+            return max(isTelugu || isHindi ? 1.4 : 1.0, scalars * boost)
         }
-        let totalWeight = weights.reduce(0, +)
+        return distributeByWeight(parts: parts, weights: weights, duration: safeDuration)
+    }
+
+    /// Public remap used after any ASR pass so word clocks always span the video.
+    static func remapWordsToTimeline(_ words: [WordStamp], duration: TimeInterval) -> [WordStamp] {
+        guard let first = words.first, let last = words.last, duration > 0.5 else { return words }
+        let srcStart = first.start
+        let srcEnd = max(last.end, srcStart + 0.1)
+        let srcSpan = max(0.1, srcEnd - srcStart)
+        let coversOK = srcEnd >= duration * 0.92 && srcEnd <= duration * 1.05 && srcStart <= duration * 0.08
+        if coversOK { return words }
+
+        let leadIn = min(0.35, duration * 0.02)
+        let leadOut = min(0.5, duration * 0.03)
+        let dstStart = leadIn
+        let dstSpan = max(0.5, duration - leadIn - leadOut)
+        return words.map { w in
+            let a = (w.start - srcStart) / srcSpan
+            let b = (w.end - srcStart) / srcSpan
+            return WordStamp(
+                text: w.text,
+                start: dstStart + a * dstSpan,
+                end: dstStart + max(a + 0.06, b) * dstSpan
+            )
+        }
+    }
+
+    private static func distributeByWeight(
+        parts: [String],
+        weights: [Double],
+        duration: TimeInterval
+    ) -> [WordStamp] {
+        let leadIn = min(0.45, duration * 0.025)
+        let leadOut = min(0.7, duration * 0.035)
+        let usable = max(0.5, duration - leadIn - leadOut)
+        let totalWeight = max(weights.reduce(0, +), 0.01)
         var t = leadIn
         var stamps: [WordStamp] = []
         for (i, part) in parts.enumerated() {
             let span = usable * (weights[i] / totalWeight)
-            // Minimum readable dwell per word (~spoken cadence).
-            let dwell = max(0.22, span)
+            // Slower floor dwell — was 0.22s and felt rushed vs speech.
+            let isIndic = part.unicodeScalars.contains {
+                (0x0C00...0x0C7F).contains($0.value) || (0x0900...0x097F).contains($0.value)
+            }
+            let dwell = max(isIndic ? 0.38 : 0.28, span)
             let end: TimeInterval
             if i == parts.count - 1 {
-                end = safeDuration - leadOut * 0.25
+                end = duration - leadOut * 0.2
             } else {
-                end = min(safeDuration - leadOut, t + dwell)
+                end = min(duration - leadOut, t + dwell)
             }
-            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.12, end)))
+            stamps.append(WordStamp(text: part, start: t, end: max(t + 0.16, end)))
             t = stamps[stamps.count - 1].end
         }
-        // If minimum dwell pushed us past the timeline, rescale back into the window.
-        if let last = stamps.last, last.end > safeDuration, last.end > 0.2 {
-            let scale = (safeDuration - leadIn) / (last.end - leadIn)
-            stamps = stamps.map { w in
-                WordStamp(
-                    text: w.text,
-                    start: leadIn + (w.start - leadIn) * scale,
-                    end: leadIn + (w.end - leadIn) * scale
-                )
-            }
+        // Min-dwell can overrun — rescale back into the video window (never leave short).
+        if let last = stamps.last, last.end > duration + 0.05 || last.end < duration * 0.9 {
+            return remapWordsToTimeline(stamps, duration: duration)
         }
         return stamps
     }

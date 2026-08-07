@@ -48,6 +48,9 @@ final class TranscriptionService: ObservableObject {
     var language: AppLanguage = .english
     /// OpenAI key for Whisper (Telugu / Hindi when Apple Speech has no pack).
     var openAIAPIKey: String = ""
+    /// Authoritative video timeline from the editor (floor for ASR timing).
+    /// Prevents packing captions into a short/wrong asset duration.
+    var knownTimelineDuration: TimeInterval = 0
 
     init(language: AppLanguage = .english) {
         self.language = language
@@ -170,9 +173,23 @@ final class TranscriptionService: ObservableObject {
             }
 
             let segments = Self.buildSegments(from: merged, language: language)
+            // Apple Speech has real clocks — only hold lines longer, don't stretch to full video.
+            let timeline = max(
+                knownTimelineDuration,
+                await Self.loadDuration(of: videoURL),
+                await Self.loadDuration(of: audioURL),
+                segments.last?.endTime ?? 1,
+                1
+            )
+            let paced = Self.paceCaptionsToTimeline(
+                segments,
+                timelineDuration: timeline,
+                language: language,
+                forceFullRemap: false
+            )
             progress = 1
 
-            if segments.isEmpty {
+            if paced.isEmpty {
                 if useDemoFallback {
                     statusMessage = "No speech detected — showing demo captions."
                     return demoCaptions(for: videoURL)
@@ -183,8 +200,8 @@ final class TranscriptionService: ObservableObject {
             let teCount = merged.filter { Self.script(of: $0.text) == .telugu }.count
             let hiCount = merged.filter { Self.script(of: $0.text) == .devanagari }.count
             let laCount = merged.filter { Self.script(of: $0.text) == .latin }.count
-            statusMessage = "Done — \(segments.count) captions · \(passNotes.joined(separator: " · ")) · TE:\(teCount) HI:\(hiCount) EN:\(laCount)"
-            return segments
+            statusMessage = "Done — \(paced.count) captions · \(passNotes.joined(separator: " · ")) · TE:\(teCount) HI:\(hiCount) EN:\(laCount)"
+            return paced
         } catch {
             if useDemoFallback {
                 statusMessage = "Transcription failed — using demo captions. (\(error.localizedDescription))"
@@ -236,9 +253,10 @@ final class TranscriptionService: ObservableObject {
         statusMessage = "Extracting audio for Whisper…"
         let audioURL = try await extractAudio(from: videoURL)
         defer { try? FileManager.default.removeItem(at: audioURL) }
-        // Prefer the source video duration — extracted M4A can report 0/short before load,
-        // which used to pack all captions into ~10s (captions raced ahead of A/V).
+        // Prefer editor-known duration + source video. Never trust a short M4A alone —
+        // packing the full transcript into ~10s makes captions/hits race ahead of A/V.
         let timelineDuration = max(
+            knownTimelineDuration,
             await Self.loadDuration(of: videoURL),
             await Self.loadDuration(of: audioURL),
             1
@@ -255,7 +273,13 @@ final class TranscriptionService: ObservableObject {
                 self?.statusMessage = message
             }
 
-            let tokens = result.words.map {
+            // Always remap word clocks onto the full video timeline (gpt-transcribe has
+            // no real timestamps; whisper-1 clocks can also end early).
+            let remapped = WhisperTranscriptionClient.remapWordsToTimeline(
+                result.words,
+                duration: timelineDuration
+            )
+            let tokens = remapped.map {
                 TimedToken(
                     text: $0.text,
                     startTime: $0.start,
@@ -268,7 +292,8 @@ final class TranscriptionService: ObservableObject {
             segments = Self.paceCaptionsToTimeline(
                 segments,
                 timelineDuration: timelineDuration,
-                language: language
+                language: language,
+                forceFullRemap: true
             )
             progress = 1
             guard !segments.isEmpty else {
@@ -456,7 +481,8 @@ final class TranscriptionService: ObservableObject {
         }
         guard !words.isEmpty else { return [] }
 
-        let maxWords = language == .english ? 5 : 3
+        // Fewer cuts = each line stays on screen longer (reads with speech, not ahead).
+        let maxWords = language == .english ? 6 : 5
         var captions: [CaptionSegment] = []
         var buffer: [CaptionWord] = []
 
@@ -464,7 +490,7 @@ final class TranscriptionService: ObservableObject {
             guard let first = buffer.first, let last = buffer.last else { return }
             let text = buffer.map(\.text).joined(separator: " ")
             // Keep each phrase readable — Telugu lines need more on-screen time.
-            let minHold = language == .english ? 0.55 : 1.1
+            let minHold = language == .english ? 0.9 : 1.6
             captions.append(
                 CaptionSegment(
                     text: text,
@@ -478,7 +504,7 @@ final class TranscriptionService: ObservableObject {
 
         for (index, word) in words.enumerated() {
             if let prev = buffer.last {
-                if word.startTime - prev.endTime > 0.55 {
+                if word.startTime - prev.endTime > 0.85 {
                     flush()
                 } else if script(of: prev.text) != script(of: word.text),
                           script(of: prev.text) != .other,
@@ -499,22 +525,56 @@ final class TranscriptionService: ObservableObject {
         return captions
     }
 
-    /// Hold each caption until the next one starts, and stretch to the full video length
-    /// when timings came from text-only ASR (gpt-transcribe has no real word clocks).
+    /// Hold each caption until the next one starts.
+    /// When `forceFullRemap` is true (text-only ASR), also linearly map first→last onto the full video.
     nonisolated private static func paceCaptionsToTimeline(
         _ captions: [CaptionSegment],
         timelineDuration: TimeInterval,
-        language: AppLanguage
+        language: AppLanguage,
+        forceFullRemap: Bool = true
     ) -> [CaptionSegment] {
         guard !captions.isEmpty, timelineDuration > 0.5 else { return captions }
         var paced = captions.sorted { $0.startTime < $1.startTime }
 
+        // 0) Linear remap so first→last always covers the full timeline (fixes "too fast").
+        if forceFullRemap, let first = paced.first, let last = paced.last {
+            let srcStart = first.startTime
+            let srcEnd = max(last.endTime, srcStart + 0.1)
+            let srcSpan = max(0.1, srcEnd - srcStart)
+            let leadIn = min(0.3, timelineDuration * 0.015)
+            let leadOut = min(0.4, timelineDuration * 0.02)
+            let dstStart = leadIn
+            let dstSpan = max(0.5, timelineDuration - leadIn - leadOut)
+            // Remap whenever the track is compressed OR drifted past the video.
+            let coversOK = srcEnd >= timelineDuration * 0.92 && srcEnd <= timelineDuration * 1.05
+            if !coversOK || srcStart > timelineDuration * 0.08 {
+                paced = paced.map { cap in
+                    let a = (cap.startTime - srcStart) / srcSpan
+                    let b = (cap.endTime - srcStart) / srcSpan
+                    var copy = cap
+                    copy.startTime = dstStart + a * dstSpan
+                    copy.endTime = dstStart + max(a + 0.08, b) * dstSpan
+                    copy.words = cap.words.map { word in
+                        let wa = (word.startTime - srcStart) / srcSpan
+                        let wb = (word.endTime - srcStart) / srcSpan
+                        return CaptionWord(
+                            text: word.text,
+                            startTime: dstStart + wa * dstSpan,
+                            endTime: dstStart + max(wa + 0.05, wb) * dstSpan
+                        )
+                    }
+                    return copy
+                }
+            }
+        }
+
         // 1) Hold each line until the next line begins (no flash-cuts).
         for i in 0..<paced.count {
-            let nextStart = i + 1 < paced.count ? paced[i + 1].startTime : timelineDuration
-            let minHold = language == .english ? 0.7 : 1.25
+            let nextStart = i + 1 < paced.count ? paced[i + 1].startTime : (forceFullRemap ? timelineDuration : paced[i].endTime)
+            let minHold = language == .english ? 1.0 : 1.8
             let holdEnd = max(paced[i].endTime, paced[i].startTime + minHold)
-            paced[i].endTime = min(timelineDuration, max(holdEnd, nextStart - 0.04))
+            let cap = forceFullRemap ? timelineDuration : max(timelineDuration, paced.last?.endTime ?? timelineDuration)
+            paced[i].endTime = min(cap, max(holdEnd, nextStart - 0.06))
             // Stretch word clocks inside the phrase to fill the held window.
             if !paced[i].words.isEmpty {
                 let w0 = paced[i].words.first!.startTime
@@ -534,28 +594,8 @@ final class TranscriptionService: ObservableObject {
             }
         }
 
-        // 2) If the whole transcript still ends early, linearly stretch to the timeline.
-        let lastEnd = paced.last?.endTime ?? 0
-        if lastEnd > 0.2, lastEnd < timelineDuration * 0.85 {
-            let scale = timelineDuration / lastEnd
-            paced = paced.map { cap in
-                var copy = cap
-                copy.startTime *= scale
-                copy.endTime = min(timelineDuration, copy.endTime * scale)
-                copy.words = copy.words.map {
-                    CaptionWord(
-                        text: $0.text,
-                        startTime: $0.startTime * scale,
-                        endTime: min(timelineDuration, $0.endTime * scale)
-                    )
-                }
-                return copy
-            }
-            if var last = paced.last {
-                last.endTime = timelineDuration
-                paced[paced.count - 1] = last
-            }
-        } else if let lastIdx = paced.indices.last {
+        // 2) Pin the last caption to the timeline end (Whisper/estimated only).
+        if forceFullRemap, let lastIdx = paced.indices.last {
             paced[lastIdx].endTime = max(paced[lastIdx].endTime, timelineDuration)
         }
 

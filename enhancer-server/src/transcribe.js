@@ -55,17 +55,51 @@ function stampWords(text, duration = 10) {
     .map((p) => p.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
     .filter(Boolean);
   if (!parts.length) return [];
-  const weights = parts.map((p) => Math.max(1, p.length));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let t = 0;
-  const dur = Math.max(0.5, Number(duration) || 10);
-  return parts.map((part, i) => {
-    const span = dur * (weights[i] / total);
-    const end = i === parts.length - 1 ? dur : Math.min(dur, t + Math.max(0.08, span));
-    const start = t;
-    t = end;
-    return { text: part, startTime: start, endTime: Math.max(start + 0.05, end) };
+  const dur = Math.max(1, Number(duration) || 10);
+  const weights = parts.map((p) => {
+    let boost = 1;
+    for (const ch of p) {
+      const c = ch.codePointAt(0);
+      if (c >= 0x0c00 && c <= 0x0c7f) boost = 1.55;
+      else if (c >= 0x0900 && c <= 0x097f) boost = Math.max(boost, 1.4);
+    }
+    return Math.max(boost > 1 ? 1.4 : 1, p.length * boost);
   });
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  const leadIn = Math.min(0.45, dur * 0.025);
+  const leadOut = Math.min(0.7, dur * 0.035);
+  const usable = Math.max(0.5, dur - leadIn - leadOut);
+  let t = leadIn;
+  const stamps = parts.map((part, i) => {
+    const span = usable * (weights[i] / total);
+    const indic = [...part].some((ch) => {
+      const c = ch.codePointAt(0);
+      return (c >= 0x0c00 && c <= 0x0c7f) || (c >= 0x0900 && c <= 0x097f);
+    });
+    const dwell = Math.max(indic ? 0.38 : 0.28, span);
+    const end = i === parts.length - 1 ? dur - leadOut * 0.2 : Math.min(dur - leadOut, t + dwell);
+    const start = t;
+    t = Math.max(start + 0.16, end);
+    return { text: part, startTime: start, endTime: t };
+  });
+  const last = stamps[stamps.length - 1];
+  if (last && (last.endTime > dur + 0.05 || last.endTime < dur * 0.9)) {
+    const srcStart = stamps[0].startTime;
+    const srcEnd = Math.max(last.endTime, srcStart + 0.1);
+    const srcSpan = Math.max(0.1, srcEnd - srcStart);
+    const dstStart = leadIn;
+    const dstSpan = Math.max(0.5, dur - leadIn - leadOut);
+    return stamps.map((w) => {
+      const a = (w.startTime - srcStart) / srcSpan;
+      const b = (w.endTime - srcStart) / srcSpan;
+      return {
+        text: w.text,
+        startTime: dstStart + a * dstSpan,
+        endTime: dstStart + Math.max(a + 0.06, b) * dstSpan,
+      };
+    });
+  }
+  return stamps;
 }
 
 async function gptTranscribe({ audioBuffer, filename, apiKey, languages, prompt }) {

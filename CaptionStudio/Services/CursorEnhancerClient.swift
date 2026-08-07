@@ -176,18 +176,21 @@ final class CursorEnhancerClient: ObservableObject {
                 let primary = Self.punchColor(colors.first)
                 let secondary = Self.punchColor(colors.count > 1 ? colors[1] : "#FF2D2D", fallback: "#FF2D2D")
                 let attachSfx = wordHits.count % sfxEvery == 0
+                // Hold the hit through most of the caption so it doesn't flash ahead of audio.
+                let hold = max(1.8, min(2.6, caption.endTime - word.startTime))
+                let hitEnd = min(caption.endTime, max(word.endTime, word.startTime + hold))
                 let raw = EnhancementPlacement(
                     kind: "wordHit",
                     assetId: font.id,
                     startTime: word.startTime,
-                    endTime: word.endTime,
+                    endTime: hitEnd,
                     x: 0.42 + CGFloat(index % 2) * 0.16,
                     y: 0.34 + CGFloat(index % 3) * 0.05,
                     scale: 1.2 + CGFloat(wi % 2) * 0.1,
                     rotation: wi.isMultiple(of: 2) ? -4 : 4,
                     text: word.text,
                     reason: "Local pack\(pack.map { ":\($0.id)" } ?? "") hit",
-                    lengthSeconds: effect.playLength,
+                    lengthSeconds: max(effect.playLength, hold),
                     captionIndex: index,
                     wordIndex: word.index,
                     fontId: font.id,
