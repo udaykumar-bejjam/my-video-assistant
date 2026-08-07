@@ -185,7 +185,7 @@ final class TranscriptionService: ObservableObject {
                 segments,
                 timelineDuration: timeline,
                 language: language,
-                forceFullRemap: false
+                stretchToFullTimeline: false
             )
             progress = 1
 
@@ -273,9 +273,9 @@ final class TranscriptionService: ObservableObject {
                 self?.statusMessage = message
             }
 
-            // Always remap word clocks onto the full video timeline (gpt-transcribe has
-            // no real timestamps; whisper-1 clocks can also end early).
-            let remapped = WhisperTranscriptionClient.remapWordsToTimeline(
+            // Keep estimated clocks as-is; only compress if they overrun the video
+            // (do NOT stretch to fill the full timeline — that made captions appear late).
+            let remapped = WhisperTranscriptionClient.clampWordsToTimeline(
                 result.words,
                 duration: timelineDuration
             )
@@ -293,7 +293,7 @@ final class TranscriptionService: ObservableObject {
                 segments,
                 timelineDuration: timelineDuration,
                 language: language,
-                forceFullRemap: true
+                stretchToFullTimeline: false
             )
             progress = 1
             guard !segments.isEmpty else {
@@ -525,57 +525,72 @@ final class TranscriptionService: ObservableObject {
         return captions
     }
 
-    /// Hold each caption until the next one starts.
-    /// When `forceFullRemap` is true (text-only ASR), also linearly map first→last onto the full video.
+    /// Hold each caption until the next one starts (extends end only — never delays starts).
+    /// `stretchToFullTimeline` is intentionally unused/false: expanding starts to fill the
+    /// video made on-video captions lag behind speech while the word list still looked fine.
     nonisolated private static func paceCaptionsToTimeline(
         _ captions: [CaptionSegment],
         timelineDuration: TimeInterval,
         language: AppLanguage,
-        forceFullRemap: Bool = true
+        stretchToFullTimeline: Bool = false
     ) -> [CaptionSegment] {
         guard !captions.isEmpty, timelineDuration > 0.5 else { return captions }
         var paced = captions.sorted { $0.startTime < $1.startTime }
 
-        // 0) Linear remap so first→last always covers the full timeline (fixes "too fast").
-        if forceFullRemap, let first = paced.first, let last = paced.last {
-            let srcStart = first.startTime
-            let srcEnd = max(last.endTime, srcStart + 0.1)
+        // Slight anticipation so estimated clocks don't feel late vs spoken audio.
+        let lead = language == .english ? 0.08 : 0.12
+        paced = paced.map { cap in
+            var copy = cap
+            copy.startTime = max(0, cap.startTime - lead)
+            copy.endTime = max(copy.startTime + 0.2, cap.endTime - lead)
+            copy.words = cap.words.map { word in
+                CaptionWord(
+                    text: word.text,
+                    startTime: max(0, word.startTime - lead),
+                    endTime: max(word.startTime - lead + 0.08, word.endTime - lead)
+                )
+            }
+            return copy
+        }
+
+        // Compress only if the track overruns the video (never expand / delay starts).
+        if let last = paced.last, last.endTime > timelineDuration + 0.05 {
+            let srcStart = paced.first!.startTime
+            let srcEnd = last.endTime
             let srcSpan = max(0.1, srcEnd - srcStart)
-            let leadIn = min(0.3, timelineDuration * 0.015)
-            let leadOut = min(0.4, timelineDuration * 0.02)
-            let dstStart = leadIn
-            let dstSpan = max(0.5, timelineDuration - leadIn - leadOut)
-            // Remap whenever the track is compressed OR drifted past the video.
-            let coversOK = srcEnd >= timelineDuration * 0.92 && srcEnd <= timelineDuration * 1.05
-            if !coversOK || srcStart > timelineDuration * 0.08 {
-                paced = paced.map { cap in
-                    let a = (cap.startTime - srcStart) / srcSpan
-                    let b = (cap.endTime - srcStart) / srcSpan
-                    var copy = cap
-                    copy.startTime = dstStart + a * dstSpan
-                    copy.endTime = dstStart + max(a + 0.08, b) * dstSpan
-                    copy.words = cap.words.map { word in
-                        let wa = (word.startTime - srcStart) / srcSpan
-                        let wb = (word.endTime - srcStart) / srcSpan
-                        return CaptionWord(
-                            text: word.text,
-                            startTime: dstStart + wa * dstSpan,
-                            endTime: dstStart + max(wa + 0.05, wb) * dstSpan
-                        )
-                    }
-                    return copy
+            let dstSpan = max(0.5, timelineDuration - srcStart)
+            paced = paced.map { cap in
+                let a = (cap.startTime - srcStart) / srcSpan
+                let b = (cap.endTime - srcStart) / srcSpan
+                var copy = cap
+                copy.startTime = srcStart + a * dstSpan
+                copy.endTime = srcStart + max(a + 0.08, b) * dstSpan
+                copy.words = cap.words.map { word in
+                    let wa = (word.startTime - srcStart) / srcSpan
+                    let wb = (word.endTime - srcStart) / srcSpan
+                    return CaptionWord(
+                        text: word.text,
+                        startTime: srcStart + wa * dstSpan,
+                        endTime: srcStart + max(wa + 0.05, wb) * dstSpan
+                    )
                 }
+                return copy
             }
         }
 
-        // 1) Hold each line until the next line begins (no flash-cuts).
+        // Hold each line until the next begins (readability) — does not move startTimes.
         for i in 0..<paced.count {
-            let nextStart = i + 1 < paced.count ? paced[i + 1].startTime : (forceFullRemap ? timelineDuration : paced[i].endTime)
-            let minHold = language == .english ? 1.0 : 1.8
+            let minHold = language == .english ? 0.85 : 1.35
             let holdEnd = max(paced[i].endTime, paced[i].startTime + minHold)
-            let cap = forceFullRemap ? timelineDuration : max(timelineDuration, paced.last?.endTime ?? timelineDuration)
-            paced[i].endTime = min(cap, max(holdEnd, nextStart - 0.06))
-            // Stretch word clocks inside the phrase to fill the held window.
+            if i + 1 < paced.count {
+                paced[i].endTime = min(timelineDuration, max(holdEnd, paced[i + 1].startTime - 0.04))
+                // Avoid overlapping the next caption start.
+                paced[i].endTime = min(paced[i].endTime, paced[i + 1].startTime - 0.02)
+                paced[i].endTime = max(paced[i].endTime, paced[i].startTime + 0.2)
+            } else {
+                paced[i].endTime = min(timelineDuration, holdEnd)
+            }
+            // Keep word clocks proportional inside the held window without shifting the phrase start.
             if !paced[i].words.isEmpty {
                 let w0 = paced[i].words.first!.startTime
                 let w1 = max(paced[i].words.last!.endTime, w0 + 0.05)
@@ -594,11 +609,7 @@ final class TranscriptionService: ObservableObject {
             }
         }
 
-        // 2) Pin the last caption to the timeline end (Whisper/estimated only).
-        if forceFullRemap, let lastIdx = paced.indices.last {
-            paced[lastIdx].endTime = max(paced[lastIdx].endTime, timelineDuration)
-        }
-
+        _ = stretchToFullTimeline // reserved; expanding to full video caused late on-timeline captions
         return paced
     }
 

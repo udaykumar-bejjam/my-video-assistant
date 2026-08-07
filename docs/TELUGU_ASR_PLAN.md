@@ -39,9 +39,9 @@ and never sends `language=te` to whisper-1.
 
 ## Timing (no word clocks from gpt-transcribe)
 `gpt-transcribe` returns text only. CaptionStudio:
-1. Uses the **video timeline duration** (editor `project.duration` + asset load) as the stamp window
-2. Weight-spreads words across that window (Indic glyphs get longer dwell)
-3. Remaps + holds caption lines so the track spans `0…duration` (prevents racing ahead of A/V)
+1. Uses the **video timeline duration** as a **cap** (never pack into a wrong short window)
+2. Stamps words at a **natural speaking rate** — does **not** stretch a short transcript across the full video (that made on-timeline captions late)
+3. Holds each caption line until the next (extends end only); slight anticipation so overlays aren't late
 4. Word hits hold ~1.6–2.8s through the caption window
 
 **After updating the app, re-run AI Captions** (then AI Place) — old timings stay baked in the project.

@@ -32,7 +32,7 @@ struct CaptionOverlayView: View {
             }
         }
         .allowsHitTesting(false)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: editor.activeCaption?.id)
+        .animation(.easeOut(duration: 0.12), value: editor.activeCaption?.id)
     }
 
     private func transition(for animation: CaptionAnimation) -> AnyTransition {
