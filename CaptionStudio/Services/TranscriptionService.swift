@@ -7,6 +7,7 @@ enum TranscriptionError: LocalizedError {
     case noAudioTrack
     case authorizationDenied
     case recognizerUnavailable
+    case primaryLocaleUnavailable(String)
     case failed(String)
 
     var errorDescription: String? {
@@ -14,6 +15,8 @@ enum TranscriptionError: LocalizedError {
         case .noAudioTrack: return "This video has no audio track to transcribe."
         case .authorizationDenied: return "Speech recognition permission was denied."
         case .recognizerUnavailable: return "Speech recognition is unavailable on this device."
+        case .primaryLocaleUnavailable(let id):
+            return "\(id) speech recognition is not available. On macOS: System Settings → Keyboard → Dictation, enable Dictation and download the Telugu / Hindi language. Then retry AI Captions."
         case .failed(let message): return message
         }
     }
@@ -30,10 +33,13 @@ private struct TimedToken: Sendable {
 
 /// Speech-to-text using Apple's Speech framework.
 ///
-/// Telugu/Hindi creators almost always code-switch with English. A single
-/// `te-IN` (or `hi-IN`) recognizer mangles the English inserts (and vice versa),
-/// which is why mixed videos looked ~20% right. We dual-pass the primary locale
-/// plus `en-US`, then merge by confidence + script.
+/// For Telugu/Hindi + English code-switching:
+/// 1. Run primary locale (`te-IN` / `hi-IN`) as the **backbone** transcript
+/// 2. Run `en-US` only to recover clear English inserts
+/// 3. Never let English overwrite Telugu/Devanagari script tokens
+///
+/// The previous winner-takes-all merge preferred high-confidence English
+/// hallucinations over real Telugu audio — captions became English-only.
 @MainActor
 final class TranscriptionService: ObservableObject {
     @Published var progress: Double = 0
@@ -67,21 +73,32 @@ final class TranscriptionService: ObservableObject {
             throw TranscriptionError.authorizationDenied
         }
 
-        let localeIds = language.transcriptionLocaleIdentifiers
-        let recognizers: [(String, SFSpeechRecognizer)] = localeIds.compactMap { id in
-            let locale = Locale(identifier: id)
-            guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else {
-                return nil
-            }
-            return (id, recognizer)
-        }
+        let primaryId = language.localeIdentifier
+        let companionIds = language.transcriptionLocaleIdentifiers.filter { $0 != primaryId }
 
-        guard !recognizers.isEmpty else {
-            if useDemoFallback {
-                statusMessage = "Using demo captions (recognizer unavailable for \(language.localeIdentifier))."
+        guard let primaryRecognizer = Self.makeRecognizer(for: primaryId) else {
+            // Without the primary pack, English-only output is guaranteed — fail loudly
+            // instead of silently captioning Telugu audio as English gibberish.
+            let supported = SFSpeechRecognizer.supportedLocales()
+                .map(\.identifier)
+                .filter { $0.lowercased().hasPrefix(String(primaryId.prefix(2)).lowercased()) }
+            let hint = supported.isEmpty
+                ? "not in supportedLocales"
+                : "supported variants: \(supported.joined(separator: ", "))"
+            statusMessage = "Primary locale \(primaryId) unavailable (\(hint))."
+            if useDemoFallback, language != .english {
+                // Demo is better than English-hallucinated Telugu audio.
+                statusMessage += " Showing demo — install \(primaryId) Dictation language, then retry."
                 return demoCaptions(for: videoURL)
             }
-            throw TranscriptionError.recognizerUnavailable
+            throw TranscriptionError.primaryLocaleUnavailable(primaryId)
+        }
+
+        var recognizers: [(String, SFSpeechRecognizer)] = [(primaryId, primaryRecognizer)]
+        for id in companionIds {
+            if let r = Self.makeRecognizer(for: id) {
+                recognizers.append((id, r))
+            }
         }
 
         progress = 0.15
@@ -91,31 +108,56 @@ final class TranscriptionService: ObservableObject {
         defer { try? FileManager.default.removeItem(at: audioURL) }
 
         do {
-            let passes: [[TimedToken]]
-            if recognizers.count == 1 {
-                progress = 0.35
-                statusMessage = "Transcribing (\(recognizers[0].0))…"
-                passes = [try await recognizeTokens(audioURL: audioURL, localeId: recognizers[0].0, recognizer: recognizers[0].1)]
-            } else {
-                progress = 0.3
-                statusMessage = "Transcribing mixed \(language.shortLabel) + English…"
-                // Sequential passes share one audio file safely; parallel SFSpeech tasks are flaky.
-                var collected: [[TimedToken]] = []
-                for (index, pair) in recognizers.enumerated() {
-                    let (localeId, recognizer) = pair
-                    progress = 0.3 + 0.3 * Double(index) / Double(recognizers.count)
-                    statusMessage = "Pass \(index + 1)/\(recognizers.count): \(localeId)…"
+            var primaryTokens: [TimedToken] = []
+            var englishTokens: [TimedToken] = []
+            var passNotes: [String] = []
+
+            for (index, pair) in recognizers.enumerated() {
+                let (localeId, recognizer) = pair
+                progress = 0.28 + 0.35 * Double(index) / Double(max(recognizers.count, 1))
+                statusMessage = "Pass \(index + 1)/\(recognizers.count): \(localeId)…"
+                do {
                     let tokens = try await recognizeTokens(
                         audioURL: audioURL,
                         localeId: localeId,
                         recognizer: recognizer
                     )
-                    collected.append(tokens)
+                    if localeId == primaryId || localeId.hasPrefix(String(primaryId.prefix(2))) {
+                        // Keep the richest primary pass if we tried aliases.
+                        if tokens.count >= primaryTokens.count { primaryTokens = tokens }
+                    } else if localeId.hasPrefix("en") {
+                        englishTokens = tokens
+                    }
+                    passNotes.append("\(localeId):\(tokens.count)")
+                } catch {
+                    passNotes.append("\(localeId):fail")
+                    // Primary failure is fatal for TE/HI — don't fall through to English-only.
+                    if localeId == primaryId {
+                        throw error
+                    }
                 }
-                passes = collected
             }
 
-            let merged = Self.mergeCodeSwitchedPasses(passes, primaryLocale: language.localeIdentifier)
+            if primaryTokens.isEmpty {
+                statusMessage = "No \(language.shortLabel) speech decoded (\(passNotes.joined(separator: ", ")))."
+                if useDemoFallback {
+                    statusMessage += " Showing demo captions."
+                    return demoCaptions(for: videoURL)
+                }
+                return []
+            }
+
+            let merged: [TimedToken]
+            if englishTokens.isEmpty || language == .english {
+                merged = primaryTokens.sorted { $0.startTime < $1.startTime }
+            } else {
+                merged = Self.mergePrimaryWithEnglish(
+                    primary: primaryTokens,
+                    english: englishTokens,
+                    primaryLocale: primaryId
+                )
+            }
+
             let segments = Self.buildSegments(from: merged, language: language)
             progress = 1
 
@@ -130,7 +172,7 @@ final class TranscriptionService: ObservableObject {
             let teCount = merged.filter { Self.script(of: $0.text) == .telugu }.count
             let hiCount = merged.filter { Self.script(of: $0.text) == .devanagari }.count
             let laCount = merged.filter { Self.script(of: $0.text) == .latin }.count
-            statusMessage = "Done — \(segments.count) captions (TE:\(teCount) HI:\(hiCount) EN:\(laCount))"
+            statusMessage = "Done — \(segments.count) captions · \(passNotes.joined(separator: " · ")) · TE:\(teCount) HI:\(hiCount) EN:\(laCount)"
             return segments
         } catch {
             if useDemoFallback {
@@ -139,6 +181,30 @@ final class TranscriptionService: ObservableObject {
             }
             throw TranscriptionError.failed(error.localizedDescription)
         }
+    }
+
+    /// Resolve a recognizer, trying common locale alias spellings.
+    nonisolated private static func makeRecognizer(for localeId: String) -> SFSpeechRecognizer? {
+        var candidates = [localeId]
+        // Apple sometimes registers `te` / `te_IN` instead of `te-IN`.
+        if localeId.contains("-") {
+            candidates.append(localeId.replacingOccurrences(of: "-", with: "_"))
+            candidates.append(String(localeId.prefix(2)))
+        }
+        for id in candidates {
+            let locale = Locale(identifier: id)
+            if let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable {
+                return recognizer
+            }
+        }
+        // Last resort: any supported locale with the same language code.
+        let prefix = String(localeId.prefix(2)).lowercased()
+        for locale in SFSpeechRecognizer.supportedLocales() where locale.identifier.lowercased().hasPrefix(prefix) {
+            if let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable {
+                return recognizer
+            }
+        }
+        return nil
     }
 
     // MARK: - Recognition
@@ -195,76 +261,87 @@ final class TranscriptionService: ObservableObject {
         }
     }
 
-    // MARK: - Code-switch merge
+    // MARK: - Code-switch merge (primary backbone)
 
-    /// Merge dual-locale token streams. Overlapping words keep the higher-scoring
-    /// candidate (confidence × script/locale bonus).
-    nonisolated private static func mergeCodeSwitchedPasses(
-        _ passes: [[TimedToken]],
+    /// Keep primary-language tokens as the timeline. Only splice English where it
+    /// fills a gap or clearly beats a weak *non-native-script* primary token.
+    nonisolated private static func mergePrimaryWithEnglish(
+        primary: [TimedToken],
+        english: [TimedToken],
         primaryLocale: String
     ) -> [TimedToken] {
-        let flat = passes.flatMap { $0 }.filter { !$0.text.isEmpty }
-        guard passes.count > 1 else {
-            return flat.sorted { $0.startTime < $1.startTime }
-        }
-        guard !flat.isEmpty else { return [] }
+        var result = primary.sorted { $0.startTime < $1.startTime }
+        let primaryScript: ScriptKind = primaryLocale.hasPrefix("te")
+            ? .telugu
+            : (primaryLocale.hasPrefix("hi") ? .devanagari : .other)
 
-        let sorted = flat.sorted { a, b in
-            if abs(a.startTime - b.startTime) > 0.02 { return a.startTime < b.startTime }
-            return score(a, primaryLocale: primaryLocale) > score(b, primaryLocale: primaryLocale)
-        }
+        let englishCandidates = english
+            .filter { script(of: $0.text) == .latin }
+            .filter { $0.confidence >= 0.25 }
+            .filter { isPlausibleEnglishInsert($0.text) }
+            .sorted { $0.startTime < $1.startTime }
 
-        var chosen: [TimedToken] = []
-        for token in sorted {
-            if let last = chosen.last, overlaps(last, token) {
-                if score(token, primaryLocale: primaryLocale) > score(last, primaryLocale: primaryLocale) {
-                    chosen[chosen.count - 1] = token
+        for en in englishCandidates {
+            if let idx = result.firstIndex(where: { overlapsTight($0, en) }) {
+                let existing = result[idx]
+                let existingScript = script(of: existing.text)
+
+                // Never overwrite native-script words with English hallucinations.
+                if existingScript == primaryScript { continue }
+                if existingScript == .telugu || existingScript == .devanagari { continue }
+
+                // Replace weak Latin / other primary token only if English is stronger.
+                let enScore = Double(en.confidence) * 1.15
+                let existingScore = Double(max(0.05, existing.confidence))
+                    * (existingScript == .latin ? 0.9 : 0.6)
+                if enScore > existingScore {
+                    result[idx] = en
                 }
-                continue
+            } else if isGap(for: en, in: result) {
+                // Insert English into a real silence / coverage hole in the primary pass.
+                result.append(en)
+                result.sort { $0.startTime < $1.startTime }
             }
-            chosen.append(token)
         }
-        return chosen
+
+        return result
     }
 
-    nonisolated private static func overlaps(_ a: TimedToken, _ b: TimedToken) -> Bool {
+    /// True when primary has no token covering most of this English window.
+    nonisolated private static func isGap(for en: TimedToken, in primary: [TimedToken]) -> Bool {
+        let mid = (en.startTime + en.endTime) / 2
+        let covered = primary.contains { token in
+            mid >= token.startTime - 0.05 && mid <= token.endTime + 0.05
+        }
+        if covered { return false }
+        // Also require a little breathing room so we don't double-caption edges.
+        let near = primary.contains { token in
+            abs(token.startTime - en.startTime) < 0.12
+        }
+        return !near
+    }
+
+    nonisolated private static func overlapsTight(_ a: TimedToken, _ b: TimedToken) -> Bool {
         let start = max(a.startTime, b.startTime)
         let end = min(a.endTime, b.endTime)
         let overlap = end - start
-        guard overlap > 0 else {
-            // Near-simultaneous starts from two locales = same spoken word.
-            return abs(a.startTime - b.startTime) < 0.18
-        }
-        let shorter = min(a.endTime - a.startTime, b.endTime - b.startTime)
-        return overlap >= shorter * 0.45
+        guard overlap > 0 else { return abs(a.startTime - b.startTime) < 0.1 }
+        let shorter = max(0.05, min(a.endTime - a.startTime, b.endTime - b.startTime))
+        return overlap >= shorter * 0.55
     }
 
-    nonisolated private static func score(_ token: TimedToken, primaryLocale: String) -> Double {
-        let conf = Double(max(0.05, token.confidence))
-        let script = script(of: token.text)
-        var bonus = 1.0
-
-        switch script {
-        case .telugu:
-            bonus = token.localeId.hasPrefix("te") ? 1.45 : 0.35
-        case .devanagari:
-            bonus = token.localeId.hasPrefix("hi") ? 1.45 : 0.35
-        case .latin:
-            // English inserts: prefer en-US; still allow primary if that's all we have.
-            if token.localeId.hasPrefix("en") {
-                bonus = 1.4
-            } else if token.localeId == primaryLocale {
-                bonus = 0.75
-            } else {
-                bonus = 0.55
-            }
-        case .other:
-            bonus = token.localeId == primaryLocale ? 1.0 : 0.7
+    /// Filter out English ASR crumbs / phoneme soup that isn't a real insert.
+    nonisolated private static func isPlausibleEnglishInsert(_ text: String) -> Bool {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'“”‘’().,!?…:;"))
+        guard cleaned.count >= 2, cleaned.count <= 24 else { return false }
+        let letters = cleaned.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        guard letters.count >= 2 else { return false }
+        // Must be mostly Latin letters.
+        let latin = letters.filter {
+            (0x0041...0x005A).contains($0.value) || (0x0061...0x007A).contains($0.value)
         }
-
-        // Prefer slightly longer real words over punctuation crumbs.
-        let lengthBoost = min(1.15, 0.9 + Double(token.text.count) * 0.02)
-        return conf * bonus * lengthBoost
+        return latin.count * 2 >= letters.count
     }
 
     private enum ScriptKind { case telugu, devanagari, latin, other }
@@ -296,8 +373,6 @@ final class TranscriptionService: ObservableObject {
         }
         guard !words.isEmpty else { return [] }
 
-        // Telugu/Hindi lines read better shorter; flush on script change so
-        // English inserts don't glue into one unreadable Telugu blob.
         let maxWords = language == .english ? 5 : 4
         var captions: [CaptionSegment] = []
         var buffer: [CaptionWord] = []
@@ -322,11 +397,9 @@ final class TranscriptionService: ObservableObject {
                     flush()
                 } else if script(of: prev.text) != script(of: word.text),
                           script(of: prev.text) != .other,
-                          script(of: word.text) != .other {
-                    // Keep short same-phrase mixes (1–2 words) together; longer → new line.
-                    if buffer.count >= 2 {
-                        flush()
-                    }
+                          script(of: word.text) != .other,
+                          buffer.count >= 2 {
+                    flush()
                 }
             }
             buffer.append(word)

@@ -1119,8 +1119,15 @@ function captionTokens(cap) {
 }
 
 function significantWordsFromCaption(cap, language, limit) {
+  const lang = String(language || "en-US");
+  const minLen = lang.startsWith("en") ? 3 : 2;
   return captionTokens(cap)
-    .filter((w) => w.text && !FILLER_WORDS.has(String(w.text).toLowerCase()) && String(w.text).length > 2)
+    .filter(
+      (w) =>
+        w.text &&
+        !FILLER_WORDS.has(String(w.text).toLowerCase()) &&
+        String(w.text).length >= minLen
+    )
     .sort((a, b) => scoreWordSignificance(b.text, language) - scoreWordSignificance(a.text, language))
     .slice(0, limit);
 }

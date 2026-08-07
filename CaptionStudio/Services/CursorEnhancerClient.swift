@@ -166,7 +166,8 @@ final class CursorEnhancerClient: ObservableObject {
             guard index.isMultiple(of: 2) else { continue }
             let sig = Self.significantWords(in: caption, limit: hitsPer, language: language)
             for (wi, word) in sig.enumerated() {
-                guard let font = fonts[safe: (index + wi) % max(fonts.count, 1)],
+                let font = Self.fontMatchingScript(word.text, in: fonts, fallbackIndex: index + wi)
+                guard let font,
                       let effect = effectPool[safe: (index * 3 + wi * 2) % max(effectPool.count, 1)]
                 else { continue }
                 let preferred = (effect.preferredSfx ?? []).compactMap { id in sfxPool.first { $0.id == id } ?? sfx.first { $0.id == id } }
@@ -398,6 +399,26 @@ final class CursorEnhancerClient: ObservableObject {
         return filtered.isEmpty ? fonts : filtered
     }
 
+    /// Pick Kohinoor Telugu/Devanagari for native words; Latin fonts for English inserts.
+    private static func fontMatchingScript(
+        _ text: String,
+        in fonts: [MediaLibraryItem],
+        fallbackIndex: Int
+    ) -> MediaLibraryItem? {
+        let wantsTelugu = text.unicodeScalars.contains { (0x0C00...0x0C7F).contains($0.value) }
+        let wantsHindi = text.unicodeScalars.contains { (0x0900...0x097F).contains($0.value) }
+        let pool: [MediaLibraryItem]
+        if wantsTelugu {
+            pool = fonts.filter { ($0.scripts ?? []).contains(where: { ["te", "telugu"].contains($0) }) }
+        } else if wantsHindi {
+            pool = fonts.filter { ($0.scripts ?? []).contains(where: { ["hi", "hindi", "devanagari"].contains($0) }) }
+        } else {
+            pool = fonts.filter { ($0.scripts ?? []).contains(where: { ["en", "latin"].contains($0) }) }
+        }
+        let use = pool.isEmpty ? fonts : pool
+        return use[safe: fallbackIndex % max(use.count, 1)] ?? use.first
+    }
+
     private struct SigWord {
         var text: String
         var index: Int
@@ -428,11 +449,30 @@ final class CursorEnhancerClient: ObservableObject {
                 )
             }
         }
+        let minLen = language == .english ? 3 : 2
         return parts
-            .filter { !$0.text.isEmpty && !filler.contains($0.text.lowercased()) && $0.text.count > 2 }
-            .sorted { StrongWordLexicon.score($0.text, language: language) > StrongWordLexicon.score($1.text, language: language) }
+            .filter { !$0.text.isEmpty && !filler.contains($0.text.lowercased()) && $0.text.count >= minLen }
+            .sorted {
+                hitScore($0.text, language: language) > hitScore($1.text, language: language)
+            }
             .prefix(limit)
             .map { $0 }
+    }
+
+    /// Prefer native-script words for TE/HI so English inserts don't monopolize hits.
+    private static func hitScore(_ text: String, language: AppLanguage) -> Int {
+        var score = StrongWordLexicon.score(text, language: language)
+        // Also score English inserts against the English lexicon when code-switching.
+        if language != .english {
+            score = max(score, StrongWordLexicon.score(text, language: .english))
+        }
+        if language == .telugu, text.unicodeScalars.contains(where: { (0x0C00...0x0C7F).contains($0.value) }) {
+            score += 28
+        }
+        if language == .hindi, text.unicodeScalars.contains(where: { (0x0900...0x097F).contains($0.value) }) {
+            score += 28
+        }
+        return score
     }
 }
 

@@ -223,12 +223,20 @@ final class EditorViewModel: ObservableObject {
         // "broken captions" even when ASR is fine. Lock script font + leave case as-is.
         applyLanguageCaptionDefaults()
         do {
-            let captions = try await transcription.transcribe(videoURL: url)
+            // Don't silently fall back to English-only / demo for TE/HI — surface real errors.
+            let useDemo = language == .english
+            let captions = try await transcription.transcribe(videoURL: url, useDemoFallback: useDemo)
             project.captions = captions
             selectedCaptionID = captions.first?.id
-            // Surface ASR status (incl. demo-fallback warnings) in the editor chrome.
+            // Surface ASR status (incl. locale pack warnings) in the editor chrome.
             if !transcription.statusMessage.isEmpty {
                 lastEnhancementNote = transcription.statusMessage
+                // Make missing Telugu/Hindi speech packs obvious in the UI.
+                if transcription.statusMessage.localizedCaseInsensitiveContains("unavailable")
+                    || transcription.statusMessage.localizedCaseInsensitiveContains("demo")
+                    || transcription.statusMessage.localizedCaseInsensitiveContains("install") {
+                    errorMessage = transcription.statusMessage
+                }
             }
             editorTab = .captions
             refreshTrimSuggestions()

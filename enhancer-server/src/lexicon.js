@@ -73,7 +73,7 @@ export function isStrongWord(text, language = "en-US") {
   return classifyStrongWord(text, language) != null;
 }
 
-/** Prefer lexicon matches, then longer tokens. */
+/** Prefer lexicon matches, then longer tokens. Boost native script for TE/HI. */
 export function scoreWordSignificance(text, language = "en-US") {
   const token = normalizeToken(text);
   if (!token || token.length < 2) return -1;
@@ -82,6 +82,16 @@ export function scoreWordSignificance(text, language = "en-US") {
   if (cat === "power" || cat === "cta") score += 40;
   else if (cat === "reveal" || cat === "emotion") score += 35;
   else if (cat === "numbers") score += 30;
+  // Code-switched videos: also credit English lexicon hits.
+  const lang = String(language || "");
+  if (!lang.startsWith("en")) {
+    const enCat = classifyStrongWord(token, "en-US");
+    if (enCat === "power" || enCat === "cta") score = Math.max(score, token.length + 40);
+    else if (enCat === "reveal" || enCat === "emotion") score = Math.max(score, token.length + 35);
+  }
+  // Prefer Telugu / Devanagari tokens so English inserts don't monopolize hits.
+  if (/[\u0C00-\u0C7F]/.test(token) && lang.startsWith("te")) score += 28;
+  if (/[\u0900-\u097F]/.test(token) && lang.startsWith("hi")) score += 28;
   return score;
 }
 
