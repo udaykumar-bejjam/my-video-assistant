@@ -36,3 +36,12 @@ It *does* support Kannada — so auto-detect often emits Kannada for Telugu audi
 
 CaptionStudio therefore uses **`gpt-transcribe`** with `languages[]=te` + `languages[]=en` for Telugu,
 and never sends `language=te` to whisper-1.
+
+## Timing (no word clocks from gpt-transcribe)
+`gpt-transcribe` returns text only. CaptionStudio:
+1. Uses the **video timeline duration** (editor `project.duration` + asset load) as the stamp window
+2. Weight-spreads words across that window (Indic glyphs get longer dwell)
+3. Remaps + holds caption lines so the track spans `0…duration` (prevents racing ahead of A/V)
+4. Word hits hold ~1.6–2.8s through the caption window
+
+**After updating the app, re-run AI Captions** (then AI Place) — old timings stay baked in the project.
