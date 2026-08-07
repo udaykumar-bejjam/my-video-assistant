@@ -510,7 +510,8 @@ final class VideoExportService: ObservableObject {
         var mixed: [MixedSFXTrack] = []
         for cue in cues where !cue.isMuted {
             guard let item = catalog.items.first(where: { $0.id == cue.assetId }) else { continue }
-            let fileName = item.file ?? item.wav
+            // Prefer wav for composition insert reliability; fall back to m4a.
+            let fileName = item.wav ?? item.file
             guard let fileName else { continue }
             let url = libraryRoot.appendingPathComponent("sfx").appendingPathComponent(fileName)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
@@ -874,6 +875,10 @@ final class VideoExportService: ObservableObject {
 
     /// Draw caption/overlay text into a bitmap. Offline export reliably burns
     /// `CALayer.contents` images; it often drops live `CATextLayer.string`.
+    ///
+    /// Uses Core Text in the CGContext's native bottom-left space so the bitmap
+    /// is upright when composited (no flipped NSGraphicsContext — that mirrored
+    /// captions in the exported MP4).
     private static func rasterizeText(
         text: String,
         fontName: String,
@@ -887,20 +892,21 @@ final class VideoExportService: ObservableObject {
         shadowRadius: CGFloat,
         maxWidth: CGFloat
     ) -> CGImage? {
-        let font = PlatformFont(name: fontName, size: fontSize)
-            ?? .systemFont(ofSize: fontSize, weight: .bold)
+        let ctFont = CTFontCreateWithName(fontName as CFString, fontSize, nil)
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byWordWrapping
 
+        // Prefer PlatformFont for measurement; CTFont is toll-free bridged.
+        let uiFont = PlatformFont(name: fontName, size: fontSize)
+            ?? .systemFont(ofSize: fontSize, weight: .bold)
         var attrs: [NSAttributedString.Key: Any] = [
-            .font: font,
+            .font: uiFont,
             .foregroundColor: textColor,
             .paragraphStyle: paragraph
         ]
         if strokeWidth > 0 {
             attrs[.strokeColor] = strokeColor
-            // Negative width = fill + stroke (AppKit/UIKit convention).
             attrs[.strokeWidth] = -strokeWidth
         }
 
@@ -931,74 +937,53 @@ final class VideoExportService: ObservableObject {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
+        // Work in point space; CGContext origin is bottom-left (matches CALayer.contents).
         ctx.scaleBy(x: scale, y: scale)
 
-        #if canImport(AppKit)
-        NSGraphicsContext.saveGraphicsState()
-        let nsCtx = NSGraphicsContext(cgContext: ctx, flipped: true)
-        NSGraphicsContext.current = nsCtx
-        defer { NSGraphicsContext.restoreGraphicsState() }
+        let inset = CGRect(
+            x: shadowPad / 2,
+            y: shadowPad / 2,
+            width: size.width - shadowPad,
+            height: size.height - shadowPad
+        )
 
-        let drawRect = CGRect(origin: .zero, size: size)
         if backgroundColor.cgColor.alpha > 0.01 {
-            let path = NSBezierPath(
-                roundedRect: drawRect.insetBy(dx: shadowPad / 2, dy: shadowPad / 2),
-                xRadius: cornerRadius,
-                yRadius: cornerRadius
+            let path = CGPath(
+                roundedRect: inset,
+                cornerWidth: cornerRadius,
+                cornerHeight: cornerRadius,
+                transform: nil
             )
-            backgroundColor.setFill()
-            path.fill()
+            ctx.setFillColor(backgroundColor.cgColor)
+            ctx.addPath(path)
+            ctx.fillPath()
         }
 
         if shadowRadius > 0 {
-            let shadow = NSShadow()
-            shadow.shadowColor = shadowColor
-            shadow.shadowBlurRadius = shadowRadius
-            shadow.shadowOffset = NSSize(width: 0, height: -2)
-            attrs[.shadow] = shadow
-        }
-        let drawn = NSAttributedString(string: text, attributes: attrs)
-        let textRect = CGRect(
-            x: (size.width - textBound.width) / 2,
-            y: (size.height - textBound.height) / 2,
-            width: textBound.width,
-            height: textBound.height
-        )
-        drawn.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
-        #elseif canImport(UIKit)
-        UIGraphicsPushContext(ctx)
-        defer { UIGraphicsPopContext() }
-        // Flip so UIKit top-left drawing matches bitmap.
-        ctx.translateBy(x: 0, y: size.height)
-        ctx.scaleBy(x: 1, y: -1)
-
-        let drawRect = CGRect(origin: .zero, size: size)
-        if backgroundColor.cgColor.alpha > 0.01 {
-            let path = UIBezierPath(
-                roundedRect: drawRect.insetBy(dx: shadowPad / 2, dy: shadowPad / 2),
-                cornerRadius: cornerRadius
+            ctx.setShadow(
+                offset: CGSize(width: 0, height: -2),
+                blur: shadowRadius,
+                color: shadowColor.cgColor
             )
-            backgroundColor.setFill()
-            path.fill()
         }
-        if shadowRadius > 0 {
-            attrs[.shadow] = {
-                let s = NSShadow()
-                s.shadowColor = shadowColor
-                s.shadowBlurRadius = shadowRadius
-                s.shadowOffset = CGSize(width: 0, height: 2)
-                return s
-            }()
-        }
-        let drawn = NSAttributedString(string: text, attributes: attrs)
+
+        let frameSetter = CTFramesetterCreateWithAttributedString(attributed)
         let textRect = CGRect(
             x: (size.width - textBound.width) / 2,
             y: (size.height - textBound.height) / 2,
-            width: textBound.width,
-            height: textBound.height
+            width: max(1, textBound.width),
+            height: max(1, textBound.height)
         )
-        drawn.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
-        #endif
+        // CTFramesetter expects a path; Core Text draws with y-up inside the path.
+        let path = CGPath(rect: textRect, transform: nil)
+        let frame = CTFramesetterCreateFrame(
+            frameSetter,
+            CFRange(location: 0, length: attributed.length),
+            path,
+            nil
+        )
+        CTFrameDraw(frame, ctx)
+        ctx.setShadow(offset: .zero, blur: 0, color: nil)
 
         return ctx.makeImage()
     }
