@@ -35,6 +35,7 @@
 		A10000000000000000000045 /* AudioNormalizeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000044 /* AudioNormalizeService.swift */; };
 		A10000000000000000000071 /* WhisperTranscriptionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000070 /* WhisperTranscriptionClient.swift */; };
 		A10000000000000000000073 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* APIKeyStore.swift */; };
+		A10000000000000000000075 /* OpenAIKeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000074 /* OpenAIKeySheet.swift */; };
 		A10000000000000000000021 /* Libraries in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* Libraries */; };
 		2B470062C2624033B0E4928D /* CaptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */; };
 		B470F2E644264FE8B8CA5D8D /* Caption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F567830C8F481597C10E04 /* Caption.swift */; };
@@ -79,6 +80,7 @@
 		A10000000000000000000044 /* AudioNormalizeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNormalizeService.swift; sourceTree = "<group>"; };
 		A10000000000000000000070 /* WhisperTranscriptionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTranscriptionClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000072 /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000074 /* OpenAIKeySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIKeySheet.swift; sourceTree = "<group>"; };
 		A10000000000000000000020 /* Libraries */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Libraries; sourceTree = "<group>"; };
 		89CA2A916DEE4B4EBA63240A /* CaptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CaptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524FA77A33A64076A8DB6B18 /* CaptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionStudioApp.swift; sourceTree = "<group>"; };
@@ -197,6 +199,7 @@
 				A10000000000000000000062 /* AnimatedGIFView.swift */,
 				A1000000000000000000000D /* PackPickerView.swift */,
 				A1000000000000000000000F /* BrandKitSettingsView.swift */,
+				A10000000000000000000074 /* OpenAIKeySheet.swift */,
 				A10000000000000000000032 /* TrimAssistView.swift */,
 			);
 			path = Views;
@@ -321,6 +324,7 @@
 				A10000000000000000000045 /* AudioNormalizeService.swift in Sources */,
 				A10000000000000000000071 /* WhisperTranscriptionClient.swift in Sources */,
 				A10000000000000000000073 /* APIKeyStore.swift in Sources */,
+				A10000000000000000000075 /* OpenAIKeySheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -395,7 +399,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.18;
+				MARKETING_VERSION = 1.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -443,7 +447,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.18;
+				MARKETING_VERSION = 1.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

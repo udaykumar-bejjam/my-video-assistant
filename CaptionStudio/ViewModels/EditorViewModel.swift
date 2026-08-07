@@ -38,6 +38,8 @@ final class EditorViewModel: ObservableObject {
     @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
     @Published var batchExportURLs: [URL] = []
     @Published var showBrandKit = false
+    /// Focused OpenAI key sheet — shown on Home and before Telugu AI Captions.
+    @Published var showOpenAIKeySheet = false
     @Published var trimSuggestions: [TrimSuggestion] = []
     @Published var selectedTrimIDs: Set<UUID> = []
     @Published var isTrimming = false
@@ -215,6 +217,14 @@ final class EditorViewModel: ObservableObject {
             errorMessage = "Import a video first."
             return
         }
+
+        // Telugu always needs Whisper — prompt for the key before starting.
+        if language == .telugu, !apiKeys.hasOpenAIKey {
+            errorMessage = "Add your OpenAI API key to caption Telugu (Apple has no Telugu Dictation)."
+            showOpenAIKeySheet = true
+            return
+        }
+
         isTranscribing = true
         errorMessage = nil
         defer { isTranscribing = false }
@@ -243,7 +253,12 @@ final class EditorViewModel: ObservableObject {
             editorTab = .captions
             refreshTrimSuggestions()
         } catch {
-            errorMessage = error.localizedDescription
+            let message = error.localizedDescription
+            errorMessage = message
+            if message.localizedCaseInsensitiveContains("API key")
+                || message.localizedCaseInsensitiveContains("OpenAI") {
+                showOpenAIKeySheet = true
+            }
         }
     }
 

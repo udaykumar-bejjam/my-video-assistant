@@ -35,6 +35,10 @@ struct EditorView: View {
             BrandKitSettingsView()
                 .environmentObject(editor)
         }
+        .sheet(isPresented: $editor.showOpenAIKeySheet) {
+            OpenAIKeySheet()
+                .environmentObject(editor)
+        }
         .confirmationDialog("Leave editor?", isPresented: $showLeaveConfirm) {
             Button("Save Project & Leave") {
                 do {
@@ -129,6 +133,27 @@ struct EditorView: View {
                     .foregroundStyle(.white)
             }
             #endif
+
+            Button {
+                editor.showOpenAIKeySheet = true
+            } label: {
+                Label(
+                    editor.apiKeys.hasOpenAIKey ? "API Key" : "Add API Key",
+                    systemImage: editor.apiKeys.hasOpenAIKey ? "key.fill" : "key"
+                )
+                .font(.custom("AvenirNext-DemiBold", size: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    editor.apiKeys.hasOpenAIKey
+                        ? Color.white.opacity(0.12)
+                        : Color(red: 1.0, green: 0.85, blue: 0.35).opacity(0.95),
+                    in: Capsule()
+                )
+                .foregroundStyle(editor.apiKeys.hasOpenAIKey ? .white : .black)
+            }
+            .buttonStyle(.plain)
+            .help("OpenAI key for Telugu Whisper captions")
 
             Menu {
                 Button("None") { editor.selectPack(nil) }

@@ -47,7 +47,7 @@ struct CaptionListView: View {
             Image(systemName: "waveform")
                 .font(.system(size: 28))
                 .foregroundStyle(Color(red: 0.3, green: 0.92, blue: 0.75).opacity(0.7))
-            Text("Telugu needs an OpenAI key in Brand Kit. Pick తెలుగు + EN, then AI Captions.")
+            Text("For Telugu: tap Add API Key (top bar), pick తెలుగు + EN, then AI Captions.")
                 .font(.custom("AvenirNext-Medium", size: 13))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)

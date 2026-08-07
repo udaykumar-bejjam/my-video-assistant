@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var isLoadingSample = false
     @State private var appear = false
     @State private var photoItem: PhotosPickerItem?
+    @State private var showOpenAIKeySheet = false
 
     var body: some View {
         ZStack {
@@ -39,6 +40,10 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                         .opacity(appear ? 1 : 0)
                         .offset(y: appear ? 0 : 12)
+
+                    OpenAIKeyHomeBanner(showKeySheet: $showOpenAIKeySheet)
+                        .padding(.top, 4)
+                        .opacity(appear ? 1 : 0)
 
                     HStack(spacing: 14) {
                         #if os(iOS)
@@ -113,6 +118,10 @@ struct HomeView: View {
             case .failure(let error):
                 editor.errorMessage = error.localizedDescription
             }
+        }
+        .sheet(isPresented: $showOpenAIKeySheet) {
+            OpenAIKeySheet()
+                .environmentObject(editor)
         }
         .onAppear {
             editor.projectStore.reload()
