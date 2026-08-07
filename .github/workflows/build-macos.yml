@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.25') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.25') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.26') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.26') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,17 +54,13 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.25
-            - Some captions still lagged speech by ~1–2s (estimated clocks drift)
-            - Telugu now uses **gpt-transcribe text + whisper-1 word clocks** aligned together
-            - Stronger anticipation so overlays hit with audio
-            - **Re-run AI Captions** (then AI Place) after installing
-
-            ### v1.0.24
-            - Stopped stretch-to-fill that made on-timeline captions late
+            ### v1.0.26
+            - **Timeline zoom bar**: zoom out to media + 1 hour, zoom in to ≈5mm per frame
+            - **Drag clips** sideways to retime; drag up/down between Caps / Hits / Stick / Text to change lane (kind + stacking order)
+            - Orange marker = end of imported media; shaded region is the +1h pad
 
             - Requires **macOS 14+**
-            - Telugu: Add API Key → తెలుగు + EN → AI Captions (re-run after update)
+            - Telugu: Add API Key → తెలుగు + EN → AI Captions
             - Optional enhancer: `cd enhancer-server && npm install && npm start`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

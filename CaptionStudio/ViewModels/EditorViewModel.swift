@@ -1247,6 +1247,178 @@ final class EditorViewModel: ObservableObject {
         if selectedOverlayID == id { selectedOverlayID = nil }
     }
 
+    /// Retiming + optional lane change from the zoomable timeline drag.
+    func applyTimelineDrag(
+        ref: TimelineClipRef,
+        fromLane: TimelineLaneID,
+        toLane: TimelineLaneID,
+        start: TimeInterval,
+        end: TimeInterval
+    ) {
+        let mediaEnd = max(project.duration, 0.1)
+        let clampedStart = min(max(0, start), mediaEnd - 0.05)
+        let clampedEnd = min(mediaEnd, max(clampedStart + 0.05, end))
+
+        switch ref {
+        case .caption(let id):
+            applyCaptionTimelineDrag(
+                id: id,
+                fromLane: fromLane,
+                toLane: toLane,
+                start: clampedStart,
+                end: clampedEnd
+            )
+        case .overlay(let id):
+            applyOverlayTimelineDrag(
+                id: id,
+                toLane: toLane,
+                start: clampedStart,
+                end: clampedEnd
+            )
+        case .sfx(let id):
+            guard toLane == .sfx || toLane == fromLane else { return }
+            guard var cue = project.soundEffects.first(where: { $0.id == id }) else { return }
+            cue.startTime = clampedStart
+            updateSoundEffect(cue)
+            selectSoundEffect(id)
+            seek(to: clampedStart)
+        case .trim(let id):
+            guard toLane == .trim || toLane == fromLane else { return }
+            guard let index = trimSuggestions.firstIndex(where: { $0.id == id }) else { return }
+            let len = max(0.05, trimSuggestions[index].endTime - trimSuggestions[index].startTime)
+            trimSuggestions[index].startTime = clampedStart
+            trimSuggestions[index].endTime = min(mediaEnd, clampedStart + len)
+            seek(to: clampedStart)
+            editorTab = .trim
+        case .audio:
+            break
+        }
+    }
+
+    private func applyCaptionTimelineDrag(
+        id: UUID,
+        fromLane: TimelineLaneID,
+        toLane: TimelineLaneID,
+        start: TimeInterval,
+        end: TimeInterval
+    ) {
+        guard var caption = project.captions.first(where: { $0.id == id }) else { return }
+
+        // Stay on Caps → retime only.
+        if toLane == .captions {
+            let delta = start - caption.startTime
+            caption.startTime = start
+            caption.endTime = end
+            caption.words = caption.words.map {
+                CaptionWord(
+                    text: $0.text,
+                    startTime: max(0, $0.startTime + delta),
+                    endTime: max(0, $0.endTime + delta)
+                )
+            }
+            updateCaption(caption)
+            selectedCaptionID = id
+            seek(to: start)
+            editorTab = .captions
+            return
+        }
+
+        // Drop onto overlay lanes → convert caption into an overlay (bring to front).
+        guard toLane.acceptsClips, toLane != .sfx, toLane != .captions else {
+            // Illegal drop — still apply retime on original lane.
+            caption.startTime = start
+            caption.endTime = end
+            updateCaption(caption)
+            return
+        }
+
+        let kind = overlayKind(for: toLane, preferring: nil)
+        var item = OverlayItem.textSticker(caption.text, at: start, duration: max(0.4, end - start))
+        item.kind = kind
+        if kind == .wordHit {
+            item.scale = 1.25
+            item.fontSize = 44
+            item.y = 0.36
+        }
+        deleteCaption(id)
+        project.overlays.append(item)
+        selectedOverlayID = item.id
+        selectedCaptionID = nil
+        selectedSoundEffectID = nil
+        isAudioLayerSelected = false
+        seek(to: start)
+        editorTab = .overlays
+    }
+
+    private func applyOverlayTimelineDrag(
+        id: UUID,
+        toLane: TimelineLaneID,
+        start: TimeInterval,
+        end: TimeInterval
+    ) {
+        guard let index = project.overlays.firstIndex(where: { $0.id == id }) else { return }
+        var item = project.overlays[index]
+
+        // Convert overlay → caption.
+        if toLane == .captions {
+            let caption = CaptionSegment(
+                text: item.text.isEmpty ? item.kind.label : item.text,
+                startTime: start,
+                endTime: end,
+                words: []
+            )
+            project.overlays.remove(at: index)
+            project.captions.append(caption)
+            project.captions.sort { $0.startTime < $1.startTime }
+            selectedCaptionID = caption.id
+            selectedOverlayID = nil
+            seek(to: start)
+            editorTab = .captions
+            return
+        }
+
+        guard toLane == .wordHits || toLane == .stickers || toLane == .text else {
+            // Illegal lane — retime only, keep kind.
+            item.startTime = start
+            item.endTime = end
+            project.overlays.remove(at: index)
+            project.overlays.append(item)
+            selectedOverlayID = item.id
+            seek(to: start)
+            editorTab = .overlays
+            return
+        }
+
+        item.startTime = start
+        item.endTime = end
+        item.kind = overlayKind(for: toLane, preferring: item.kind)
+        // Bring to front so lane drop changes on-screen stacking order.
+        project.overlays.remove(at: index)
+        project.overlays.append(item)
+        selectedOverlayID = item.id
+        selectedSoundEffectID = nil
+        isAudioLayerSelected = false
+        seek(to: start)
+        editorTab = .overlays
+    }
+
+    private func overlayKind(for lane: TimelineLaneID, preferring current: OverlayKind?) -> OverlayKind {
+        switch lane {
+        case .wordHits:
+            return .wordHit
+        case .stickers:
+            if let current, current == .gif || current == .png { return current }
+            return .png
+        case .text:
+            if let current, current == .text || current == .emoji || current == .shape || current == .watermark {
+                return current
+            }
+            return .text
+        default:
+            return current ?? .text
+        }
+    }
+
     func selectAudioLayer() {
         isAudioLayerSelected = true
         selectedSoundEffectID = nil
