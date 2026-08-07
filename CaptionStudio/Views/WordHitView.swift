@@ -72,12 +72,14 @@ struct WordHitView: View {
     // MARK: - Color
 
     private func animatedColor(_ effect: WordHitEffect, local: TimeInterval, base: Color) -> Color {
-        let palette = effect.palette
-        guard palette.count >= 2 else { return base }
+        // Prefer the placed punch color (usually yellow) so preview never flashes white.
+        var palette = effect.palette
+        if palette.isEmpty { return base }
+        palette[0] = base
+        if palette.count < 2 { palette.append(Color(red: 1, green: 0.18, blue: 0.18)) }
 
         switch effect {
         case .colorPulse, .pulse, .neonPulse:
-            // Smooth ping-pong yellow ↔ red (or neon pair)
             let t = 0.5 + 0.5 * sin(local * 8)
             return mix(palette[0], palette[1], t: t)
         case .firePulse:
@@ -89,12 +91,15 @@ struct WordHitView: View {
             }
             return mix(palette[0], palette[1], t: phase)
         case .punch, .stomp, .slam:
-            // Flash secondary on impact, settle to primary
-            if local < 0.1 { return palette[1] }
-            if local < 0.22 { return mix(palette[1], palette[0], t: (local - 0.1) / 0.12) }
+            // Brief warm flash, settle on punch yellow — avoid white/yellow dual look.
+            if local < 0.08 { return mix(palette[0], palette[1], t: 0.4) }
+            if local < 0.18 { return mix(palette[1], palette[0], t: (local - 0.08) / 0.1 * 0.4 + 0.6) }
             return palette[0]
         case .shake, .flash:
-            return Int(local * 12) % 2 == 0 ? palette[0] : palette[1]
+            // Prefer primary; only nudge toward secondary (never white).
+            return Int(local * 10) % 3 == 0
+                ? mix(palette[0], palette[1], t: 0.35)
+                : palette[0]
         case .glitch:
             let idx = Int(local * 15) % palette.count
             return palette[idx]

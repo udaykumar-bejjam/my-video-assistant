@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.14') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.14') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.15') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.15') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -54,10 +54,11 @@ jobs:
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
 
-            ### v1.0.14
-            - Fix double highlights: suppress karaoke when word hits exist (preview + export)
-            - Karaoke export uses one layer per word (no stacked dim/highlight/full ghosts)
-            - Closer preview↔export parity for stylish text + word-hit styling
+            ### v1.0.15
+            - Fewer, on-screen word hits (mid-band clamp + density cap)
+            - Consistent punch yellow (no white/yellow mix)
+            - Export word-hit glow bloom baked into rasterization
+            - Sparser SFX so audio doesn't drown the cut
 
             - Requires **macOS 14+**
             - Optional enhancer: `cd enhancer-server && npm install && npm start`

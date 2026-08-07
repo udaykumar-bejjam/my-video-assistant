@@ -7,7 +7,9 @@ import {
   getPack,
   hookWindowSeconds,
   loadPacks,
+  maxWordHitsPer15s,
   sfxPoolForPack,
+  wordHitSfxEveryN,
   wordHitsPerCaption,
 } from "./packs.js";
 import { ensureBrollStickers } from "./broll.js";
@@ -566,10 +568,33 @@ export function extractJson(text) {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
-const WORD_HIT_COLORS = ["#FFEF5A", "#FF2D2D", "#FF9F1C", "#33F2CF", "#FF2D9B", "#FFFFFF"];
+const WORD_HIT_COLORS = ["#FFEF5A", "#FF2D2D", "#FF9F1C", "#33F2CF", "#FF2D9B"];
 const PUNCHY_EFFECT_IDS = [
   "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch",
 ];
+
+function punchColor(hex, fallback = "#FFEF5A") {
+  if (typeof hex !== "string" || !hex.startsWith("#")) return fallback;
+  const u = hex.toUpperCase();
+  if (u === "#FFFFFF" || u === "#FFF" || u === "#FFFFFFFF") return fallback;
+  return hex;
+}
+
+/** Keep word-hit density under control across long videos. */
+export function thinWordHits(hits, videoDuration, maxPer15 = 2) {
+  if (!Array.isArray(hits) || !hits.length) return [];
+  const sorted = [...hits].sort((a, b) => Number(a.startTime) - Number(b.startTime));
+  const kept = [];
+  for (const hit of sorted) {
+    const t = Number(hit.startTime) || 0;
+    const inWindow = kept.filter((k) => {
+      const kt = Number(k.startTime) || 0;
+      return Math.abs(kt - t) <= 15;
+    }).length;
+    if (inWindow < maxPer15) kept.push(hit);
+  }
+  return kept;
+}
 
 /**
  * Resolve timeline length without the `Number(x) || 10` trap (0 is falsy and
@@ -659,6 +684,15 @@ export function validatePlacements(
       i -= 1;
     }
   }
+  // Density cap — avoid wall-of-hits on long clips.
+  const thinned = thinWordHits(wordHits, duration, maxWordHitsPer15s(pack));
+  wordHits.length = 0;
+  wordHits.push(...thinned);
+  // SFX only on every Nth surviving hit so audio stays sparse.
+  const sfxEvery = wordHitSfxEveryN(pack);
+  wordHits.forEach((h, i) => {
+    if (i % sfxEvery !== 0) h.sfxId = null;
+  });
   const beforeBroll = placements.length;
   ensureBrollStickers({
     wordHits,
@@ -686,6 +720,21 @@ export function validatePlacements(
       duration,
       zone
     );
+  }
+
+  // Thin standalone SFX placements so audio stays sparse (keep opening hook).
+  const standaloneSfx = placements
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.kind === "sfx");
+  const dropSfx = new Set();
+  standaloneSfx.forEach(({ p, i }, n) => {
+    if (Number(p.startTime) < 0.35) return; // keep cold-open
+    if (n % 2 === 1) dropSfx.add(i);
+  });
+  if (dropSfx.size) {
+    for (let i = placements.length - 1; i >= 0; i--) {
+      if (dropSfx.has(i)) placements.splice(i, 1);
+    }
   }
 
   const distribution = normalizeDistribution(
@@ -972,22 +1021,35 @@ export function alignWordHit(
 
   const wordText = placement.word || placement.text || font.previewText || "!";
   const palette = Array.isArray(effect.colors) && effect.colors.length ? effect.colors : WORD_HIT_COLORS;
-  const color =
+  const color = punchColor(
     typeof placement.color === "string" && placement.color.startsWith("#")
       ? placement.color
-      : palette[0];
-  const secondaryColor = palette[1] || palette[0];
+      : palette[0]
+  );
+  const secondaryColor = punchColor(palette[1] || palette[0], "#FF2D2D");
 
-  const nw = (font.normalizedWidth || 0.2) * (Number(placement.scale) || 1.3);
-  const nh = (font.normalizedHeight || 0.08) * (Number(placement.scale) || 1.3);
+  // Inflate glyph extents so large punch text stays inside the frame / safe zone.
+  const scale = clamp(Number(placement.scale) || 1.25, 0.8, 1.45);
+  const charFactor = Math.min(1.8, 0.55 + String(wordText).length * 0.08);
+  const nw = (font.normalizedWidth || 0.22) * scale * charFactor;
+  const nh = (font.normalizedHeight || 0.1) * scale * 1.35;
   let x = Number(placement.x);
   let y = Number(placement.y);
   if (!Number.isFinite(x)) x = 0.5;
-  if (!Number.isFinite(y)) y = 0.4;
-  x = clamp(x, nw / 2 + 0.02, 1 - nw / 2 - 0.02);
-  y = clamp(y, nh / 2 + 0.05, 1 - nh / 2 - 0.05);
+  if (!Number.isFinite(y)) y = 0.38;
+  // Keep hits in the upper/mid band — below chrome, above caption lane (~0.82).
+  const yMaxHit = safeZone ? Math.min(safeZone.yMax ?? 0.78, 0.58) : 0.58;
+  const yMinHit = safeZone ? Math.max(safeZone.yMin ?? 0.12, 0.14) : 0.14;
+  x = clamp(x, nw / 2 + 0.04, 1 - nw / 2 - 0.04);
+  y = clamp(y, Math.max(nh / 2 + 0.04, yMinHit), Math.min(1 - nh / 2 - 0.04, yMaxHit));
   if (safeZone) {
-    ({ x, y } = clampToSafeZone(x, y, safeZone));
+    const z = {
+      xMin: safeZone.xMin,
+      xMax: safeZone.xMax,
+      yMin: yMinHit,
+      yMax: yMaxHit,
+    };
+    ({ x, y } = clampToSafeZone(x, y, z));
   }
 
   return {
@@ -1005,13 +1067,13 @@ export function alignWordHit(
     lengthSeconds: round3(effectLen),
     x: round4(x),
     y: round4(y),
-    scale: clamp(Number(placement.scale) || 1.3, 0.8, 2.6),
+    scale,
     rotation: Number.isFinite(Number(placement.rotation))
-      ? Number(placement.rotation)
-      : (Math.random() * 16 - 8),
+      ? clamp(Number(placement.rotation), -8, 8)
+      : (Math.random() * 10 - 5),
     color,
     secondaryColor,
-    reason: placement.reason || `Punchy "${wordText}" → ${effectId} (${color}/${secondaryColor}) + ${sfxId}`,
+    reason: placement.reason || `Punchy "${wordText}" → ${effectId} (${color}) + ${sfxId || "no-sfx"}`,
     assetPixelSize: { width: font.pixelWidth || 200, height: font.pixelHeight || 64 },
     sfxLengthSeconds: sfxLen,
   };
@@ -1096,46 +1158,51 @@ function appendMissingCaptionWordHits({
   let added = 0;
 
   captions.forEach((cap, index) => {
+    // Skip every other caption so hits stay sparse across the full video.
+    if (index % 2 === 1) return;
     if (captionHasWordHit(wordHits, cap)) return;
     const sig = significantWordsFromCaption(cap, language, hitsPerCap);
     if (!sig.length) return;
-    sig.forEach((word, wi) => {
-      const font = fonts[(index + wi) % fonts.length];
-      if (!font) return;
-      const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
-      const effectPool = punchy.length ? punchy : effectPoolBase;
-      const effect = effectPool[(index * 3 + wi * 2) % effectPool.length];
-      if (!effect) return;
-      const preferred = (effect.preferredSfx || [])
-        .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
-        .filter(Boolean);
-      const sfx =
-        preferred[0] ||
-        sfxPoolBase[(index + wi) % sfxPoolBase.length] ||
-        sfxLib[(index + wi) % sfxLib.length];
-      const palette = effect.colors || WORD_HIT_COLORS;
-      wordHits.push({
-        kind: "wordHit",
-        assetId: font.id,
-        fontId: font.id,
-        effectId: effect.id,
-        sfxId: sfx?.id,
-        word: word.text,
-        text: word.text,
-        captionIndex: index,
-        wordIndex: word.index,
-        startTime: word.startTime,
-        endTime: word.endTime,
-        x: 0.35 + (wi % 2) * 0.3,
-        y: 0.36 + (index % 3) * 0.06,
-        scale: 1.35 + (wi % 2) * 0.2,
-        rotation: wi % 2 === 0 ? -5 : 6,
-        color: palette[0],
-        secondaryColor: palette[1] || palette[0],
-        reason: `Full-duration fill "${word.text}" → ${effect.id}`,
-      });
-      added += 1;
+    // One strong word max per filled caption.
+    const word = sig[0];
+    const wi = 0;
+    const font = fonts[index % fonts.length];
+    if (!font) return;
+    const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
+    const effectPool = punchy.length ? punchy : effectPoolBase;
+    const effect = effectPool[(index * 3) % effectPool.length];
+    if (!effect) return;
+    const preferred = (effect.preferredSfx || [])
+      .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
+      .filter(Boolean);
+    const sfx =
+      preferred[0] ||
+      sfxPoolBase[index % sfxPoolBase.length] ||
+      sfxLib[index % sfxLib.length];
+    const palette = effect.colors || WORD_HIT_COLORS;
+    wordHits.push({
+      kind: "wordHit",
+      assetId: font.id,
+      fontId: font.id,
+      effectId: effect.id,
+      // SFX attached later (every Nth) after thinning — keep id for now.
+      sfxId: sfx?.id,
+      word: word.text,
+      text: word.text,
+      captionIndex: index,
+      wordIndex: word.index,
+      startTime: word.startTime,
+      endTime: word.endTime,
+      x: 0.42 + (index % 2) * 0.16,
+      y: 0.34 + (index % 3) * 0.05,
+      scale: 1.2,
+      rotation: index % 2 === 0 ? -4 : 4,
+      color: punchColor(palette[0]),
+      secondaryColor: punchColor(palette[1] || "#FF2D2D", "#FF2D2D"),
+      reason: `Sparse fill "${word.text}" → ${effect.id}`,
     });
+    added += 1;
+    void wi;
   });
   return added;
 }

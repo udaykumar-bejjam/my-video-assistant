@@ -362,17 +362,19 @@ final class EditorViewModel: ObservableObject {
         return fromProject
     }
 
-    /// Ensure every caption window has ≥1 word hit so export doesn't look like
-    /// "punchy captions for ~10s, then plain captions only".
+    /// Sparse full-duration fill — every other empty caption only (avoids wall-of-hits).
     private func appendMissingWordHits(
         wordHits: inout [EnhancementPlacement],
         captions: [CaptionSegment],
         duration: TimeInterval
     ) -> Int {
-        let missing = captions.filter { cap in
-            !wordHits.contains {
+        let missing = captions.enumerated().compactMap { index, cap -> CaptionSegment? in
+            // Keep density low: only consider even-index caption windows.
+            guard index % 2 == 0 else { return nil }
+            let hasHit = wordHits.contains {
                 $0.startTime >= cap.startTime - 0.05 && $0.startTime <= cap.endTime + 0.05
             }
+            return hasHit ? nil : cap
         }
         guard !missing.isEmpty else { return 0 }
 
@@ -681,6 +683,10 @@ final class EditorViewModel: ObservableObject {
     func apply(plan: EnhancementPlan) {
         var newOverlays: [OverlayItem] = []
         var newSFX: [SoundEffectCue] = []
+        // Throttle audio so hits don't fire a whoosh on every punch.
+        var standaloneSFXIndex = 0
+        var wordHitSFXIndex = 0
+        let wordHitSfxEvery = selectedPack?.gifDensity == "high" ? 2 : 3
 
         for placement in plan.allEdits {
             switch placement.kind {
@@ -697,16 +703,18 @@ final class EditorViewModel: ObservableObject {
                     newOverlays.append(item)
                 }
             case "sfx":
-                if let cue = makeSFX(from: placement) {
+                if standaloneSFXIndex % 2 == 0, let cue = makeSFX(from: placement) {
                     newSFX.append(cue)
                 }
+                standaloneSFXIndex += 1
             case "wordHit":
                 if let item = makeWordHit(from: placement) {
                     newOverlays.append(item)
                 }
-                if let cue = makeWordHitSFX(from: placement) {
+                if wordHitSFXIndex % wordHitSfxEvery == 0, let cue = makeWordHitSFX(from: placement) {
                     newSFX.append(cue)
                 }
+                wordHitSFXIndex += 1
             default:
                 continue
             }
@@ -745,14 +753,27 @@ final class EditorViewModel: ObservableObject {
         let effectId = placement.effectId ?? WordHitEffect.random().rawValue
         let effect = WordHitEffect(rawValue: effectId)
         let effectColors = libraries.item(kind: .effects, id: effectId)?.colors
-        let primaryHex = placement.color
+        var primaryHex = placement.color
             ?? effectColors?.first
             ?? "#FFEF5A"
-        let color = Color(hex: primaryHex) ?? (effect?.palette.first ?? .yellow)
-        let (cx, cy) = activeSafeZone.clamp(x: placement.x, y: placement.y)
+        // Never settle on pure white — reads as "caption duplicate" next to yellow hits.
+        if primaryHex.uppercased() == "#FFFFFF" || primaryHex.uppercased() == "#FFF" {
+            primaryHex = "#FFEF5A"
+        }
+        let color = Color(hex: primaryHex) ?? (effect?.palette.first ?? Color(red: 1, green: 0.94, blue: 0.35))
+        let scale = min(1.45, max(0.9, placement.scale == 0 ? 1.2 : placement.scale))
+        // Estimate glyph box so the whole word stays inside the safe / mid band.
+        let approxChars = max(1, CGFloat(placement.displayText.count))
+        let halfW = min(0.28, 0.06 * scale * approxChars)
+        let halfH = min(0.1, 0.055 * scale)
+        let zone = activeSafeZone
+        let yMaxHit = min(zone.yMax, 0.58)
+        let yMinHit = max(zone.yMin, 0.14)
+        var cx = min(zone.xMax - halfW, max(zone.xMin + halfW, placement.x))
+        var cy = min(yMaxHit - halfH, max(yMinHit + halfH, placement.y))
+        (cx, cy) = SafeZone(xMin: zone.xMin, xMax: zone.xMax, yMin: yMinHit, yMax: yMaxHit).clamp(x: cx, y: cy)
         let start = max(0, placement.startTime)
-        // Word hits must stay on-screen long enough to read — never collapse to a hairline.
-        let minHold = max(0.55, placement.lengthSeconds ?? 0.9)
+        let minHold = max(0.45, min(0.9, placement.lengthSeconds ?? 0.7))
         let end = max(start + minHold, placement.endTime)
         return OverlayItem(
             kind: .wordHit,
@@ -766,12 +787,12 @@ final class EditorViewModel: ObservableObject {
             sfxId: placement.sfxId,
             x: cx,
             y: cy,
-            scale: max(placement.scale, 1.25),
-            rotation: placement.rotation,
+            scale: scale,
+            rotation: min(8, max(-8, placement.rotation)),
             startTime: start,
             endTime: end,
             color: color.codable,
-            fontSize: 52,
+            fontSize: 44,
             shape: .rectangle,
             opacity: 1,
             reason: placement.reason,
@@ -787,7 +808,7 @@ final class EditorViewModel: ObservableObject {
         return SoundEffectCue(
             assetId: sfxId,
             startTime: placement.startTime,
-            gain: libraries.item(kind: .sfx, id: sfxId)?.defaultGain ?? 0.85,
+            gain: min(0.75, libraries.item(kind: .sfx, id: sfxId)?.defaultGain ?? 0.7),
             reason: "Word hit SFX for \(placement.text ?? "")"
         )
     }

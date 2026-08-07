@@ -51,10 +51,27 @@ const maxHit = hits.reduce((m, h) => Math.max(m, Number(h.startTime) || 0), 0);
 const lateHits = hits.filter((h) => Number(h.startTime) >= 20);
 const midHits = hits.filter((h) => Number(h.startTime) >= 10 && Number(h.startTime) < 20);
 
-assert(hits.length >= 15, `wordHits ≥15 across 15 captions (got ${hits.length})`);
+assert(hits.length >= 5, `wordHits ≥5 across 15 captions (sparse density, got ${hits.length})`);
+assert(hits.length <= 12, `wordHits ≤12 so frame isn't crowded (got ${hits.length})`);
 assert(maxHit >= 20, `last wordHit ≥20s (got ${maxHit.toFixed(1)}s)`);
-assert(midHits.length >= 3, `hits in 10–20s ≥3 (got ${midHits.length})`);
-assert(lateHits.length >= 3, `hits in ≥20s ≥3 (got ${lateHits.length})`);
+assert(midHits.length >= 1, `hits in 10–20s ≥1 (got ${midHits.length})`);
+assert(lateHits.length >= 1, `hits in ≥20s ≥1 (got ${lateHits.length})`);
+assert(
+  hits.every((h) => {
+    const c = String(h.color || "").toUpperCase();
+    return c !== "#FFFFFF" && c !== "#FFF";
+  }),
+  "no pure-white wordHit colors"
+);
+assert(
+  hits.every((h) => {
+    const y = Number(h.y);
+    return Number.isFinite(y) && y >= 0.12 && y <= 0.62;
+  }),
+  "wordHit y stays in mid/upper band (not off-screen / caption lane)"
+);
+const withSfx = hits.filter((h) => h.sfxId).length;
+assert(withSfx <= Math.ceil(hits.length / 2) + 1, `word-hit SFX sparse (sfx=${withSfx} hits=${hits.length})`);
 
 // Sparse early-only plan must be filled by validatePlacements coverage.
 const { validatePlacements, loadLibraries } = await import("../src/libraries.js");

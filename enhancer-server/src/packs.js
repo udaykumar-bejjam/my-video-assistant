@@ -66,7 +66,24 @@ export function gifEveryN(pack) {
 
 export function wordHitsPerCaption(pack) {
   const n = Number(pack?.wordHitsPerCaption);
-  return Number.isFinite(n) && n > 0 ? Math.min(3, Math.floor(n)) : 2;
+  // Default 1, hard max 2 — dense hits crowd the frame and steal focus.
+  return Number.isFinite(n) && n > 0 ? Math.min(2, Math.floor(n)) : 1;
+}
+
+/** Max floating word hits in any rolling 15s window. */
+export function maxWordHitsPer15s(pack) {
+  const density = pack?.gifDensity || "medium";
+  if (density === "high") return 3;
+  if (density === "low") return 1;
+  return 2;
+}
+
+/** Attach SFX to every Nth word hit (1 = all, 3 = every third). */
+export function wordHitSfxEveryN(pack) {
+  const density = pack?.gifDensity || "medium";
+  if (density === "high") return 2;
+  if (density === "low") return 4;
+  return 3;
 }
 
 export function hookWindowSeconds(pack) {

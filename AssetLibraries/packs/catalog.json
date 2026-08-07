@@ -12,7 +12,7 @@
       "effectBias": ["punch", "slam", "stomp", "shake", "color-pulse"],
       "sfxBias": ["riser", "bass-hit", "whoosh", "pop"],
       "gifTags": ["hype", "impact", "reveal"],
-      "wordHitsPerCaption": 2,
+      "wordHitsPerCaption": 1,
       "requireHookInFirstSeconds": 3,
       "gifDensity": "high",
       "accentColor": "#FFEF5A"
@@ -57,7 +57,7 @@
       "effectBias": ["punch", "color-pulse", "stomp", "slam", "fire-pulse", "shake"],
       "sfxBias": ["bass-hit", "riser", "whoosh", "cheer-hit"],
       "gifTags": ["hype", "celebration", "impact"],
-      "wordHitsPerCaption": 2,
+      "wordHitsPerCaption": 1,
       "requireHookInFirstSeconds": 3,
       "gifDensity": "high",
       "accentColor": "#FF2D2D"

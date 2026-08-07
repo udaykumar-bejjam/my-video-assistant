@@ -68,7 +68,7 @@ final class PackLibrary: ObservableObject {
                 effectBias: ["punch", "color-pulse", "stomp", "slam"],
                 sfxBias: ["bass-hit", "riser", "whoosh"],
                 gifTags: ["hype", "celebration"],
-                wordHitsPerCaption: 2,
+                wordHitsPerCaption: 1,
                 requireHookInFirstSeconds: 3,
                 gifDensity: "high",
                 accentColor: "#FF2D2D"
@@ -83,7 +83,7 @@ final class PackLibrary: ObservableObject {
                 effectBias: ["punch", "slam", "stomp", "shake"],
                 sfxBias: ["riser", "bass-hit", "whoosh"],
                 gifTags: ["hype", "impact"],
-                wordHitsPerCaption: 2,
+                wordHitsPerCaption: 1,
                 requireHookInFirstSeconds: 3,
                 gifDensity: "high",
                 accentColor: "#FFEF5A"

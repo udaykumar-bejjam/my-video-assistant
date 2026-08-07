@@ -5,151 +5,296 @@
     {
       "id": "punch",
       "name": "Punch",
-      "tags": ["impact", "hype", "power", "punch"],
+      "tags": [
+        "impact",
+        "hype",
+        "power",
+        "punch"
+      ],
       "animation": "punch",
       "defaultDuration": 1.0,
-      "preferredSfx": ["bass-hit", "pop"],
-      "colors": ["#FFEF5A", "#FF2D2D"],
-      "description": "Hard punch-in with yellow→red flash and shockwave"
+      "preferredSfx": [
+        "bass-hit",
+        "pop"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FF2D2D"
+      ],
+      "description": "Hard punch-in with yellow\u2192red flash and shockwave"
     },
     {
       "id": "color-pulse",
       "name": "Color Pulse",
-      "tags": ["energy", "hype", "pulse", "color"],
+      "tags": [
+        "energy",
+        "hype",
+        "pulse",
+        "color"
+      ],
       "animation": "colorPulse",
       "defaultDuration": 1.3,
-      "preferredSfx": ["bass-hit", "ding"],
-      "colors": ["#FFEF5A", "#FF2D2D"],
+      "preferredSfx": [
+        "bass-hit",
+        "ding"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FF2D2D"
+      ],
       "description": "Pulses between yellow and red with heartbeat scale"
     },
     {
       "id": "fire-pulse",
       "name": "Fire Pulse",
-      "tags": ["hot", "hype", "energy"],
+      "tags": [
+        "hot",
+        "hype",
+        "energy"
+      ],
       "animation": "firePulse",
       "defaultDuration": 1.2,
-      "preferredSfx": ["bass-hit", "whoosh"],
-      "colors": ["#FF9F1C", "#FF2D2D", "#FFEF5A"],
-      "description": "Orange–red–yellow fire flicker pulse"
+      "preferredSfx": [
+        "bass-hit",
+        "whoosh"
+      ],
+      "colors": [
+        "#FF9F1C",
+        "#FF2D2D",
+        "#FFEF5A"
+      ],
+      "description": "Orange\u2013red\u2013yellow fire flicker pulse"
     },
     {
       "id": "slam",
       "name": "Slam",
-      "tags": ["impact", "hype", "power"],
+      "tags": [
+        "impact",
+        "hype",
+        "power"
+      ],
       "animation": "slam",
       "defaultDuration": 0.9,
-      "preferredSfx": ["bass-hit", "pop"],
-      "colors": ["#FFFFFF", "#FFEF5A"],
+      "preferredSfx": [
+        "bass-hit",
+        "pop"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FFEF5A"
+      ],
       "description": "Oversized slam that settles with yellow glow"
     },
     {
       "id": "bounce",
       "name": "Bounce",
-      "tags": ["playful", "energy"],
+      "tags": [
+        "playful",
+        "energy"
+      ],
       "animation": "bounce",
       "defaultDuration": 1.0,
-      "preferredSfx": ["pop", "click"],
-      "colors": ["#33F2CF", "#FFEF5A"],
+      "preferredSfx": [
+        "pop",
+        "click"
+      ],
+      "colors": [
+        "#33F2CF",
+        "#FFEF5A"
+      ],
       "description": "Springy bounce with mint/yellow pop"
     },
     {
       "id": "zoom",
       "name": "Zoom In",
-      "tags": ["reveal", "focus"],
+      "tags": [
+        "reveal",
+        "focus"
+      ],
       "animation": "zoom",
       "defaultDuration": 1.1,
-      "preferredSfx": ["whoosh", "riser"],
-      "colors": ["#FFFFFF", "#33F2CF"],
+      "preferredSfx": [
+        "whoosh",
+        "riser"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#33F2CF"
+      ],
       "description": "Dramatic zoom from tiny to full"
     },
     {
       "id": "shake",
       "name": "Shake",
-      "tags": ["urgent", "hype"],
+      "tags": [
+        "urgent",
+        "hype"
+      ],
       "animation": "shake",
       "defaultDuration": 0.85,
-      "preferredSfx": ["glitch", "bass-hit"],
-      "colors": ["#FF2D2D", "#FFEF5A"],
+      "preferredSfx": [
+        "glitch",
+        "bass-hit"
+      ],
+      "colors": [
+        "#FF2D2D",
+        "#FFEF5A"
+      ],
       "description": "Violent shake with red/yellow strobe"
     },
     {
       "id": "spin",
       "name": "Spin Pop",
-      "tags": ["fun", "surprise"],
+      "tags": [
+        "fun",
+        "surprise"
+      ],
       "animation": "spin",
       "defaultDuration": 1.0,
-      "preferredSfx": ["whoosh", "cheer-hit"],
-      "colors": ["#C77DFF", "#FFEF5A"],
+      "preferredSfx": [
+        "whoosh",
+        "cheer-hit"
+      ],
+      "colors": [
+        "#C77DFF",
+        "#FFEF5A"
+      ],
       "description": "Full spin landing with purple/yellow"
     },
     {
       "id": "flash",
       "name": "Flash",
-      "tags": ["reveal", "magic"],
+      "tags": [
+        "reveal",
+        "magic"
+      ],
       "animation": "flash",
       "defaultDuration": 0.8,
-      "preferredSfx": ["ding", "pop"],
-      "colors": ["#FFFFFF", "#FFEF5A"],
+      "preferredSfx": [
+        "ding",
+        "pop"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FFEF5A"
+      ],
       "description": "White flash then yellow hold"
     },
     {
       "id": "rise",
       "name": "Rise Up",
-      "tags": ["emotional", "story"],
+      "tags": [
+        "emotional",
+        "story"
+      ],
       "animation": "rise",
       "defaultDuration": 1.2,
-      "preferredSfx": ["riser", "whoosh"],
-      "colors": ["#FFFFFF", "#33F2CF"],
+      "preferredSfx": [
+        "riser",
+        "whoosh"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#33F2CF"
+      ],
       "description": "Rises into frame with soft glow"
     },
     {
       "id": "glitch",
       "name": "Glitch",
-      "tags": ["tech", "modern"],
+      "tags": [
+        "tech",
+        "modern"
+      ],
       "animation": "glitch",
       "defaultDuration": 0.9,
-      "preferredSfx": ["glitch", "click"],
-      "colors": ["#FF2D2D", "#33F2CF", "#FFEF5A"],
+      "preferredSfx": [
+        "glitch",
+        "click"
+      ],
+      "colors": [
+        "#FF2D2D",
+        "#33F2CF",
+        "#FFEF5A"
+      ],
       "description": "RGB split glitch with color noise"
     },
     {
       "id": "typepop",
       "name": "Type Pop",
-      "tags": ["dialogue", "punch"],
+      "tags": [
+        "dialogue",
+        "punch"
+      ],
       "animation": "typepop",
       "defaultDuration": 1.0,
-      "preferredSfx": ["click", "pop"],
-      "colors": ["#FFEF5A", "#FFFFFF"],
+      "preferredSfx": [
+        "click",
+        "pop"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FFEF5A"
+      ],
       "description": "Letter-pop with yellow punch"
     },
     {
       "id": "pulse",
       "name": "Pulse",
-      "tags": ["heartbeat", "emphasis"],
+      "tags": [
+        "heartbeat",
+        "emphasis"
+      ],
       "animation": "pulse",
       "defaultDuration": 1.1,
-      "preferredSfx": ["bass-hit", "ding"],
-      "colors": ["#FFEF5A", "#FF6B6B"],
+      "preferredSfx": [
+        "bass-hit",
+        "ding"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FF6B6B"
+      ],
       "description": "Yellow/red heartbeat pulse"
     },
     {
       "id": "neon-pulse",
       "name": "Neon Pulse",
-      "tags": ["neon", "tech", "glow"],
+      "tags": [
+        "neon",
+        "tech",
+        "glow"
+      ],
       "animation": "neonPulse",
       "defaultDuration": 1.25,
-      "preferredSfx": ["ding", "glitch"],
-      "colors": ["#33F2CF", "#FF2D9B"],
-      "description": "Neon mint↔magenta glow pulse"
+      "preferredSfx": [
+        "ding",
+        "glitch"
+      ],
+      "colors": [
+        "#33F2CF",
+        "#FF2D9B"
+      ],
+      "description": "Neon mint\u2194magenta glow pulse"
     },
     {
       "id": "stomp",
       "name": "Stomp",
-      "tags": ["impact", "heavy", "punch"],
+      "tags": [
+        "impact",
+        "heavy",
+        "punch"
+      ],
       "animation": "stomp",
       "defaultDuration": 1.0,
-      "preferredSfx": ["bass-hit", "whoosh"],
-      "colors": ["#FFEF5A", "#FF2D2D"],
+      "preferredSfx": [
+        "bass-hit",
+        "whoosh"
+      ],
+      "colors": [
+        "#FFEF5A",
+        "#FF2D2D"
+      ],
       "description": "Drops from above and stomps with red shock"
     }
   ]

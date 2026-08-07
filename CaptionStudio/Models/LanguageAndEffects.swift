@@ -113,9 +113,9 @@ enum WordHitEffect: String, CaseIterable, Identifiable, Codable {
         case .spin:
             return [Color(red: 0.78, green: 0.49, blue: 1), Color(red: 1, green: 0.94, blue: 0.35)]
         case .slam, .flash, .typepop:
-            return [.white, Color(red: 1, green: 0.94, blue: 0.35)]
+            return [Color(red: 1, green: 0.94, blue: 0.35), Color(red: 1, green: 0.18, blue: 0.18)]
         case .zoom, .rise:
-            return [.white, Color(red: 0.2, green: 0.95, blue: 0.81)]
+            return [Color(red: 1, green: 0.94, blue: 0.35), Color(red: 0.2, green: 0.95, blue: 0.81)]
         }
     }
 

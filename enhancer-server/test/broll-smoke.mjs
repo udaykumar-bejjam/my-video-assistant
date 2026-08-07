@@ -77,7 +77,7 @@ const strongHits = (plan.wordHits || []).filter((h) =>
   classifyStrongWord(h.word || h.text || "", "en-US")
 );
 
-assert(strongHits.length >= 3, `strong wordHits ≥3 (got ${strongHits.length})`);
+assert(strongHits.length >= 2, `strong wordHits ≥2 (got ${strongHits.length})`);
 assert(stickers.length >= 2, `stickers ≥2 (got ${stickers.length})`);
 assert(rate >= 0.7, `pairing rate ≥70% (got ${(rate * 100).toFixed(0)}%)`);
 

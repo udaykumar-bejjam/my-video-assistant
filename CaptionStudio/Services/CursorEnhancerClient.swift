@@ -157,11 +157,13 @@ final class CursorEnhancerClient: ObservableObject {
             let biased = pack.sfxBias.compactMap { id in sfx.first { $0.id == id } }
             return biased.isEmpty ? sfx : biased
         }()
-        let hitsPer = pack?.wordHitsPerCaption ?? 2
+        let hitsPer = min(2, max(1, pack?.wordHitsPerCaption ?? 1))
         let hookWindow = pack?.requireHookInFirstSeconds ?? 3
+        let sfxEvery = pack?.gifDensity == "high" ? 2 : 3
 
-        // Seed word hits for every caption (not only the first 8 / ~10s).
+        // Sparse word hits across the timeline (every other caption, ≤hitsPer words).
         for (index, caption) in captions.enumerated() {
+            guard index.isMultiple(of: 2) else { continue }
             let sig = Self.significantWords(in: caption, limit: hitsPer, language: language)
             for (wi, word) in sig.enumerated() {
                 guard let font = fonts[safe: (index + wi) % max(fonts.count, 1)],
@@ -170,15 +172,18 @@ final class CursorEnhancerClient: ObservableObject {
                 let preferred = (effect.preferredSfx ?? []).compactMap { id in sfxPool.first { $0.id == id } ?? sfx.first { $0.id == id } }
                 let sound = preferred.first ?? sfxPool[safe: (index + wi) % max(sfxPool.count, 1)] ?? sfx.first
                 let colors = effect.colors ?? ["#FFEF5A", "#FF2D2D"]
+                let primary = Self.punchColor(colors.first)
+                let secondary = Self.punchColor(colors.count > 1 ? colors[1] : "#FF2D2D", fallback: "#FF2D2D")
+                let attachSfx = wordHits.count % sfxEvery == 0
                 let raw = EnhancementPlacement(
                     kind: "wordHit",
                     assetId: font.id,
                     startTime: word.startTime,
                     endTime: word.endTime,
-                    x: 0.35 + CGFloat(wi % 2) * 0.3,
-                    y: 0.36 + CGFloat(index % 3) * 0.06,
-                    scale: 1.35 + CGFloat(wi % 2) * 0.2,
-                    rotation: wi.isMultiple(of: 2) ? -5 : 6,
+                    x: 0.42 + CGFloat(index % 2) * 0.16,
+                    y: 0.34 + CGFloat(index % 3) * 0.05,
+                    scale: 1.2 + CGFloat(wi % 2) * 0.1,
+                    rotation: wi.isMultiple(of: 2) ? -4 : 4,
                     text: word.text,
                     reason: "Local pack\(pack.map { ":\($0.id)" } ?? "") hit",
                     lengthSeconds: effect.playLength,
@@ -186,9 +191,9 @@ final class CursorEnhancerClient: ObservableObject {
                     wordIndex: word.index,
                     fontId: font.id,
                     effectId: effect.id,
-                    sfxId: sound?.id,
-                    color: colors.first,
-                    secondaryColor: colors.count > 1 ? colors[1] : colors.first,
+                    sfxId: attachSfx ? sound?.id : nil,
+                    color: primary,
+                    secondaryColor: secondary,
                     word: word.text
                 )
                 wordHits.append(raw)
@@ -275,7 +280,7 @@ final class CursorEnhancerClient: ObservableObject {
                     endTime: min(duration, 1.2),
                     x: 0.5,
                     y: 0.36,
-                    scale: 1.5,
+                    scale: 1.35,
                     rotation: -5,
                     text: wait,
                     reason: "Synthetic opening hook",
@@ -284,8 +289,8 @@ final class CursorEnhancerClient: ObservableObject {
                     fontId: font.id,
                     effectId: effect.id,
                     sfxId: sound?.id,
-                    color: colors.first,
-                    secondaryColor: colors.count > 1 ? colors[1] : colors.first,
+                    color: Self.punchColor(colors.first),
+                    secondaryColor: Self.punchColor(colors.count > 1 ? colors[1] : "#FF2D2D", fallback: "#FF2D2D"),
                     word: wait
                 ),
                 at: 0
@@ -339,11 +344,21 @@ final class CursorEnhancerClient: ObservableObject {
         }
 
         if let safeZone {
+            let yMaxHit = min(safeZone.yMax, 0.58)
+            let yMinHit = max(safeZone.yMin, 0.14)
+            let hitZone = SafeZone(xMin: safeZone.xMin, xMax: safeZone.xMax, yMin: yMinHit, yMax: yMaxHit)
             wordHits = wordHits.map { hit in
                 var copy = hit
-                let clamped = safeZone.clamp(x: hit.x, y: hit.y)
-                copy.x = clamped.0
-                copy.y = clamped.1
+                let approxChars = max(1, CGFloat(hit.displayText.count))
+                let scale = min(1.45, max(0.9, hit.scale == 0 ? 1.2 : hit.scale))
+                let halfW = min(0.28, 0.06 * scale * approxChars)
+                let halfH = min(0.1, 0.055 * scale)
+                var x = min(safeZone.xMax - halfW, max(safeZone.xMin + halfW, hit.x))
+                var y = min(yMaxHit - halfH, max(yMinHit + halfH, hit.y))
+                (x, y) = hitZone.clamp(x: x, y: y)
+                copy.x = x
+                copy.y = y
+                copy.scale = scale
                 return copy
             }
         }
@@ -365,6 +380,13 @@ final class CursorEnhancerClient: ObservableObject {
             note: "Enhancer unreachable — local aligner used library + pack + B-roll biases",
             language: language.localeIdentifier
         )
+    }
+
+    private static func punchColor(_ hex: String?, fallback: String = "#FFEF5A") -> String {
+        guard let hex, hex.hasPrefix("#") else { return fallback }
+        let u = hex.uppercased()
+        if u == "#FFFFFF" || u == "#FFF" || u == "#FFFFFFFF" { return fallback }
+        return hex
     }
 
     private static func scriptFonts(_ fonts: [MediaLibraryItem], language: AppLanguage) -> [MediaLibraryItem] {

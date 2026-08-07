@@ -647,7 +647,7 @@ final class VideoExportService: ObservableObject {
                 let stroke: PlatformColor = isHit ? blackStroke : .clear
                 let strokeW: CGFloat = isHit ? 2.5 : 0
                 let shadow: PlatformColor = isHit ? yellowGlow : PlatformColor.black.withAlphaComponent(0.45)
-                let shadowR: CGFloat = isHit ? 10 : (catalogStyle?.shadowRadius ?? 6)
+                let shadowR: CGFloat = isHit ? 16 : (catalogStyle?.shadowRadius ?? 6)
                 let resolvedFontSize = catalogStyle?.fontSize.map { $0 * item.scale * (size.width / 390) } ?? fontSize
 
                 // Outer host owns opacity + rotation; inner content can punch-scale without fighting transforms.
@@ -662,7 +662,8 @@ final class VideoExportService: ObservableObject {
                     cornerRadius: catalogStyle?.cornerRadius ?? 0,
                     shadowColor: shadow,
                     shadowRadius: shadowR,
-                    maxWidth: size.width * 0.8
+                    maxWidth: size.width * 0.8,
+                    glowBloom: isHit
                 )
                 let host = CALayer()
                 host.bounds = content.bounds
@@ -959,7 +960,8 @@ final class VideoExportService: ObservableObject {
         cornerRadius: CGFloat,
         shadowColor: PlatformColor,
         shadowRadius: CGFloat,
-        maxWidth: CGFloat
+        maxWidth: CGFloat,
+        glowBloom: Bool = false
     ) -> CALayer {
         // Rasterize to CGImage — live CATextLayer often renders blank/upside-down
         // under AVVideoCompositionCoreAnimationTool on macOS offline export.
@@ -974,7 +976,8 @@ final class VideoExportService: ObservableObject {
             cornerRadius: cornerRadius,
             shadowColor: shadowColor,
             shadowRadius: shadowRadius,
-            maxWidth: maxWidth
+            maxWidth: maxWidth,
+            glowBloom: glowBloom
         )
         let layer = CALayer()
         if let image {
@@ -1008,7 +1011,8 @@ final class VideoExportService: ObservableObject {
         cornerRadius: CGFloat,
         shadowColor: PlatformColor,
         shadowRadius: CGFloat,
-        maxWidth: CGFloat
+        maxWidth: CGFloat,
+        glowBloom: Bool = false
     ) -> CGImage? {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
@@ -1034,10 +1038,11 @@ final class VideoExportService: ObservableObject {
             context: nil
         )
         let pad: CGFloat = backgroundColor.cgColor.alpha > 0.01 ? 16 : 8
-        let shadowPad = max(shadowRadius * 2.5, 6)
+        // Extra pad so multi-pass glow bloom isn't clipped at the bitmap edge.
+        let bloomPad = glowBloom ? max(shadowRadius * 3.5, 28) : max(shadowRadius * 2.5, 6)
         let size = CGSize(
-            width: max(8, ceil(textBound.width) + pad * 2 + shadowPad),
-            height: max(8, ceil(textBound.height) + pad * 2 + shadowPad)
+            width: max(8, ceil(textBound.width) + pad * 2 + bloomPad),
+            height: max(8, ceil(textBound.height) + pad * 2 + bloomPad)
         )
 
         let scale: CGFloat = 3
@@ -1058,10 +1063,10 @@ final class VideoExportService: ObservableObject {
         ctx.scaleBy(x: scale, y: scale)
 
         let inset = CGRect(
-            x: shadowPad / 2,
-            y: shadowPad / 2,
-            width: size.width - shadowPad,
-            height: size.height - shadowPad
+            x: bloomPad / 2,
+            y: bloomPad / 2,
+            width: size.width - bloomPad,
+            height: size.height - bloomPad
         )
 
         if backgroundColor.cgColor.alpha > 0.01 {
@@ -1074,14 +1079,6 @@ final class VideoExportService: ObservableObject {
             ctx.setFillColor(backgroundColor.cgColor)
             ctx.addPath(path)
             ctx.fillPath()
-        }
-
-        if shadowRadius > 0 {
-            ctx.setShadow(
-                offset: CGSize(width: 0, height: -2),
-                blur: shadowRadius,
-                color: shadowColor.cgColor
-            )
         }
 
         let frameSetter = CTFramesetterCreateWithAttributedString(attributed)
@@ -1099,7 +1096,31 @@ final class VideoExportService: ObservableObject {
             path,
             nil
         )
-        CTFrameDraw(frame, ctx)
+
+        // Soft bloom behind word hits (preview uses a blurred duplicate + shadows).
+        if glowBloom, shadowRadius > 0 {
+            let soft = shadowColor.withAlphaComponent(0.35)
+            let mid = shadowColor.withAlphaComponent(0.55)
+            let tight = shadowColor.withAlphaComponent(0.85)
+            ctx.setShadow(offset: .zero, blur: shadowRadius * 2.4, color: soft.cgColor)
+            CTFrameDraw(frame, ctx)
+            ctx.setShadow(offset: .zero, blur: shadowRadius * 1.4, color: mid.cgColor)
+            CTFrameDraw(frame, ctx)
+            ctx.setShadow(offset: .zero, blur: shadowRadius * 0.7, color: tight.cgColor)
+            CTFrameDraw(frame, ctx)
+            // Crisp fill + stroke on top (light residual glow).
+            ctx.setShadow(offset: CGSize(width: 0, height: -1), blur: max(4, shadowRadius * 0.35), color: shadowColor.cgColor)
+            CTFrameDraw(frame, ctx)
+        } else {
+            if shadowRadius > 0 {
+                ctx.setShadow(
+                    offset: CGSize(width: 0, height: -2),
+                    blur: shadowRadius,
+                    color: shadowColor.cgColor
+                )
+            }
+            CTFrameDraw(frame, ctx)
+        }
         ctx.setShadow(offset: .zero, blur: 0, color: nil)
 
         return ctx.makeImage()
