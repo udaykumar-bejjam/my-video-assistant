@@ -8,6 +8,7 @@ import AppKit
 struct EditorView: View {
     @EnvironmentObject private var editor: EditorViewModel
     @State private var showLeaveConfirm = false
+    @State private var showChessWalkthrough = false
 
     var body: some View {
         ZStack {
@@ -38,6 +39,12 @@ struct EditorView: View {
         .sheet(isPresented: $editor.showOpenAIKeySheet) {
             OpenAIKeySheet()
                 .environmentObject(editor)
+        }
+        .sheet(isPresented: $showChessWalkthrough) {
+            ChessWalkthroughView()
+                #if os(macOS)
+                .frame(minWidth: 720, minHeight: 780)
+                #endif
         }
         .confirmationDialog("Leave editor?", isPresented: $showLeaveConfirm) {
             Button("Save Project & Leave") {
@@ -96,6 +103,18 @@ struct EditorView: View {
             }
             .buttonStyle(.plain)
             .disabled(editor.project.videoURL == nil)
+
+            Button {
+                showChessWalkthrough = true
+            } label: {
+                Image(systemName: "checkerboard.rectangle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(8)
+                    .background(Color.white.opacity(0.1), in: Circle())
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            .help("Chess Walkthrough")
 
             if editor.isTranscribing || editor.isEnhancing || editor.isExporting {
                 ProgressView()

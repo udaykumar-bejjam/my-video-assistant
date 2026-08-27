@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var appear = false
     @State private var photoItem: PhotosPickerItem?
     @State private var showOpenAIKeySheet = false
+    @State private var showChessWalkthrough = false
 
     var body: some View {
         ZStack {
@@ -34,7 +35,7 @@ struct HomeView: View {
                         .opacity(appear ? 1 : 0)
                         .offset(y: appear ? 0 : 16)
 
-                    Text("AI captions & overlays for short video.")
+                    Text("AI captions, overlays & chess walkthroughs.")
                         .font(.custom("AvenirNext-Medium", size: 17))
                         .foregroundStyle(.white.opacity(0.72))
                         .multilineTextAlignment(.center)
@@ -87,6 +88,36 @@ struct HomeView: View {
                     .opacity(appear ? 1 : 0)
                     .offset(y: appear ? 0 : 10)
 
+                    Button {
+                        showChessWalkthrough = true
+                    } label: {
+                        Label("Chess Walkthrough", systemImage: "checkerboard.rectangle")
+                            .font(.custom("AvenirNext-DemiBold", size: 15))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 420)
+                            .background(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.93, green: 0.78, blue: 0.35),
+                                        Color(red: 0.35, green: 0.75, blue: 0.55)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                in: Capsule()
+                            )
+                            .foregroundStyle(.black)
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(appear ? 1 : 0)
+
+                    Text("Paste PGN → animated move-by-move replay with Brilliant / Blunder callouts, arrows & SFX.")
+                        .font(.custom("AvenirNext-Medium", size: 12))
+                        .foregroundStyle(.white.opacity(0.4))
+                        .multilineTextAlignment(.center)
+                        .opacity(appear ? 1 : 0)
+
                     PackPickerView(compact: true)
                         .padding(.top, 18)
                         .opacity(appear ? 1 : 0)
@@ -105,6 +136,12 @@ struct HomeView: View {
                     .opacity(appear ? 1 : 0)
                     .offset(y: appear ? 0 : 24)
             }
+        }
+        .sheet(isPresented: $showChessWalkthrough) {
+            ChessWalkthroughView()
+                #if os(macOS)
+                .frame(minWidth: 720, minHeight: 780)
+                #endif
         }
         .fileImporter(
             isPresented: $showImporter,
