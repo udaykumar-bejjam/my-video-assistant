@@ -119,7 +119,7 @@ final class ChessWalkthroughViewModel: ObservableObject {
     }
 
     func play() {
-        guard result != nil else {
+        if result == nil {
             loadNotation()
             guard result != nil else { return }
         }
