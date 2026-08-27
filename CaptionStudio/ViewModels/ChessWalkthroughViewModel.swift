@@ -6,7 +6,7 @@ import Combine
 /// Drives an animated chess game walkthrough from PGN / move list notation.
 @MainActor
 final class ChessWalkthroughViewModel: ObservableObject {
-    @Published var pgnText: String = Self.samplePGN
+    @Published var pgnText: String = ChessWalkthroughViewModel.samplePGN
     @Published var result: ChessAnalysisResult?
     @Published var boards: [ChessBoard] = [ChessBoard.starting()]
     @Published var plyIndex: Int = 0
