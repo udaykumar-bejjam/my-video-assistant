@@ -111,6 +111,12 @@ enum ChessMoveCategory: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// Extra arrow between two squares (threat / idea).
+struct ChessArrowIdea: Equatable, Codable, Hashable {
+    var from: String
+    var to: String
+}
+
 /// One annotated ply ready for overlay planning.
 struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
     var id: UUID = UUID()
@@ -127,14 +133,8 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
     var comment: String?
     /// Extra squares to box (checks, hanging pieces, etc.).
     var criticalSquares: [String]
-    /// Extra arrows as (from,to) beyond the played move.
-    var ideaArrows: [(from: String, to: String)]
-
-    enum CodingKeys: String, CodingKey {
-        case id, plyIndex, moveNumber, isWhite, san, from, to, category
-        case givesCheck, isCapture, isCastle, comment, criticalSquares
-        case ideaArrowFrom, ideaArrowTo
-    }
+    /// Extra arrows beyond the played move.
+    var ideaArrows: [ChessArrowIdea]
 
     init(
         plyIndex: Int,
@@ -149,7 +149,7 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
         isCastle: Bool,
         comment: String?,
         criticalSquares: [String],
-        ideaArrows: [(from: String, to: String)]
+        ideaArrows: [ChessArrowIdea]
     ) {
         self.plyIndex = plyIndex
         self.moveNumber = moveNumber
@@ -164,45 +164,6 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
         self.comment = comment
         self.criticalSquares = criticalSquares
         self.ideaArrows = ideaArrows
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
-        plyIndex = try c.decode(Int.self, forKey: .plyIndex)
-        moveNumber = try c.decode(Int.self, forKey: .moveNumber)
-        isWhite = try c.decode(Bool.self, forKey: .isWhite)
-        san = try c.decode(String.self, forKey: .san)
-        from = try c.decode(String.self, forKey: .from)
-        to = try c.decode(String.self, forKey: .to)
-        category = try c.decode(ChessMoveCategory.self, forKey: .category)
-        givesCheck = try c.decode(Bool.self, forKey: .givesCheck)
-        isCapture = try c.decode(Bool.self, forKey: .isCapture)
-        isCastle = try c.decode(Bool.self, forKey: .isCastle)
-        comment = try c.decodeIfPresent(String.self, forKey: .comment)
-        criticalSquares = try c.decodeIfPresent([String].self, forKey: .criticalSquares) ?? []
-        let af = try c.decodeIfPresent([String].self, forKey: .ideaArrowFrom) ?? []
-        let at = try c.decodeIfPresent([String].self, forKey: .ideaArrowTo) ?? []
-        ideaArrows = zip(af, at).map { (from: $0, to: $1) }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(plyIndex, forKey: .plyIndex)
-        try c.encode(moveNumber, forKey: .moveNumber)
-        try c.encode(isWhite, forKey: .isWhite)
-        try c.encode(san, forKey: .san)
-        try c.encode(from, forKey: .from)
-        try c.encode(to, forKey: .to)
-        try c.encode(category, forKey: .category)
-        try c.encode(givesCheck, forKey: .givesCheck)
-        try c.encode(isCapture, forKey: .isCapture)
-        try c.encode(isCastle, forKey: .isCastle)
-        try c.encodeIfPresent(comment, forKey: .comment)
-        try c.encode(criticalSquares, forKey: .criticalSquares)
-        try c.encode(ideaArrows.map(\.from), forKey: .ideaArrowFrom)
-        try c.encode(ideaArrows.map(\.to), forKey: .ideaArrowTo)
     }
 }
 

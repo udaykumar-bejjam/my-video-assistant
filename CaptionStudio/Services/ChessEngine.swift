@@ -376,11 +376,11 @@ enum ChessPGNParser {
             }
 
             var critical: [String] = [played.to]
-            var ideas: [(from: String, to: String)] = []
+            var ideas: [ChessArrowIdea] = []
             if played.check, let kingSq = board.kingSquare(isWhite: board.whiteToMove) {
                 // After move, side to move is the checked side.
                 critical.append(kingSq)
-                ideas.append((from: played.to, to: kingSq))
+                ideas.append(ChessArrowIdea(from: played.to, to: kingSq))
             }
             if played.capture {
                 critical.append(played.to)
