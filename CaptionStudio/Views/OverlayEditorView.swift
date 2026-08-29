@@ -207,6 +207,18 @@ struct AudioLayerPanel: View {
                 format: { String(format: "%.2f×", $0) }
             )
 
+            Toggle(isOn: $editor.previewSFXDuringPlayback) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Preview SFX on play")
+                        .font(.custom("AvenirNext-DemiBold", size: 12))
+                        .foregroundStyle(.white)
+                    Text("Fire cues as the playhead crosses them (WYSIWYG)")
+                        .font(.custom("AvenirNext-Medium", size: 10))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .tint(TimelineLaneStyle.audio)
+
             Toggle(isOn: Binding(
                 get: { audio.normalizeLoudness },
                 set: { on in

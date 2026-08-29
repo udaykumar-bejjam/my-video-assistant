@@ -18,6 +18,7 @@
 		A100000000000000000000A9 /* HeuristicParity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A8 /* HeuristicParity.swift */; };
 		A100000000000000000000AB /* TimelineSnap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AA /* TimelineSnap.swift */; };
 		A100000000000000000000AD /* ChessPGNImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AC /* ChessPGNImportService.swift */; };
+		A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AE /* TimelineSFXPreview.swift */; };
 		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
 		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
@@ -75,6 +76,7 @@
 		A100000000000000000000A8 /* HeuristicParity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeuristicParity.swift; sourceTree = "<group>"; };
 		A100000000000000000000AA /* TimelineSnap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineSnap.swift; sourceTree = "<group>"; };
 		A100000000000000000000AC /* ChessPGNImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessPGNImportService.swift; sourceTree = "<group>"; };
+		A100000000000000000000AE /* TimelineSFXPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineSFXPreview.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 				A100000000000000000000A8 /* HeuristicParity.swift */,
 				A100000000000000000000AA /* TimelineSnap.swift */,
 				A100000000000000000000AC /* ChessPGNImportService.swift */,
+				A100000000000000000000AE /* TimelineSFXPreview.swift */,
 				A100000000000000000000A4 /* EditorHistory.swift */,
 				A10000000000000000000072 /* APIKeyStore.swift */,
 			);
@@ -373,6 +376,7 @@
 				A100000000000000000000A9 /* HeuristicParity.swift in Sources */,
 				A100000000000000000000AB /* TimelineSnap.swift in Sources */,
 				A100000000000000000000AD /* ChessPGNImportService.swift in Sources */,
+				A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

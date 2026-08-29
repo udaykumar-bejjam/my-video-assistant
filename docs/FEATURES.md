@@ -82,7 +82,8 @@ for how they are wired.
 - Enhancer presets: Balanced / Podcast / Hype / Quiet
 - Dialogue gain, SFX bus gain
 - Normalize loudness (export peak match)
-- Duck dialogue under SFX (+ duck amount)
+- Duck dialogue under SFX (+ duck amount) — **also applied in preview playback**
+- **Preview SFX on play** toggle: cues fire as the playhead crosses them (pause stops one-shots)
 - Every timeline SFX listed: start, gain, mute, preview
 - Settings persist on project and drive export mix
 

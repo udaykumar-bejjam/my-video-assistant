@@ -11,6 +11,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Telugu + EN dual-pass ASR (`WhisperTranscriptionClient`)
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
 - Timeline **multi-select + snap guides** (`TimelineSnap`, Multi toggle / Shift·⌘)
+- **Preview SFX on play** with dialogue duck (`TimelineSFXPreview`, Audio layer toggle)
 - Chess Walkthrough (interactive)
 - Chess **PGN import** from file / Lichess / chess.com (`ChessPGNImportService`)
 - Chess **MP4 export** (`ChessExportService`)
@@ -84,7 +85,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 ## Suggested next slices
 
 1. **P1.14** — true LUFS loudness.
-2. **P0.5** — notarized Mac builds.
-3. **P1.7** — bundle Stockfish binary.
-4. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
-5. **P1.8** — sync chess overlay to game video clock.
+2. **P1.8** — sync chess overlay to game video clock.
+3. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+4. **P0.5** — notarized Mac builds.
+5. **P1.7** — bundle Stockfish binary.

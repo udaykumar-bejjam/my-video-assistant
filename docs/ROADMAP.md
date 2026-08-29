@@ -34,7 +34,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
 | Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorHistory` | **Shipped** |
 | Multi-select + snap guides | Precision edits | `TimelineSnap`, multi-retime | **Shipped** |
-| Preview SFX while playhead crosses cues | WYSIWYG audio | Player + `previewSFX` | Open |
+| Preview SFX while playhead crosses cues | WYSIWYG audio | `TimelineSFXPreview`, Audio layer toggle | **Shipped** |
 | Hide or dim phrase captions under dense word hits | Reduce clutter | Export + preview flags | Open |
 
 ### P1b — Chess (next)
@@ -102,8 +102,8 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 ## Suggested implementation order
 
 ```text
-P1 preview SFX polish + multi-select timeline
-P1b PGN URL import + bundle Stockfish
+P1b sync chess overlay to VO clock + bundle Stockfish
+P1.3 keyboard shortcuts (J/K/L, delete, nudge)
 P2 LUFS / music bed
 P3 trim v2 / long Speech / more Indic languages
 P4 expand Iconify presets + enhance trim suggestions

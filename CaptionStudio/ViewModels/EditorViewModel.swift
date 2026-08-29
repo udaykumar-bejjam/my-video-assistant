@@ -63,6 +63,8 @@ final class EditorViewModel: ObservableObject {
             }
         }
     }
+    /// When true, timeline SFX fire during playback as the playhead crosses cues.
+    @Published var previewSFXDuringPlayback = true
 
     let transcription = TranscriptionService()
     let exporter = VideoExportService()
@@ -180,6 +182,8 @@ final class EditorViewModel: ObservableObject {
     private var triggeredSFXIds: Set<UUID> = []
     /// Last playhead sample used to detect cue crossings (and backwards seeks).
     private var lastSFXCheckTime: TimeInterval = -1
+    /// While `currentTime < previewDuckUntil`, dialogue preview volume is ducked under SFX.
+    private var previewDuckUntil: TimeInterval?
 
     enum EditorTab: String, CaseIterable, Identifiable, Equatable {
         case captions, styles, overlays, libraries, trim, export
@@ -1144,6 +1148,14 @@ final class EditorViewModel: ObservableObject {
             // would deallocate the player and produce silence.
             sfxPlayers.append(player)
             pruneFinishedSFXPlayers(keeping: player)
+            if project.audio.duckDialogueUnderSFX {
+                previewDuckUntil = TimelineSFXPreview.extendDuck(
+                    currentUntil: previewDuckUntil,
+                    fireTime: currentTime,
+                    cueLength: asset.playLength
+                )
+                refreshPreviewDialogueVolume()
+            }
         } catch {
             errorMessage = "Could not play SFX: \(error.localizedDescription)"
         }
@@ -1161,6 +1173,8 @@ final class EditorViewModel: ObservableObject {
             self.endObserver = nil
         }
 
+        refreshPreviewDialogueVolume(on: newPlayer)
+
         let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
         // Callback already runs on the main queue — update synchronously so
         // timeline SFX crossing detection sees ordered samples (no Task hop).
@@ -1170,6 +1184,7 @@ final class EditorViewModel: ObservableObject {
             MainActor.assumeIsolated {
                 self.currentTime = seconds
                 self.syncTimelineSFX(at: seconds)
+                self.refreshPreviewDialogueVolume()
             }
         }
 
@@ -1181,6 +1196,9 @@ final class EditorViewModel: ObservableObject {
             guard let self else { return }
             MainActor.assumeIsolated {
                 self.isPlaying = false
+                self.stopPreviewSFXPlayers()
+                self.previewDuckUntil = nil
+                self.refreshPreviewDialogueVolume()
                 self.seek(to: 0)
             }
         }
@@ -1195,12 +1213,14 @@ final class EditorViewModel: ObservableObject {
                 .map(\.id)
         )
         stopPreviewSFXPlayers()
+        previewDuckUntil = nil
+        refreshPreviewDialogueVolume()
     }
 
     /// On play, allow cues in a small look-back window so a cue at the resume
     /// playhead still fires once (seek alone must not auto-play SFX).
     private func prepareTimelineSFXForPlayback(at time: TimeInterval) {
-        let lookback: TimeInterval = 0.08
+        let lookback = TimelineSFXPreview.playbackLookback
         lastSFXCheckTime = time - lookback
         triggeredSFXIds = Set(
             project.soundEffects
@@ -1208,6 +1228,8 @@ final class EditorViewModel: ObservableObject {
                 .map(\.id)
         )
         stopPreviewSFXPlayers()
+        previewDuckUntil = nil
+        refreshPreviewDialogueVolume()
     }
 
     private func stopPreviewSFXPlayers() {
@@ -1228,14 +1250,15 @@ final class EditorViewModel: ObservableObject {
 
     /// Fire one-shot SFX when the playhead crosses each cue's startTime during playback.
     private func syncTimelineSFX(at time: TimeInterval) {
-        guard isPlaying else {
+        guard isPlaying, previewSFXDuringPlayback else {
             lastSFXCheckTime = time
             return
         }
 
         pruneFinishedSFXPlayers()
 
-        if time < lastSFXCheckTime - 0.02 {
+        let from = lastSFXCheckTime
+        if time < from - 0.02 {
             // Scrubbed backwards while playing — allow future cues to fire again.
             triggeredSFXIds = Set(
                 project.soundEffects
@@ -1244,19 +1267,37 @@ final class EditorViewModel: ObservableObject {
             )
         }
 
-        let from = lastSFXCheckTime
-        let to = time
+        let cueTuples = project.soundEffects.map {
+            (id: $0.id, startTime: $0.startTime, isMuted: $0.isMuted)
+        }
+        let ids = TimelineSFXPreview.cuesToTrigger(
+            cues: cueTuples,
+            from: from,
+            to: time,
+            alreadyTriggered: triggeredSFXIds
+        )
         lastSFXCheckTime = time
 
-        for cue in project.soundEffects where !cue.isMuted {
-            guard !triggeredSFXIds.contains(cue.id) else { continue }
-            // Crossing detection covers hitchy observers that jump past startTime.
-            let crossed = cue.startTime > from && cue.startTime <= to + 0.001
-            let landedOn = from < 0 && abs(cue.startTime - to) <= 0.05
-            guard crossed || landedOn else { continue }
-            triggeredSFXIds.insert(cue.id)
+        for id in ids {
+            guard let cue = project.soundEffects.first(where: { $0.id == id }) else { continue }
+            triggeredSFXIds.insert(id)
             previewSFX(cue)
         }
+    }
+
+    private func refreshPreviewDialogueVolume(on overridePlayer: AVPlayer? = nil) {
+        let target = overridePlayer ?? player
+        guard let target else { return }
+        if let until = previewDuckUntil, currentTime >= until {
+            previewDuckUntil = nil
+        }
+        target.volume = TimelineSFXPreview.dialogueVolume(
+            baseGain: project.audio.dialogueGain,
+            duckEnabled: project.audio.duckDialogueUnderSFX && isPlaying,
+            duckAmount: project.audio.duckAmount,
+            now: currentTime,
+            duckUntil: previewDuckUntil
+        )
     }
 
     private static func activatePlaybackAudioSessionIfNeeded() {
@@ -1285,6 +1326,9 @@ final class EditorViewModel: ObservableObject {
         if isPlaying {
             player.pause()
             isPlaying = false
+            stopPreviewSFXPlayers()
+            previewDuckUntil = nil
+            refreshPreviewDialogueVolume()
         } else {
             if currentTime >= project.duration - 0.05 {
                 seek(to: 0)
@@ -1293,6 +1337,7 @@ final class EditorViewModel: ObservableObject {
             prepareTimelineSFXForPlayback(at: currentTime)
             isPlaying = true
             Self.activatePlaybackAudioSessionIfNeeded()
+            refreshPreviewDialogueVolume()
             player.play()
         }
     }
@@ -1757,6 +1802,7 @@ final class EditorViewModel: ObservableObject {
         registerUndoCheckpoint()
         project.audio = settings
         normalizeLoudness = settings.normalizeLoudness
+        refreshPreviewDialogueVolume()
     }
 
     func applyAudioEnhancer(_ preset: AudioEnhancerPreset) {
