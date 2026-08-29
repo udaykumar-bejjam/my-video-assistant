@@ -35,7 +35,7 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 |------|----------------|
 | `HomeView.swift` | Import, demo, drafts, packs, Chess CTA, API key |
 | `EditorView.swift` | Preview chrome, tabs, AI Captions / AI Place, chess button |
-| `TimelineWorkspaceView.swift` | Zoomable multi-lane timeline; drag retime / cross-lane |
+| `TimelineWorkspaceView.swift` | Zoomable multi-lane timeline; multi-select, snap guides, drag retime |
 | `CaptionListView.swift` | Caption list editing |
 | `CaptionOverlayView.swift` | On-preview captions |
 | `WordHitView.swift` | Word-hit overlays |
@@ -114,7 +114,7 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 | Intent | Start here |
 |--------|------------|
 | Telugu timing | `WhisperTranscriptionClient.swift`, [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
-| Timeline drag | `TimelineWorkspaceView.swift`, `EditorViewModel.applyTimelineDrag` |
+| Timeline drag | `TimelineWorkspaceView.swift`, `EditorViewModel.applyTimelineDrag` / `applyTimelineMultiRetime`, `TimelineSnap` |
 | AI Place | `CursorEnhancerClient.swift` → `enhance.js` / `libraries.js` |
 | Export | `VideoExportService.swift` |
 | Chess | `ChessEngine.swift`, `ChessWalkthroughViewModel.swift` |
