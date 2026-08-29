@@ -202,6 +202,17 @@ enum StrongWordLexicon {
         case .numbers: score += 30
         case .none: break
         }
+        // Code-switched TE/HI: also credit English lexicon (mirrors lexicon.js).
+        if language != .english {
+            var enScore = token.count
+            switch classify(token, language: .english) {
+            case .power, .cta: enScore += 40
+            case .reveal, .emotion: enScore += 35
+            case .numbers: enScore += 30
+            case .none: break
+            }
+            score = max(score, enScore)
+        }
         return score
     }
 

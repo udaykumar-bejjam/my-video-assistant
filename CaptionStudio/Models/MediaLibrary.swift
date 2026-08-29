@@ -158,6 +158,8 @@ struct EnhancementPlan: Codable {
     var model: String?
     var note: String?
     var language: String?
+    /// Shared with Node `heuristicParityVersion` (AssetLibraries/heuristic/parity-contract.json).
+    var heuristicParityVersion: String?
 
     /// All actionable edits the app must apply.
     var allEdits: [EnhancementPlacement] {

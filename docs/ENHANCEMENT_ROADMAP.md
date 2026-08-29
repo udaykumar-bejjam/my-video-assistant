@@ -16,6 +16,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Heuristic + optional **Stockfish** eval (`ChessEvalService`)
 - Editor **undo/redo** (`EditorHistory`, ⌘Z / ⇧⌘Z)
 - Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
+- **App ↔ server enhance heuristic parity** (`AssetLibraries/heuristic/parity-contract.json`, `heuristicCore.js`, `HeuristicParity.swift`)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -25,7 +26,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement | Touch points |
 |----|-------------|--------------|
-| P0.1 | Sync app-local enhance heuristic with server heuristic | `CursorEnhancerClient` ↔ `libraries.js` |
+| ~~P0.1~~ | ~~Sync app-local enhance heuristic with server heuristic~~ | **Shipped** — shared parity-contract v1 |
 | P0.2 | `/libraries` static vs JSON route hygiene | `server.js` |
 | P0.4 | Aspect-aware overlay remap on batch 9:16→16:9 | `EditorViewModel` |
 | P0.5 | Notarized / Developer ID macOS builds | CI secrets, `build-macos.sh` |
@@ -79,7 +80,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P0.1** — single heuristic source of truth (app ↔ server).
-2. **P1.2** — multi-select timeline.
-3. **P1.7** — bundle Stockfish.
-4. **P0.5** — notarized Mac builds.
+1. **P1.2** — multi-select timeline.
+2. **P1.7** — bundle Stockfish.
+3. **P0.5** — notarized Mac builds.
+4. **P0.2** — `/libraries` route hygiene.

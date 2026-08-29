@@ -10,10 +10,15 @@ import {
   maxWordHitsPer15s,
   sfxPoolForPack,
   wordHitSfxEveryN,
-  wordHitsPerCaption,
 } from "./packs.js";
 import { ensureBrollStickers } from "./broll.js";
-import { scoreWordSignificance } from "./lexicon.js";
+import {
+  appendMissingCaptionWordHits,
+  heuristicParityVersion,
+  punchyEffectIds,
+  wordHitColors,
+  parityRules,
+} from "./heuristicCore.js";
 import {
   clampToSafeZone,
   heuristicDistribution,
@@ -568,8 +573,10 @@ export function extractJson(text) {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
-const WORD_HIT_COLORS = ["#FFEF5A", "#FF2D2D", "#FF9F1C", "#33F2CF", "#FF2D9B"];
-const PUNCHY_EFFECT_IDS = [
+const WORD_HIT_COLORS = wordHitColors();
+const PUNCHY_EFFECT_IDS = punchyEffectIds().length
+  ? punchyEffectIds()
+  : [
   "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch",
 ];
 
@@ -1094,135 +1101,6 @@ function round4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
-const FILLER_WORDS = new Set([
-  "a","an","the","to","of","and","or","in","on","is","are","for","with","this","that",
-  "एक","और","की","के","को","में","से","है","हैं","का","कि",
-  "ఒక","మరియు","లో","కి","నుంచి","ఉంది","అని"
-]);
-
-function captionTokens(cap) {
-  if (Array.isArray(cap.words) && cap.words.length) {
-    return cap.words.map((w, i) => ({ ...w, index: i }));
-  }
-  return String(cap.text || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((text, i, arr) => {
-      const span = (cap.endTime - cap.startTime) / Math.max(arr.length, 1);
-      return {
-        text,
-        index: i,
-        startTime: cap.startTime + i * span,
-        endTime: cap.startTime + (i + 1) * span,
-      };
-    });
-}
-
-function significantWordsFromCaption(cap, language, limit) {
-  const lang = String(language || "en-US");
-  const minLen = lang.startsWith("en") ? 3 : 2;
-  return captionTokens(cap)
-    .filter(
-      (w) =>
-        w.text &&
-        !FILLER_WORDS.has(String(w.text).toLowerCase()) &&
-        String(w.text).length >= minLen
-    )
-    .sort((a, b) => scoreWordSignificance(b.text, language) - scoreWordSignificance(a.text, language))
-    .slice(0, limit);
-}
-
-function captionHasWordHit(wordHits, cap) {
-  const start = Number(cap.startTime) || 0;
-  const end = Number(cap.endTime) || start;
-  return wordHits.some((h) => {
-    const t = Number(h.startTime) || 0;
-    return t >= start - 0.05 && t <= end + 0.05;
-  });
-}
-
-/**
- * Build pack-biased wordHits for every caption that still has none.
- * Ensures AI Place covers the full video, not only the opening captions.
- */
-function appendMissingCaptionWordHits({
-  wordHits,
-  captions = [],
-  libraries,
-  language = "en-US",
-  pack = null,
-}) {
-  if (!Array.isArray(captions) || !captions.length) return 0;
-  const fontLib = libraries.fonts.items;
-  const effectLib = libraries.effects.items;
-  const sfxLib = libraries.sfx.items;
-  const hitsPerCap = wordHitsPerCaption(pack);
-  const effectPoolBase = effectPoolForPack(effectLib, pack);
-  const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
-
-  const scriptFonts = fontLib.filter((f) => {
-    const scripts = f.scripts || [];
-    if (language.startsWith("hi")) {
-      return scripts.some((s) => ["hi", "hindi", "devanagari", "en", "latin"].includes(s));
-    }
-    if (language.startsWith("te")) {
-      return scripts.some((s) => ["te", "telugu", "en", "latin"].includes(s));
-    }
-    return scripts.some((s) => ["en", "latin"].includes(s));
-  });
-  const fonts = scriptFonts.length ? scriptFonts : fontLib;
-  let added = 0;
-
-  captions.forEach((cap, index) => {
-    // Skip every other caption so hits stay sparse across the full video.
-    if (index % 2 === 1) return;
-    if (captionHasWordHit(wordHits, cap)) return;
-    const sig = significantWordsFromCaption(cap, language, hitsPerCap);
-    if (!sig.length) return;
-    // One strong word max per filled caption.
-    const word = sig[0];
-    const wi = 0;
-    const font = fonts[index % fonts.length];
-    if (!font) return;
-    const punchy = effectPoolBase.filter((e) => PUNCHY_EFFECT_IDS.includes(e.id));
-    const effectPool = punchy.length ? punchy : effectPoolBase;
-    const effect = effectPool[(index * 3) % effectPool.length];
-    if (!effect) return;
-    const preferred = (effect.preferredSfx || [])
-      .map((id) => sfxPoolBase.find((s) => s.id === id) || sfxLib.find((s) => s.id === id))
-      .filter(Boolean);
-    const sfx =
-      preferred[0] ||
-      sfxPoolBase[index % sfxPoolBase.length] ||
-      sfxLib[index % sfxLib.length];
-    const palette = effect.colors || WORD_HIT_COLORS;
-    wordHits.push({
-      kind: "wordHit",
-      assetId: font.id,
-      fontId: font.id,
-      effectId: effect.id,
-      // SFX attached later (every Nth) after thinning — keep id for now.
-      sfxId: sfx?.id,
-      word: word.text,
-      text: word.text,
-      captionIndex: index,
-      wordIndex: word.index,
-      startTime: word.startTime,
-      endTime: word.endTime,
-      x: 0.42 + (index % 2) * 0.16,
-      y: 0.34 + (index % 3) * 0.05,
-      scale: 1.2,
-      rotation: index % 2 === 0 ? -4 : 4,
-      color: punchColor(palette[0]),
-      secondaryColor: punchColor(palette[1] || "#FF2D2D", "#FF2D2D"),
-      reason: `Sparse fill "${word.text}" → ${effect.id}`,
-    });
-    added += 1;
-    void wi;
-  });
-  return added;
-}
-
 /** Offline heuristic — significant word hits + measured asset lengths. */
 export function heuristicPlan({
   captions,
@@ -1239,6 +1117,15 @@ export function heuristicPlan({
   const sfxLib = libraries.sfx.items;
   const pack = getPack(packId);
   const sfxPoolBase = sfxPoolForPack(sfxLib, pack);
+  const rules = parityRules();
+  const textMod = Number(rules.textPlacementCaptionModulo) || 3;
+  const textPrefix = Number(rules.textPrefixWords) || 3;
+  const textX = Number(rules.textX) || 0.5;
+  const textY = Number(rules.textY) || 0.28;
+  const textRot = Number(rules.textRotation) || 0;
+  const openMin = Number(rules.openingSfxMinDuration) || 1.5;
+  const preferredOpen = rules.openingSfxPreferredIds || ["riser", "bass-hit"];
+  const sourceTag = rules.sourceTag || "heuristic-fallback";
 
   // Seed from all captions — validatePlacements also fills any gaps.
   appendMissingCaptionWordHits({
@@ -1250,7 +1137,7 @@ export function heuristicPlan({
   });
 
   (captions || []).forEach((cap, index) => {
-    if (index % 3 === 0 && textLib.length) {
+    if (index % textMod === 0 && textLib.length) {
       const textAsset = textLib[index % textLib.length];
       placements.push({
         kind: "text",
@@ -1258,23 +1145,24 @@ export function heuristicPlan({
         captionIndex: index,
         startTime: cap.startTime,
         endTime: cap.startTime + (textAsset.lengthSeconds || 1.8),
-        x: 0.5,
-        y: 0.28,
+        x: textX,
+        y: textY,
         scale: 1,
-        rotation: 0,
-        text: String(cap.text || "").split(/\s+/).slice(0, 3).join(" "),
+        rotation: textRot,
+        text: String(cap.text || "").split(/\s+/).slice(0, textPrefix).join(" "),
         reason: `Support text on caption ${index}`,
       });
     }
   });
 
   // Opening SFX — prefer pack bias (ensureOpeningHook also enforces)
-  if (duration > 1.5) {
-    const riser =
-      sfxPoolBase.find((i) => i.id === "riser") ||
-      sfxPoolBase.find((i) => i.id === "bass-hit") ||
-      sfxLib.find((i) => i.id === "riser") ||
-      sfxLib[0];
+  if (duration > openMin) {
+    let riser = null;
+    for (const id of preferredOpen) {
+      riser = sfxPoolBase.find((i) => i.id === id) || sfxLib.find((i) => i.id === id);
+      if (riser) break;
+    }
+    if (!riser) riser = sfxLib[0];
     if (riser) {
       placements.unshift({
         kind: "sfx",
@@ -1292,7 +1180,7 @@ export function heuristicPlan({
     }
   }
 
-  return validatePlacements(
+  const validated = validatePlacements(
     {
       summary: pack
         ? `Heuristic pack "${pack.name}": word hits + B-roll stickers snapped to timings.`
@@ -1302,7 +1190,7 @@ export function heuristicPlan({
       placements,
       wordHits,
       distribution: heuristicDistribution(captions, language, pack?.id || null),
-      source: "heuristic-fallback",
+      source: sourceTag,
     },
     libraries,
     captions,
@@ -1311,4 +1199,8 @@ export function heuristicPlan({
     videoSize,
     safeZone
   );
+  return {
+    ...validated,
+    heuristicParityVersion: heuristicParityVersion(),
+  };
 }

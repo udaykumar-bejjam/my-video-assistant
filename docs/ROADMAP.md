@@ -23,6 +23,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 |------|-----|---------|
 | Aspect-aware overlay Y remap on batch 9:16→16:9 | Positions tuned for portrait feel wrong on landscape | `EditorViewModel.remapOverlays`, packs |
 | Notarized / Developer ID macOS builds | Gatekeeper friction on Releases | CI signing secrets, `build-macos.sh` |
+| App ↔ server enhance heuristic parity | Offline Swift fallback matches Node | `parity-contract.json` + `heuristicCore.js` + `HeuristicParity` | **Shipped** |
 | CI smoke: enhance full-duration + export dry path | Catch `prefix(8)` / duration `\|\| 10` regressions | GitHub Actions, Node tests, optional XCTest |
 | Keep Xcode membership in sync for new GIF/Swift files | Silent missing burn-in / compile gaps | `project.pbxproj` checklist in PR template |
 

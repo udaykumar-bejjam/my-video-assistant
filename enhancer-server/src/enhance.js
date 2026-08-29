@@ -52,12 +52,13 @@ export async function enhanceWithCursor({
   };
 
   if (forceHeuristic || !process.env.CURSOR_API_KEY) {
+    const plan = heuristicPlan(payload);
     return {
-      ...heuristicPlan(payload),
+      ...plan,
       model: null,
       note: forceHeuristic
-        ? `Forced heuristic${pack ? ` (pack:${pack})` : ""} (word hits + fonts/effects/SFX)`
-        : `CURSOR_API_KEY missing — heuristic${pack ? ` pack:${pack}` : ""} chose significant words, fonts, effects, SFX`,
+        ? `Forced heuristic${pack ? ` (pack:${pack})` : ""} parity v${plan.heuristicParityVersion || "1"}`
+        : `CURSOR_API_KEY missing — heuristic${pack ? ` pack:${pack}` : ""} parity v${plan.heuristicParityVersion || "1"}`,
     };
   }
 

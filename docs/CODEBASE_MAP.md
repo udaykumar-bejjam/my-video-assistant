@@ -101,7 +101,8 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 |------|----------------|
 | `server.js` | `/health`, `/libraries`, `/enhance`, `/transcribe`, static |
 | `enhance.js` | Cursor SDK or heuristic |
-| `libraries.js` | Catalogs + heuristic placement |
+| `heuristicCore.js` | Shared offline heuristic (parity-contract) |
+| `libraries.js` | Catalogs + heuristic placement + validatePlacements |
 | `packs.js` / `broll.js` / `lexicon.js` / `safezone.js` | Pack bias, B-roll, words, safe zone |
 | `transcribe.js` | Whisper proxy |
 | `cli.js` | CLI enhance |
