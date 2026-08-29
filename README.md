@@ -2,6 +2,22 @@
 
 AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effects — for **iOS** and **macOS**.
 
+## Documentation
+
+Deep project docs for onboarding and planning:
+
+| Doc | Contents |
+|-----|----------|
+| [docs/INDEX.md](docs/INDEX.md) | Hub |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | System design & data flows (`master`) |
+| [CODEBASE_MAP](docs/CODEBASE_MAP.md) | File-by-file inventory |
+| [FEATURES](docs/FEATURES.md) | Feature catalog & user flows |
+| [ENHANCEMENT_ROADMAP](docs/ENHANCEMENT_ROADMAP.md) | Prioritized future work |
+| [IN_FLIGHT_BRANCHES](docs/IN_FLIGHT_BRANCHES.md) | Unmerged Telugu / timeline / chess work |
+| [TELUGU_ASR_PLAN](docs/TELUGU_ASR_PLAN.md) | Telugu ASR design (feature branch) |
+| [CHESS_WALKTHROUGH](docs/CHESS_WALKTHROUGH.md) | Chess walkthrough design (feature branch) |
+| [AGENTS.md](AGENTS.md) | Cursor Cloud (Linux = Node only) |
+
 ## Architecture
 
 ```
