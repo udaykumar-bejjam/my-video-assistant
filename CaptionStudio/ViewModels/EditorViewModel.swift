@@ -19,8 +19,14 @@ final class EditorViewModel: ObservableObject {
     @Published var selectedCaptionID: CaptionSegment.ID?
     @Published var selectedOverlayID: OverlayItem.ID?
     @Published var selectedSoundEffectID: SoundEffectCue.ID?
+    /// Additive timeline multi-select (P1.2). Primary IDs above remain the inspector focus.
+    @Published var selectedCaptionIDs: Set<CaptionSegment.ID> = []
+    @Published var selectedOverlayIDs: Set<OverlayItem.ID> = []
+    @Published var selectedSoundEffectIDs: Set<SoundEffectCue.ID> = []
     /// True when the Audio (dialogue) layer inspector should show as focused.
     @Published var isAudioLayerSelected = false
+    /// When true, timeline taps toggle multi-select without modifier keys (iOS / accessibility).
+    @Published var timelineMultiSelectMode = false
     @Published var selectedPreset: CaptionPreset = .boldWhite
     @Published var errorMessage: String?
     @Published var exportURL: URL?
@@ -108,6 +114,9 @@ final class EditorViewModel: ObservableObject {
             selectedCaptionID: selectedCaptionID,
             selectedOverlayID: selectedOverlayID,
             selectedSoundEffectID: selectedSoundEffectID,
+            selectedCaptionIDs: selectedCaptionIDs,
+            selectedOverlayIDs: selectedOverlayIDs,
+            selectedSoundEffectIDs: selectedSoundEffectIDs,
             isAudioLayerSelected: isAudioLayerSelected,
             selectedPreset: selectedPreset,
             language: language,
@@ -150,6 +159,9 @@ final class EditorViewModel: ObservableObject {
         selectedCaptionID = snap.selectedCaptionID
         selectedOverlayID = snap.selectedOverlayID
         selectedSoundEffectID = snap.selectedSoundEffectID
+        selectedCaptionIDs = snap.selectedCaptionIDs
+        selectedOverlayIDs = snap.selectedOverlayIDs
+        selectedSoundEffectIDs = snap.selectedSoundEffectIDs
         isAudioLayerSelected = snap.isAudioLayerSelected
         selectedPreset = snap.selectedPreset
         language = snap.language
@@ -1395,6 +1407,195 @@ final class EditorViewModel: ObservableObject {
         }
     }
 
+    /// Shift several same-kind clips by the same delta (multi-select drag). Lane stays put.
+    func applyTimelineMultiRetime(refs: [TimelineClipRef], delta: TimeInterval) {
+        guard abs(delta) > 0.0005, !refs.isEmpty else { return }
+        registerUndoCheckpoint()
+        let mediaEnd = max(project.duration, 0.1)
+
+        var captions = project.captions
+        var overlays = project.overlays
+        var sfx = project.soundEffects
+
+        for ref in refs {
+            switch ref {
+            case .caption(let id):
+                guard let idx = captions.firstIndex(where: { $0.id == id }) else { continue }
+                var caption = captions[idx]
+                let len = max(0.05, caption.endTime - caption.startTime)
+                var start = caption.startTime + delta
+                start = min(max(0, start), mediaEnd - 0.05)
+                let end = min(mediaEnd, max(start + 0.05, start + len))
+                let applied = start - caption.startTime
+                caption.startTime = start
+                caption.endTime = end
+                caption.words = caption.words.map {
+                    CaptionWord(
+                        text: $0.text,
+                        startTime: max(0, $0.startTime + applied),
+                        endTime: max(0, $0.endTime + applied)
+                    )
+                }
+                captions[idx] = caption
+            case .overlay(let id):
+                guard let idx = overlays.firstIndex(where: { $0.id == id }) else { continue }
+                var item = overlays[idx]
+                let len = max(0.05, item.endTime - item.startTime)
+                var start = item.startTime + delta
+                start = min(max(0, start), mediaEnd - 0.05)
+                item.startTime = start
+                item.endTime = min(mediaEnd, max(start + 0.05, start + len))
+                overlays[idx] = item
+            case .sfx(let id):
+                guard let idx = sfx.firstIndex(where: { $0.id == id }) else { continue }
+                var cue = sfx[idx]
+                cue.startTime = min(max(0, cue.startTime + delta), mediaEnd - 0.05)
+                sfx[idx] = cue
+            case .trim, .audio:
+                break
+            }
+        }
+
+        project.captions = captions
+        project.overlays = overlays
+        project.soundEffects = sfx
+
+        if let first = refs.first {
+            switch first {
+            case .caption(let id):
+                selectedCaptionID = id
+                seek(to: project.captions.first(where: { $0.id == id })?.startTime ?? currentTime)
+                editorTab = .captions
+            case .overlay(let id):
+                selectedOverlayID = id
+                seek(to: project.overlays.first(where: { $0.id == id })?.startTime ?? currentTime)
+                editorTab = .overlays
+            case .sfx(let id):
+                selectSoundEffect(id)
+                seek(to: project.soundEffects.first(where: { $0.id == id })?.startTime ?? currentTime)
+            default:
+                break
+            }
+        }
+    }
+
+    func clearTimelineMultiSelection() {
+        selectedCaptionIDs = []
+        selectedOverlayIDs = []
+        selectedSoundEffectIDs = []
+    }
+
+    /// Select a timeline clip; `additive` toggles membership in the multi-select set.
+    func selectTimelineClip(ref: TimelineClipRef, additive: Bool, seekTo start: TimeInterval? = nil) {
+        if !additive {
+            clearTimelineMultiSelection()
+        }
+        switch ref {
+        case .caption(let id):
+            if additive {
+                if selectedCaptionIDs.contains(id) {
+                    selectedCaptionIDs.remove(id)
+                    if selectedCaptionID == id { selectedCaptionID = selectedCaptionIDs.first }
+                } else {
+                    selectedCaptionIDs.insert(id)
+                    selectedCaptionID = id
+                }
+            } else {
+                selectedCaptionID = id
+                selectedCaptionIDs = [id]
+            }
+            selectedOverlayID = nil
+            selectedOverlayIDs = []
+            selectedSoundEffectID = nil
+            selectedSoundEffectIDs = []
+            isAudioLayerSelected = false
+            editorTab = .captions
+        case .overlay(let id):
+            if additive {
+                if selectedOverlayIDs.contains(id) {
+                    selectedOverlayIDs.remove(id)
+                    if selectedOverlayID == id { selectedOverlayID = selectedOverlayIDs.first }
+                } else {
+                    selectedOverlayIDs.insert(id)
+                    selectedOverlayID = id
+                }
+            } else {
+                selectedOverlayID = id
+                selectedOverlayIDs = [id]
+            }
+            selectedCaptionID = nil
+            selectedCaptionIDs = []
+            selectedSoundEffectID = nil
+            selectedSoundEffectIDs = []
+            isAudioLayerSelected = false
+            editorTab = .overlays
+        case .sfx(let id):
+            if additive {
+                if selectedSoundEffectIDs.contains(id) {
+                    selectedSoundEffectIDs.remove(id)
+                    if selectedSoundEffectID == id { selectedSoundEffectID = selectedSoundEffectIDs.first }
+                } else {
+                    selectedSoundEffectIDs.insert(id)
+                    selectedSoundEffectID = id
+                }
+            } else {
+                selectedSoundEffectID = id
+                selectedSoundEffectIDs = [id]
+            }
+            selectedOverlayID = nil
+            selectedOverlayIDs = []
+            selectedCaptionID = nil
+            selectedCaptionIDs = []
+            isAudioLayerSelected = false
+            editorTab = .overlays
+        case .trim(let id):
+            if selectedTrimIDs.contains(id) {
+                selectedTrimIDs.remove(id)
+            } else {
+                selectedTrimIDs.insert(id)
+            }
+            editorTab = .trim
+        case .audio:
+            clearTimelineMultiSelection()
+            selectAudioLayer()
+        }
+        if let start {
+            seek(to: start)
+        }
+    }
+
+    func isTimelineClipSelected(_ ref: TimelineClipRef) -> Bool {
+        switch ref {
+        case .caption(let id):
+            return selectedCaptionIDs.contains(id) || selectedCaptionID == id
+        case .overlay(let id):
+            return selectedOverlayIDs.contains(id) || selectedOverlayID == id
+        case .sfx(let id):
+            return selectedSoundEffectIDs.contains(id) || selectedSoundEffectID == id
+        case .trim(let id):
+            return selectedTrimIDs.contains(id)
+        case .audio:
+            return isAudioLayerSelected
+        }
+    }
+
+    /// Refs that move together with `primary` during a multi-drag (same kind only).
+    func timelineMultiDragGroup(for primary: TimelineClipRef) -> [TimelineClipRef] {
+        switch primary {
+        case .caption(let id):
+            let ids = selectedCaptionIDs.isEmpty ? [id] : Array(selectedCaptionIDs.union([id]))
+            return ids.map { .caption($0) }
+        case .overlay(let id):
+            let ids = selectedOverlayIDs.isEmpty ? [id] : Array(selectedOverlayIDs.union([id]))
+            return ids.map { .overlay($0) }
+        case .sfx(let id):
+            let ids = selectedSoundEffectIDs.isEmpty ? [id] : Array(selectedSoundEffectIDs.union([id]))
+            return ids.map { .sfx($0) }
+        default:
+            return [primary]
+        }
+    }
+
     private func applyCaptionTimelineDrag(
         id: UUID,
         toLane: TimelineLaneID,
@@ -1521,13 +1722,21 @@ final class EditorViewModel: ObservableObject {
     func selectAudioLayer() {
         isAudioLayerSelected = true
         selectedSoundEffectID = nil
+        selectedSoundEffectIDs = []
         selectedOverlayID = nil
+        selectedOverlayIDs = []
+        selectedCaptionID = nil
+        selectedCaptionIDs = []
         editorTab = .overlays
     }
 
     func selectSoundEffect(_ id: SoundEffectCue.ID) {
         selectedSoundEffectID = id
+        selectedSoundEffectIDs = [id]
         selectedOverlayID = nil
+        selectedOverlayIDs = []
+        selectedCaptionID = nil
+        selectedCaptionIDs = []
         isAudioLayerSelected = false
         editorTab = .overlays
     }

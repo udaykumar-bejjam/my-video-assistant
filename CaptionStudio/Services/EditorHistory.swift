@@ -6,6 +6,9 @@ struct EditorDocumentSnapshot: Equatable {
     var selectedCaptionID: CaptionSegment.ID?
     var selectedOverlayID: OverlayItem.ID?
     var selectedSoundEffectID: SoundEffectCue.ID?
+    var selectedCaptionIDs: Set<CaptionSegment.ID> = []
+    var selectedOverlayIDs: Set<OverlayItem.ID> = []
+    var selectedSoundEffectIDs: Set<SoundEffectCue.ID> = []
     var isAudioLayerSelected: Bool
     var selectedPreset: CaptionPreset
     var language: AppLanguage

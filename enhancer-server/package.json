@@ -19,7 +19,8 @@
     "test:chess-eval": "node test/chess-eval-smoke.mjs",
     "test:aspect-remap": "node test/aspect-remap-smoke.mjs",
     "test:heuristic-parity": "node test/heuristic-parity-smoke.mjs",
-    "test": "npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim && npm run test:full-duration && npm run test:chess-eval && npm run test:aspect-remap && npm run test:heuristic-parity"  },
+    "test:timeline-snap": "node test/timeline-snap-smoke.mjs",
+    "test": "npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim && npm run test:full-duration && npm run test:chess-eval && npm run test:aspect-remap && npm run test:heuristic-parity && npm run test:timeline-snap"  },
   "dependencies": {
     "@cursor/sdk": "^1.0.26",
     "express": "^4.21.2",

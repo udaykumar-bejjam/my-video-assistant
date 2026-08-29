@@ -33,7 +33,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 |------|-----|---------|--------|
 | Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
 | Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorHistory` | **Shipped** |
-| Multi-select + snap guides | Precision edits | Timeline | Open |
+| Multi-select + snap guides | Precision edits | `TimelineSnap`, multi-retime | **Shipped** |
 | Preview SFX while playhead crosses cues | WYSIWYG audio | Player + `previewSFX` | Open |
 | Hide or dim phrase captions under dense word hits | Reduce clutter | Export + preview flags | Open |
 

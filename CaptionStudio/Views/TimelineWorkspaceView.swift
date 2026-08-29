@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// Timeline lanes that can host clips.
 enum TimelineLaneID: String, CaseIterable, Identifiable, Hashable {
@@ -71,6 +74,7 @@ struct TimelineWorkspaceView: View {
     /// 0 = zoomed out (media + 1 hour fits), 1 = ~5mm per frame.
     @State private var zoom: Double = 0.2
     @State private var drag: DragSession?
+    @State private var snapGuide: TimeInterval?
     @State private var viewportWidth: CGFloat = 480
     @State private var playheadScrollToken: Int = 0
 
@@ -102,6 +106,23 @@ struct TimelineWorkspaceView: View {
         return lanes
     }
 
+    private var multiSelectCount: Int {
+        max(
+            editor.selectedCaptionIDs.count,
+            editor.selectedOverlayIDs.count,
+            editor.selectedSoundEffectIDs.count,
+            editor.selectedTrimIDs.count
+        )
+    }
+
+    private var additiveModifierDown: Bool {
+        #if os(macOS)
+        NSEvent.modifierFlags.contains(.shift) || NSEvent.modifierFlags.contains(.command)
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             zoomBar
@@ -125,6 +146,15 @@ struct TimelineWorkspaceView: View {
                             }
                         }
                         .frame(width: contentWidth + labelWidth + 6, alignment: .leading)
+                        .overlay(alignment: .topLeading) {
+                            if let guide = snapGuide ?? drag?.snapGuide {
+                                Rectangle()
+                                    .fill(Color.cyan.opacity(0.85))
+                                    .frame(width: 1.5, height: CGFloat(visibleLanes.count) * (laneHeight + laneSpacing) + 18)
+                                    .offset(x: labelWidth + 6 + xPosition(for: guide))
+                                    .allowsHitTesting(false)
+                            }
+                        }
                         .overlay(alignment: .topLeading) {
                             Color.clear
                                 .frame(width: 1, height: 1)
@@ -160,6 +190,29 @@ struct TimelineWorkspaceView: View {
                 .font(.custom("AvenirNext-Medium", size: 10))
                 .foregroundStyle(.white.opacity(0.45))
                 .frame(minWidth: 72, alignment: .trailing)
+            Button {
+                editor.timelineMultiSelectMode.toggle()
+            } label: {
+                Text(editor.timelineMultiSelectMode ? "Multi ✓" : "Multi")
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(
+                            editor.timelineMultiSelectMode
+                                ? Color.cyan.opacity(0.35)
+                                : Color.white.opacity(0.08)
+                        )
+                    )
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white.opacity(0.75))
+            .help("Toggle additive multi-select (or hold Shift/⌘ on Mac)")
+            if multiSelectCount > 1 {
+                Text("\(multiSelectCount) sel")
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(Color.cyan.opacity(0.9))
+            }
             Button {
                 playheadScrollToken += 1
             } label: {
@@ -265,19 +318,23 @@ struct TimelineWorkspaceView: View {
             .onTapGesture { location in
                 let t = time(atX: location.x)
                 editor.seek(to: min(mediaDuration, max(0, t)))
-                if lane == .audio { editor.selectAudioLayer() }
+                if lane == .audio {
+                    editor.selectAudioLayer()
+                } else if !additiveSelectActive {
+                    editor.clearTimelineMultiSelection()
+                }
             }
         }
         .frame(height: laneHeight)
     }
 
     private func clipView(_ clip: TimelineClip, laneIndex: Int) -> some View {
-        let isDragging = drag?.clipID == clip.id
+        let isDragging = drag?.clipID == clip.id || (drag?.groupRefs.contains(clip.ref) ?? false)
         let live = livePlacement(for: clip)
-        let x = xPosition(for: live.start) + (isDragging ? (drag?.translation.width ?? 0) : 0)
-        // While dragging, vertical follow; otherwise stay in lane.
+        let x = xPosition(for: live.start)
+        // While dragging primary clip alone, vertical follow; multi-drag stays in lane.
         let yLift: CGFloat = {
-            guard isDragging, let d = drag else { return 0 }
+            guard drag?.clipID == clip.id, let d = drag, d.groupRefs.count <= 1 else { return 0 }
             return d.translation.height
         }()
         let width = max(6, CGFloat(max(0.05, live.end - live.start)) * pixelsPerSecond)
@@ -316,12 +373,21 @@ struct TimelineWorkspaceView: View {
         var sourceLaneIndex: Int
         var translation: CGSize = .zero
         var hoverLane: TimelineLaneID
+        var groupRefs: [TimelineClipRef] = []
+        var snapGuide: TimeInterval?
+        var snappedStart: TimeInterval?
+        var snappedEnd: TimeInterval?
+    }
+
+    private var additiveSelectActive: Bool {
+        editor.timelineMultiSelectMode || additiveModifierDown
     }
 
     private func dragGesture(for clip: TimelineClip, laneIndex: Int) -> some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { value in
                 if drag == nil {
+                    let group = editor.timelineMultiDragGroup(for: clip.ref)
                     drag = DragSession(
                         clipID: clip.id,
                         ref: clip.ref,
@@ -329,23 +395,25 @@ struct TimelineWorkspaceView: View {
                         originStart: clip.start,
                         originEnd: clip.end,
                         sourceLaneIndex: laneIndex,
-                        hoverLane: clip.lane
+                        hoverLane: clip.lane,
+                        groupRefs: group
                     )
-                    select(clip)
+                    if !editor.isTimelineClipSelected(clip.ref) {
+                        editor.selectTimelineClip(ref: clip.ref, additive: false, seekTo: clip.start)
+                    }
                 }
                 guard var session = drag, session.clipID == clip.id else { return }
                 session.translation = value.translation
-                session.hoverLane = laneAt(
-                    sourceIndex: session.sourceLaneIndex,
-                    verticalOffset: value.translation.height
-                ) ?? session.sourceLane
-                drag = session
-            }
-            .onEnded { value in
-                guard let session = drag, session.clipID == clip.id else {
-                    drag = nil
-                    return
-                }
+
+                let multi = session.groupRefs.count > 1
+                // Multi-drag is retime-only (stay on source lane).
+                session.hoverLane = multi
+                    ? session.sourceLane
+                    : (laneAt(
+                        sourceIndex: session.sourceLaneIndex,
+                        verticalOffset: value.translation.height
+                    ) ?? session.sourceLane)
+
                 let dt = TimeInterval(value.translation.width / max(pixelsPerSecond, 0.001))
                 var newStart = session.originStart + dt
                 var newEnd = session.originEnd + dt
@@ -353,20 +421,85 @@ struct TimelineWorkspaceView: View {
                 newStart = min(max(0, newStart), mediaDuration - 0.05)
                 newEnd = min(mediaDuration, max(newStart + 0.05, newStart + len))
 
-                let target = laneAt(
-                    sourceIndex: session.sourceLaneIndex,
-                    verticalOffset: value.translation.height
-                ) ?? session.sourceLane
-
-                editor.applyTimelineDrag(
-                    ref: session.ref,
-                    fromLane: session.sourceLane,
-                    toLane: target,
-                    start: newStart,
-                    end: newEnd
+                let exclude = Set(session.groupRefs.map(clipIdString(for:)))
+                let anchors = TimelineSnap.collectAnchors(
+                    clips: allSnapClips(),
+                    excluding: exclude,
+                    playhead: editor.currentTime,
+                    mediaDuration: mediaDuration
                 )
-                drag = nil
+                let snapped = TimelineSnap.snapInterval(
+                    start: newStart,
+                    end: newEnd,
+                    anchors: anchors,
+                    threshold: TimelineSnap.threshold(pixelsPerSecond: Double(pixelsPerSecond))
+                )
+                session.snappedStart = snapped.start
+                session.snappedEnd = snapped.end
+                session.snapGuide = snapped.guide
+                snapGuide = snapped.guide
+                drag = session
             }
+            .onEnded { value in
+                guard let session = drag, session.clipID == clip.id else {
+                    drag = nil
+                    snapGuide = nil
+                    return
+                }
+
+                let multi = session.groupRefs.count > 1
+                let rawDt = TimeInterval(value.translation.width / max(pixelsPerSecond, 0.001))
+                let snappedStart = session.snappedStart ?? (session.originStart + rawDt)
+                let delta = snappedStart - session.originStart
+
+                if multi {
+                    editor.applyTimelineMultiRetime(refs: session.groupRefs, delta: delta)
+                } else {
+                    let len = max(0.05, session.originEnd - session.originStart)
+                    var newStart = snappedStart
+                    var newEnd = session.snappedEnd ?? (newStart + len)
+                    newStart = min(max(0, newStart), mediaDuration - 0.05)
+                    newEnd = min(mediaDuration, max(newStart + 0.05, newStart + len))
+                    let target = laneAt(
+                        sourceIndex: session.sourceLaneIndex,
+                        verticalOffset: value.translation.height
+                    ) ?? session.sourceLane
+                    editor.applyTimelineDrag(
+                        ref: session.ref,
+                        fromLane: session.sourceLane,
+                        toLane: target,
+                        start: newStart,
+                        end: newEnd
+                    )
+                }
+                drag = nil
+                snapGuide = nil
+            }
+    }
+
+    private func clipIdString(for ref: TimelineClipRef) -> String {
+        switch ref {
+        case .caption(let id): return "cap-\(id.uuidString)"
+        case .overlay(let id): return "ov-\(id.uuidString)"
+        case .sfx(let id): return "sfx-\(id.uuidString)"
+        case .trim(let id): return "trim-\(id.uuidString)"
+        case .audio: return "audio"
+        }
+    }
+
+    private func allSnapClips() -> [(id: String, start: TimeInterval, end: TimeInterval)] {
+        var out: [(id: String, start: TimeInterval, end: TimeInterval)] = []
+        for c in editor.project.captions {
+            out.append(("cap-\(c.id.uuidString)", c.startTime, c.endTime))
+        }
+        for o in editor.project.overlays {
+            out.append(("ov-\(o.id.uuidString)", o.startTime, o.endTime))
+        }
+        for s in editor.project.soundEffects {
+            let len = editor.sfxDuration(for: s)
+            out.append(("sfx-\(s.id.uuidString)", s.startTime, s.startTime + len))
+        }
+        return out
     }
 
     private func laneAt(sourceIndex: Int, verticalOffset: CGFloat) -> TimelineLaneID? {
@@ -378,10 +511,15 @@ struct TimelineWorkspaceView: View {
     }
 
     private func livePlacement(for clip: TimelineClip) -> (start: TimeInterval, end: TimeInterval) {
-        guard let d = drag, d.clipID == clip.id else { return (clip.start, clip.end) }
-        let dt = TimeInterval(d.translation.width / max(pixelsPerSecond, 0.001))
-        let len = max(0.05, d.originEnd - d.originStart)
-        let start = min(max(0, d.originStart + dt), mediaDuration - 0.05)
+        guard let d = drag else { return (clip.start, clip.end) }
+        let inGroup = d.groupRefs.contains(clip.ref) || d.clipID == clip.id
+        guard inGroup else { return (clip.start, clip.end) }
+        if d.clipID == clip.id, let s = d.snappedStart, let e = d.snappedEnd {
+            return (s, e)
+        }
+        let dt = (d.snappedStart ?? (d.originStart + TimeInterval(d.translation.width / max(pixelsPerSecond, 0.001)))) - d.originStart
+        let len = max(0.05, clip.end - clip.start)
+        let start = min(max(0, clip.start + dt), mediaDuration - 0.05)
         let end = min(mediaDuration, max(start + 0.05, start + len))
         return (start, end)
     }
@@ -398,7 +536,7 @@ struct TimelineWorkspaceView: View {
                     lane: .captions,
                     start: $0.startTime,
                     end: $0.endTime,
-                    selected: editor.selectedCaptionID == $0.id,
+                    selected: editor.isTimelineClipSelected(.caption($0.id)),
                     isDraggable: true
                 )
             }
@@ -431,7 +569,7 @@ struct TimelineWorkspaceView: View {
                     lane: .sfx,
                     start: cue.startTime,
                     end: min(mediaDuration, cue.startTime + len),
-                    selected: editor.selectedSoundEffectID == cue.id,
+                    selected: editor.isTimelineClipSelected(.sfx(cue.id)),
                     isDraggable: true
                 )
             }
@@ -463,46 +601,30 @@ struct TimelineWorkspaceView: View {
             lane: lane,
             start: item.startTime,
             end: item.endTime,
-            selected: editor.selectedOverlayID == item.id,
+            selected: editor.isTimelineClipSelected(.overlay(item.id)),
             isDraggable: true
         )
     }
 
     private func select(_ clip: TimelineClip) {
-        switch clip.ref {
-        case .caption(let id):
-            editor.selectedCaptionID = id
-            editor.selectedOverlayID = nil
-            editor.selectedSoundEffectID = nil
-            editor.isAudioLayerSelected = false
-            editor.seek(to: clip.start)
-            editor.editorTab = .captions
-        case .overlay(let id):
-            editor.selectedOverlayID = id
-            editor.selectedSoundEffectID = nil
-            editor.isAudioLayerSelected = false
-            editor.seek(to: clip.start)
-            editor.editorTab = .overlays
-        case .sfx(let id):
-            editor.selectSoundEffect(id)
-            editor.seek(to: clip.start)
-        case .trim(let id):
-            if editor.selectedTrimIDs.contains(id) {
-                editor.selectedTrimIDs.remove(id)
-            } else {
-                editor.selectedTrimIDs.insert(id)
-            }
-            editor.seek(to: clip.start)
-            editor.editorTab = .trim
-        case .audio:
-            editor.selectAudioLayer()
-        }
+        editor.selectTimelineClip(
+            ref: clip.ref,
+            additive: additiveSelectActive,
+            seekTo: clip.start
+        )
     }
 
     private func clipHelp(_ clip: TimelineClip) -> String {
         if !clip.isDraggable { return "Audio bed (not movable)" }
+        if multiSelectCount > 1, editor.isTimelineClipSelected(clip.ref) {
+            return String(
+                format: "%.2fs–%.2fs · multi-drag retimes selection · edges snap to guides",
+                clip.start,
+                clip.end
+            )
+        }
         return String(
-            format: "%.2fs–%.2fs · drag sideways to retime, up/down to change lane",
+            format: "%.2fs–%.2fs · drag to retime (snaps) · up/down to change lane",
             clip.start,
             clip.end
         )

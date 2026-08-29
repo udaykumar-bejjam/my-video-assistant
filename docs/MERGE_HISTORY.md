@@ -15,5 +15,6 @@ Recorded when open draft PRs were integrated into `master`.
 | `cursor/four-enhancements-ac05` (#22) | Chess MP4 export, eval, undo/redo, enhancer CI |
 | `cursor/chess-video-overlay-ac05` (#23) | Chess walkthrough overlay on project video |
 | `cursor/heuristic-parity-ac05` | App ↔ server enhance heuristic parity-contract v1 |
+| `cursor/timeline-multiselect-ac05` | Timeline multi-select + snap guides (P1.2) |
 
-After this wave, Telugu ASR, timeline drag/zoom, Chess Walkthrough (+ export/overlay/eval), Iconify sync, deep docs, undo/redo, enhancer CI, and **heuristic parity** are on `master` (parity PR pending merge). See [ROADMAP.md](./ROADMAP.md) for follow-ons.
+After this wave, Telugu ASR, timeline drag/zoom/multi-select, Chess Walkthrough (+ export/overlay/eval), Iconify sync, deep docs, undo/redo, enhancer CI, 1:1 aspect remap, and **heuristic parity** are on `master` (multiselect PR pending merge). See [ROADMAP.md](./ROADMAP.md) for follow-ons.

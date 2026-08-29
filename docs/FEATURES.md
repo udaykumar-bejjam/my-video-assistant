@@ -49,6 +49,8 @@ for how they are wired.
 ## Layers & timeline
 
 - **`TimelineWorkspaceView`** — zoomable multi-lane workspace (fit media+1h → ~frame zoom)
+- **Multi-select** — Multi toggle or Shift/⌘-click; drag moves the selection together (same kind)
+- **Snap guides** — cyan line when edges snap to playhead, media bounds, or sibling clips
 - Drag L/R to retime; drag across lanes to change kind / bring-to-front (`applyTimelineDrag`)
 - Lanes: Caps / Hits / Stick / Text / **Audio** / **SFX** (+ trim marks)
 - Layers tab: visual overlays (start/end/scale) + **Audio layer panel**

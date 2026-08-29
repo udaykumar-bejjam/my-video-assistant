@@ -10,6 +10,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 - Telugu + EN dual-pass ASR (`WhisperTranscriptionClient`)
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
+- Timeline **multi-select + snap guides** (`TimelineSnap`, Multi toggle / Shift·⌘)
 - Chess Walkthrough (interactive)
 - Chess **MP4 export** (`ChessExportService`)
 - Chess **project video overlay** (`ChessWalkthroughSpec` + export/preview)
@@ -38,7 +39,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement |
 |----|-------------|
-| P1.2 | Multi-select + snap guides |
+| ~~P1.2~~ | ~~Multi-select + snap guides~~ | **Shipped** |
 | P1.3 | Keyboard shortcuts (J/K/L, delete, nudge) beyond undo |
 | P1.4 | Waveform on audio lane |
 | P1.5 | Word-level caption split/merge editor |
@@ -81,8 +82,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.2** — multi-select timeline + snap guides.
-2. **P1.9** — PGN from file / lichess / chess.com URL.
-3. **P1.14** — true LUFS loudness.
-4. **P0.5** — notarized Mac builds.
-5. **P1.7** — bundle Stockfish binary.
+1. **P1.9** — PGN from file / lichess / chess.com URL.
+2. **P1.14** — true LUFS loudness.
+3. **P0.5** — notarized Mac builds.
+4. **P1.7** — bundle Stockfish binary.
+5. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
