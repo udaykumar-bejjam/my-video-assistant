@@ -1,5 +1,7 @@
 # Telugu captions without Apple Speech
 
+**Status:** Shipped on `master` (merged from the Telugu / Whisper feature line).
+
 ## Problem
 Apple Dictation / `SFSpeechRecognizer` does **not** ship a Telugu (`te-IN`) model on many Macs. Dual-pass Apple ASR cannot caption Telugu audio.
 
@@ -16,7 +18,7 @@ Use **OpenAI Whisper** for Telugu (and as Hindi fallback when Apple’s pack is 
 ## Architecture
 ```
 Video → extract M4A (AVFoundation)
-     → OpenAI Whisper (whisper-1, verbose_json + word timestamps)
+     → OpenAI Whisper / gpt-transcribe (see below)
      → CaptionSegment / CaptionWord
      → existing editor / enhance / export
 ```
@@ -25,7 +27,7 @@ English still uses on-device Apple Speech (no API key).
 
 ## User setup
 1. Get an API key from https://platform.openai.com/api-keys
-2. Home screen / **Add API Key** → paste OpenAI key
+2. Home / Brand Kit / **Add API Key** → paste OpenAI key
 3. Select **తెలుగు + EN (Whisper)** → **AI Captions**
 
 Optional: `export OPENAI_API_KEY=...` and run enhancer (`POST /transcribe`) as a localhost proxy.
@@ -45,3 +47,11 @@ and never sends `language=te` to whisper-1.
 4. Holds each caption line until the next (extends end only)
 
 **After updating the app, re-run AI Captions** (then AI Place) — old timings stay baked in the project.
+
+## Key files
+- `CaptionStudio/Services/WhisperTranscriptionClient.swift`
+- `CaptionStudio/Services/TranscriptionService.swift`
+- `CaptionStudio/Services/APIKeyStore.swift`
+- `CaptionStudio/Views/OpenAIKeySheet.swift`
+- `enhancer-server/src/transcribe.js`
+- `docs/TELUGU_ASR_PLAN.md` (this file)

@@ -29,10 +29,12 @@ Use technical scope (not calendar estimates).
 
 | Item | Why | Touches |
 |------|-----|---------|
-| Zoomable / drag-to-retime timeline | Faster than sliders alone | `EditorView` timeline, overlay/SFX models |
+| ~~Zoomable / drag-to-retime timeline~~ | **Shipped** (`TimelineWorkspaceView`) | — |
 | Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history |
 | Preview SFX while playhead crosses cues | WYSIWYG audio | Player time observer + `previewSFX` |
 | Hide or dim phrase captions under dense word hits (optional toggle) | Reduce “two caption systems” clutter | Export + preview flags |
+| Chess Walkthrough → export burn-in | Shareable chess shorts | `VideoExportService` + chess layers |
+| Stockfish (or cloud) move categories | Stronger than annotation-only | `ChessEngine` |
 
 ### P2 — Audio v2
 
@@ -49,6 +51,8 @@ Use technical scope (not calendar estimates).
 | Trim auto-apply + undo | Faster silence cleanup | `TrimService`, confirm UI |
 | Chunked Speech for long files | Avoid truncated transcripts | `TranscriptionService` |
 | Caption translation / bilingual burn-in | Growth in HI/TE markets | Models + export layers |
+| ~~Telugu Whisper dual-pass~~ | **Shipped** | [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
+| Word-level split/merge editor | Fix ASR mistakes | Caption list UI |
 
 ### P4 — Libraries & AI Place
 
@@ -75,9 +79,9 @@ Use technical scope (not calendar estimates).
 
 ```text
 P0 aspect remap + CI smoke + signing path
-P1 timeline zoom/drag + undo + preview SFX
-P2 LUFS (if distribution partners require it)
-P3 trim v2 / long Speech
+P1 undo + chess export burn-in + preview SFX polish
+P2 Stockfish categories + LUFS / music bed
+P3 trim v2 / long Speech / more Indic languages
 P4 library growth + 1:1 + enhance trim suggestions
 ```
 

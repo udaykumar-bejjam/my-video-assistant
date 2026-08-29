@@ -115,6 +115,33 @@ Optional: `tools/iconify-sync` imports Iconify icons into PNG catalogs.
 
 ---
 
+## Captions — Telugu / bilingual (Whisper)
+
+- English: on-device Apple Speech
+- Telugu (+ Tanglish): OpenAI **gpt-transcribe** + **whisper-1** word clocks (never `language=te` on whisper-1)
+- Hindi: Apple Speech when available, else Whisper fallback
+- OpenAI API key via Brand Kit / Home sheet (`APIKeyStore`)
+- Details: [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md)
+
+---
+
+## Timeline workspace
+
+- Zoomable multi-lane timeline (`TimelineWorkspaceView`)
+- Drag to retime; cross-lane drag between caption / overlay lanes
+- Orange media-end marker; pad beyond media for zoom-out
+
+---
+
+## Chess Walkthrough
+
+- Home / editor → paste PGN or move list
+- Animated Unicode board, category colors, arrows, boxes, callouts, SFX
+- Annotation-based classification (no Stockfish yet); not burned into export yet
+- Details: [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md)
+
+---
+
 ## Platforms & distribution
 
 | Target | Notes |

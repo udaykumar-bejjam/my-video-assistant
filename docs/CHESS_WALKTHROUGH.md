@@ -1,5 +1,7 @@
 # Chess Walkthrough
 
+**Status:** Shipped on `master` (merged from `cursor/chess-analysis-overlays-ac05`).
+
 Paste a **PGN** or move list → CaptionStudio animates the game step-by-step on a live board.
 
 ## What it does
@@ -30,3 +32,9 @@ Example:
 ## Limits (v1)
 - Classification uses annotations / checks (no Stockfish engine yet)
 - Walkthrough is an interactive player (not yet burned into video export)
+
+## Key files
+- `CaptionStudio/Models/ChessAnalysis.swift`
+- `CaptionStudio/Services/ChessEngine.swift`
+- `CaptionStudio/ViewModels/ChessWalkthroughViewModel.swift`
+- `CaptionStudio/Views/ChessWalkthroughView.swift`

@@ -4,18 +4,22 @@ AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effect
 
 ## Documentation
 
-Deep project docs for humans and agents live under [`docs/`](./docs/README.md):
+Deep project docs for humans and agents:
 
 | Doc | Purpose |
 |-----|---------|
+| [`docs/README.md`](./docs/README.md) / [`docs/INDEX.md`](./docs/INDEX.md) | Doc hubs |
 | [Architecture](./docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
 | [Features](./docs/FEATURES.md) | Shipped capabilities |
-| [File index](./docs/FILE_INDEX.md) | Important source map |
+| [File index](./docs/FILE_INDEX.md) / [Codebase map](./docs/CODEBASE_MAP.md) | Source maps |
 | [Data model](./docs/DATA_MODEL.md) | Runtime + disk schema |
 | [Development](./docs/DEVELOPMENT.md) | Build, test, release, debug |
-| [Roadmap](./docs/ROADMAP.md) | Planned enhancements |
+| [Roadmap](./docs/ROADMAP.md) / [Enhancement roadmap](./docs/ENHANCEMENT_ROADMAP.md) | Planned work |
+| [Telugu ASR](./docs/TELUGU_ASR_PLAN.md) | Whisper / gpt-transcribe path |
+| [Chess walkthrough](./docs/CHESS_WALKTHROUGH.md) | PGN replay feature |
+| [Merged feature lines](./docs/IN_FLIGHT_BRANCHES.md) | What landed from open PRs |
 | [Contributing](./docs/CONTRIBUTING.md) | Change rules / regressions |
-| [Shorts maker plan](./docs/SHORTS_MAKER_PLAN.md) | Phases A–C (shipped) |
+| [`AGENTS.md`](./AGENTS.md) | Cursor Cloud (Linux = Node only) |
 
 ## Architecture
 
