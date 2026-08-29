@@ -31,28 +31,20 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Item | Why | Touches | Status |
 |------|-----|---------|--------|
 | Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
-| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history | Open |
+| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorHistory` | **Shipped** |
 | Multi-select + snap guides | Precision edits | Timeline | Open |
 | Preview SFX while playhead crosses cues | WYSIWYG audio | Player + `previewSFX` | Open |
 | Hide or dim phrase captions under dense word hits | Reduce clutter | Export + preview flags | Open |
 
 ### P1b — Chess (next)
 
-<<<<<<< HEAD
-| Item | Why | Touches |
-|------|-----|---------|
-| Burn chess walkthrough into export | Shareable chess shorts | `VideoExportService` + board layers |
-| Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEngine` / new service |
-| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI |
-| PGN from file / lichess / chess.com URL | Lower friction | Network + parse |
-=======
 | Item | Why | Touches | Status |
 |------|-----|---------|--------|
 | Burn chess walkthrough into export | Ship analysis videos | `ChessExportService` | **Shipped** (standalone MP4) |
 | Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEvalService` | **Shipped** (heuristic always; Stockfish if binary present) |
 | Sync board clock to imported game VO | Coach commentary + board | Shared offset UI | Open |
 | PGN from file / lichess / chess.com URL | Lower friction | Network + parse | Open |
-| Chess board as overlay on project video | Composite with VO | `VideoExportService` | Open |
+| Chess board as overlay on project video | Composite with VO | `VideoExportService` + `ChessWalkthroughSpec` | **Shipped** |
 
 ### P1c — Editor history
 
@@ -65,7 +57,6 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Item | Status |
 |------|--------|
 | Linux enhancer smokes on PR (`npm test` incl. full-duration + chess-eval) | **Shipped** (`.github/workflows/enhancer-smokes.yml`) |
->>>>>>> origin/cursor/four-enhancements-ac05
 
 ### P2 — Audio v2
 

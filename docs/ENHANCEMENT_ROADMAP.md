@@ -12,6 +12,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
 - Chess Walkthrough (interactive)
 - Chess **MP4 export** (`ChessExportService`)
+- Chess **project video overlay** (`ChessWalkthroughSpec` + export/preview)
 - Heuristic + optional **Stockfish** eval (`ChessEvalService`)
 - Editor **undo/redo** (`EditorHistory`, ⌘Z / ⇧⌘Z)
 - Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
@@ -46,9 +47,9 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement |
 |----|-------------|
-| P1.6 | Chess board as overlay on imported project video |
 | P1.7 | Bundle Stockfish binary in app for guaranteed UCI |
-| P1.8 | Sync chess to imported game video clock |
+| P1.8 | Sync chess to imported game video clock (multi-offset UI) |
+| P1.9 | PGN from file / lichess / chess.com URL |
 
 ---
 
@@ -56,13 +57,13 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement |
 |----|-------------|
-| P1.9 | More Indic languages (same dual-pass pattern) |
-| P1.10 | Brand kit fully honored on server agent path |
-| P1.11 | User-imported GIF/PNG/SFX folders |
-| P1.12 | Placement density slider |
-| P1.13 | True LUFS loudness |
-| P1.14 | 1:1 aspect preset |
-| P1.15 | Soft-sub track toggle |
+| P1.10 | More Indic languages (same dual-pass pattern) |
+| P1.11 | Brand kit fully honored on server agent path |
+| P1.12 | User-imported GIF/PNG/SFX folders |
+| P1.13 | Placement density slider |
+| P1.14 | True LUFS loudness |
+| P1.15 | 1:1 aspect preset |
+| P1.16 | Soft-sub track toggle |
 
 ---
 
@@ -78,7 +79,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.6** — composite chess onto coach VO in `VideoExportService`.
-2. **P0.1** — single heuristic source of truth.
-3. **P1.2** — multi-select timeline.
+1. **P0.1** — single heuristic source of truth (app ↔ server).
+2. **P1.2** — multi-select timeline.
+3. **P1.7** — bundle Stockfish.
 4. **P0.5** — notarized Mac builds.

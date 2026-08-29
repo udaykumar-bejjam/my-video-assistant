@@ -25,7 +25,8 @@ final class VideoStitchService: ObservableObject {
         libraryRoot: URL?,
         outputURL: URL? = nil,
         audioSettings: ProjectAudioSettings = .default,
-        brandSfxGain: Double = 0.8
+        brandSfxGain: Double = 0.8,
+        chessOverlay: ChessWalkthroughSpec? = nil
     ) async throws -> URL {
         guard !segments.isEmpty else {
             throw ExportError.compositionFailed("No segments to export.")
@@ -77,6 +78,15 @@ final class VideoStitchService: ObservableObject {
                 return s
             }
 
+            let localChess: ChessWalkthroughSpec? = {
+                guard var chess = chessOverlay else { return nil }
+                let moveCount = (try? ChessPGNParser.parse(chess.pgn))?.moves.count ?? 0
+                let chessEnd = chess.endTime(moveCount: moveCount)
+                guard chess.startOffset < chunk.endTime, chessEnd > chunk.startTime else { return nil }
+                chess = chess.shifted(by: delta)
+                return chess
+            }()
+
             let partURL = try await exporter.export(
                 videoURL: videoURL,
                 captions: localCaptions,
@@ -92,7 +102,8 @@ final class VideoStitchService: ObservableObject {
                 outputURL: FileManager.default.temporaryDirectory
                     .appendingPathComponent("CaptionStudio-part-\(offset)-\(UUID().uuidString).mp4"),
                 audioSettings: audioSettings,
-                brandSfxGain: brandSfxGain
+                brandSfxGain: brandSfxGain,
+                chessOverlay: localChess
             )
             partURLs.append(partURL)
         }

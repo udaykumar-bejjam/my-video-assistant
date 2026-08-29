@@ -139,6 +139,8 @@ struct VideoProject: Identifiable, Equatable {
     var language: AppLanguage
     var chunkCount: Int
     var createdAt: Date
+    /// Optional PGN walkthrough composited onto the video on export / preview.
+    var chessOverlay: ChessWalkthroughSpec? = nil
 
     static func empty(title: String = "Untitled") -> VideoProject {
         VideoProject(
@@ -156,7 +158,8 @@ struct VideoProject: Identifiable, Equatable {
             packId: nil,
             language: .english,
             chunkCount: 1,
-            createdAt: .now
+            createdAt: .now,
+            chessOverlay: nil
         )
     }
 }

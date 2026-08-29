@@ -4,7 +4,9 @@ import SwiftUI
 /// Steps through the board with colored move callouts, arrows, square boxes, and SFX.
 struct ChessWalkthroughView: View {
     @StateObject private var vm = ChessWalkthroughViewModel()
+    @EnvironmentObject private var editor: EditorViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var attachNote: String?
 
     var body: some View {
         NavigationStack {
@@ -50,6 +52,35 @@ struct ChessWalkthroughView: View {
                     }
                     .disabled(vm.result == nil || vm.isExporting || vm.isAnalyzing)
                 }
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        guard editor.project.videoURL != nil else {
+                            attachNote = "Open a video in the editor first."
+                            return
+                        }
+                        editor.attachChessOverlay(
+                            pgn: vm.pgnText,
+                            secondsPerMove: vm.secondsPerMove,
+                            startOffset: editor.currentTime,
+                            includeSFX: true,
+                            title: vm.result?.summary ?? "Chess"
+                        )
+                        attachNote = "Attached at playhead — burns into project export."
+                    } label: {
+                        Label("Attach to video", systemImage: "rectangle.badge.plus")
+                    }
+                    .disabled(vm.result == nil || vm.isAnalyzing || editor.project.videoURL == nil)
+                }
+                ToolbarItem(placement: .automatic) {
+                    if editor.project.chessOverlay != nil {
+                        Button(role: .destructive) {
+                            editor.clearChessOverlay()
+                            attachNote = "Chess overlay cleared."
+                        } label: {
+                            Label("Clear", systemImage: "xmark.circle")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Analyze") { vm.loadNotation() }
                         .fontWeight(.semibold)
@@ -87,6 +118,11 @@ struct ChessWalkthroughView: View {
                 Text(vm.exportStatus.isEmpty ? "Exporting chess MP4…" : vm.exportStatus)
                     .font(.custom("AvenirNext-Medium", size: 11))
                     .foregroundStyle(.white.opacity(0.45))
+            }
+            if let note = attachNote {
+                Text(note)
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(Color(red: 0.2, green: 0.95, blue: 0.72))
             }
             if let err = vm.errorMessage {
                 Text(err)

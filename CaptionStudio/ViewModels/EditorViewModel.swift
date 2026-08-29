@@ -1545,6 +1545,72 @@ final class EditorViewModel: ObservableObject {
         isRestoringHistory = false
     }
 
+    // MARK: - Chess overlay on project video
+
+    /// Attach a PGN walkthrough to the current project (export + preview corner board).
+    func attachChessOverlay(
+        pgn: String,
+        secondsPerMove: Double,
+        startOffset: TimeInterval? = nil,
+        includeSFX: Bool = true,
+        title: String = "Chess"
+    ) {
+        registerUndoCheckpoint()
+        let offset = startOffset ?? currentTime
+        let layout = ChessBoardLayout(originX: 0.58, originY: 0.58, size: 0.38, whiteAtBottom: true)
+        let spec = ChessWalkthroughSpec(
+            pgn: pgn,
+            secondsPerMove: secondsPerMove,
+            startOffset: max(0, offset),
+            layout: layout,
+            includeCallouts: true,
+            includeSFX: includeSFX,
+            title: title
+        )
+        project.chessOverlay = spec
+
+        project.soundEffects.removeAll { ($0.reason ?? "").hasPrefix("chess:") }
+        if includeSFX, let moves = try? ChessPGNParser.parse(pgn).moves {
+            for (i, move) in moves.enumerated() {
+                project.soundEffects.append(
+                    SoundEffectCue(
+                        assetId: move.category.sfxId,
+                        startTime: spec.startOffset + Double(i) * spec.secondsPerMove,
+                        gain: move.category == .normal ? 0.45 : 0.85,
+                        reason: "chess:\(move.san)"
+                    )
+                )
+            }
+        }
+        draftMessage = "Chess overlay attached at \(formatClock(spec.startOffset))"
+    }
+
+    func clearChessOverlay() {
+        guard project.chessOverlay != nil else { return }
+        registerUndoCheckpoint()
+        project.chessOverlay = nil
+        project.soundEffects.removeAll { ($0.reason ?? "").hasPrefix("chess:") }
+        draftMessage = "Chess overlay cleared"
+    }
+
+    /// Snapshot boards/move for live preview of the attached chess overlay.
+    func chessPreviewState(at time: TimeInterval) -> (board: ChessBoard, move: ChessAnnotatedMove?)? {
+        guard let spec = project.chessOverlay,
+              let parsed = try? ChessPGNParser.parse(spec.pgn),
+              !parsed.moves.isEmpty
+        else { return nil }
+        var board = ChessBoard.starting()
+        var boards = [board]
+        for move in parsed.moves {
+            guard (try? board.applySAN(move.san)) != nil else { break }
+            boards.append(board)
+        }
+        let idx = spec.boardIndex(at: time, moveCount: parsed.moves.count)
+        let safeIdx = min(idx, boards.count - 1)
+        let move: ChessAnnotatedMove? = idx > 0 && idx - 1 < parsed.moves.count ? parsed.moves[idx - 1] : nil
+        return (boards[safeIdx], move)
+    }
+
     /// Resolved play length for a cue from the SFX library (fallback 0.35s).
     func sfxDuration(for cue: SoundEffectCue) -> TimeInterval {
         libraries.item(kind: .sfx, id: cue.assetId)?.playLength ?? 0.35
@@ -1623,7 +1689,8 @@ final class EditorViewModel: ObservableObject {
                         libraryRoot: libraries.rootURL,
                         aspect: aspect,
                         audioSettings: project.audio,
-                        brandSfxGain: brandKit.kit.defaultSfxGain
+                        brandSfxGain: brandKit.kit.defaultSfxGain,
+                        chessOverlay: project.chessOverlay
                     )
                 } else {
                     let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
@@ -1649,7 +1716,8 @@ final class EditorViewModel: ObservableObject {
                         segments: segments,
                         libraryRoot: libraries.rootURL,
                         audioSettings: project.audio,
-                        brandSfxGain: brandKit.kit.defaultSfxGain
+                        brandSfxGain: brandKit.kit.defaultSfxGain,
+                        chessOverlay: project.chessOverlay
                     )
                     exporter.progress = stitcher.progress
                     exporter.statusMessage = stitcher.statusMessage

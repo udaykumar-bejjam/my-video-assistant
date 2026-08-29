@@ -49,6 +49,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
     var session: ProjectSessionState
     /// Social post copy from AI Place / heuristics.
     var distribution: DistributionPackage?
+    /// Optional chess walkthrough composited onto export.
+    var chessOverlay: ChessWalkthroughSpec?
 
     var sourceSize: CGSize {
         CGSize(width: sourceWidth, height: sourceHeight)
@@ -96,7 +98,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
             createdAt: project.createdAt,
             updatedAt: updatedAt,
             session: session,
-            distribution: distribution
+            distribution: distribution,
+            chessOverlay: project.chessOverlay
         )
     }
 
@@ -117,7 +120,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
             packId: packId,
             language: language,
             chunkCount: chunkCount,
-            createdAt: createdAt
+            createdAt: createdAt,
+            chessOverlay: chessOverlay
         )
     }
 
@@ -125,7 +129,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
         case id, title, videoFileName, duration, aspectRatio
         case sourceWidth, sourceHeight, captions, captionStyle, overlays, soundEffects
         case audio, enhancementSummary, packId, language, chunkCount, createdAt, updatedAt
-        case session, distribution
+        case session, distribution, chessOverlay
     }
 
     init(
@@ -148,7 +152,8 @@ struct SavedProject: Identifiable, Codable, Equatable {
         createdAt: Date,
         updatedAt: Date,
         session: ProjectSessionState = .default,
-        distribution: DistributionPackage? = nil
+        distribution: DistributionPackage? = nil,
+        chessOverlay: ChessWalkthroughSpec? = nil
     ) {
         self.id = id
         self.title = title
@@ -170,6 +175,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
         self.updatedAt = updatedAt
         self.session = session
         self.distribution = distribution
+        self.chessOverlay = chessOverlay
     }
 
     init(from decoder: Decoder) throws {
@@ -194,6 +200,7 @@ struct SavedProject: Identifiable, Codable, Equatable {
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
         session = try c.decodeIfPresent(ProjectSessionState.self, forKey: .session) ?? .default
         distribution = try c.decodeIfPresent(DistributionPackage.self, forKey: .distribution)
+        chessOverlay = try c.decodeIfPresent(ChessWalkthroughSpec.self, forKey: .chessOverlay)
     }
 }
 

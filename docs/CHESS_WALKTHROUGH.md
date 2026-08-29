@@ -42,6 +42,13 @@ Example:
 | `CaptionStudio/Views/ChessWalkthroughView.swift` | Board UI |
 
 ## Limits
-- Overlay onto an imported coach-video timeline is the next follow-on (standalone chess MP4 ships today)
+- Sync board clock to an arbitrary VO still uses playhead `startOffset` (attach at current time)
 - Stockfish requires a local UCI binary; otherwise heuristic eval always runs
 - Linux CI covers heuristic category mapping via `npm run test:chess-eval`
+
+## Attach to project video
+1. Open a video in the editor
+2. Chess Walkthrough → Analyze
+3. Scrub to the moment the board should start → **Attach to video**
+4. Preview shows a corner board; **Export** burns it into the MP4 (plus chess SFX cues on the timeline)
+5. **Clear** removes the overlay + chess-tagged SFX

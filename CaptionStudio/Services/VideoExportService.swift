@@ -40,7 +40,8 @@ final class VideoExportService: ObservableObject {
         sourceTimeRange: CMTimeRange? = nil,
         outputURL: URL? = nil,
         audioSettings: ProjectAudioSettings = .default,
-        brandSfxGain: Double = 0.8
+        brandSfxGain: Double = 0.8,
+        chessOverlay: ChessWalkthroughSpec? = nil
     ) async throws -> URL {
         progress = 0.02
         statusMessage = "Building composition…"
@@ -180,6 +181,14 @@ final class VideoExportService: ObservableObject {
             libraryRoot: libraryRoot,
             duration: timelineSeconds
         )
+        if let chessOverlay {
+            addChessOverlayLayers(
+                to: overlayRoot,
+                spec: chessOverlay,
+                size: renderSize,
+                duration: timelineSeconds
+            )
+        }
 
         videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
             postProcessingAsVideoLayer: videoLayer,
@@ -777,6 +786,127 @@ final class VideoExportService: ObservableObject {
             )
             root.addSublayer(layer)
         }
+    }
+
+    /// Composite an analyzed PGN walkthrough as a corner board with timed frames.
+    private func addChessOverlayLayers(
+        to root: CALayer,
+        spec: ChessWalkthroughSpec,
+        size: CGSize,
+        duration: TimeInterval
+    ) {
+        guard duration > 0.05 else { return }
+        let parsed: ChessAnalysisResult
+        do {
+            parsed = try ChessPGNParser.parse(spec.pgn)
+        } catch {
+            return
+        }
+        guard !parsed.moves.isEmpty else { return }
+
+        var board = ChessBoard.starting()
+        var boards = [board]
+        for move in parsed.moves {
+            do {
+                _ = try board.applySAN(move.san)
+                boards.append(board)
+            } catch {
+                break
+            }
+        }
+        let moveCount = min(parsed.moves.count, boards.count - 1)
+        guard moveCount > 0 else { return }
+
+        let boardPixel = min(size.width, size.height) * max(0.25, min(0.55, spec.layout.size))
+        let renderSize = CGSize(width: boardPixel, height: boardPixel)
+
+        var images: [CGImage] = []
+        var keyTimes: [NSNumber] = []
+        let total = max(duration, 0.05)
+
+        // Before startOffset: empty / hidden via opacity; still need at least one contents frame.
+        if let startImage = ChessBoardRenderer.makeCGImage(
+            board: boards[0],
+            move: nil,
+            callout: nil,
+            title: nil,
+            size: renderSize,
+            transparentBackground: true
+        ) {
+            images.append(startImage)
+            keyTimes.append(0)
+        }
+
+        for i in 0..<moveCount {
+            let boardIdx = min(i + 1, boards.count - 1)
+            let move = parsed.moves[i]
+            let callout: String? = {
+                guard spec.includeCallouts else { return nil }
+                var parts = ["\(move.moveNumber)\(move.isWhite ? "." : "...") \(move.san)"]
+                if move.category.isHighlightWorthy { parts.append(move.category.label) }
+                return parts.joined(separator: " · ")
+            }()
+            // For transparent corner board, skip callout text (preview/export use color flash on squares).
+            guard let image = ChessBoardRenderer.makeCGImage(
+                board: boards[boardIdx],
+                move: move,
+                callout: nil,
+                title: nil,
+                size: renderSize,
+                transparentBackground: true
+            ) else { continue }
+            let t = min(1, max(0, (spec.startOffset + Double(i) * spec.secondsPerMove) / total))
+            images.append(image)
+            keyTimes.append(NSNumber(value: t))
+            _ = callout
+        }
+
+        // Hold last frame until endTime
+        let endT = min(1, max(0, spec.endTime(moveCount: moveCount) / total))
+        if let last = images.last {
+            images.append(last)
+            keyTimes.append(NSNumber(value: endT))
+        }
+        if let last = images.last {
+            images.append(last)
+            keyTimes.append(1)
+        }
+
+        guard images.count == keyTimes.count, images.count >= 2 else { return }
+
+        let layer = CALayer()
+        layer.bounds = CGRect(x: 0, y: 0, width: boardPixel, height: boardPixel)
+        layer.contents = images[0]
+        layer.contentsGravity = .resizeAspect
+        layer.cornerRadius = 10
+        layer.masksToBounds = true
+        layer.borderWidth = 2
+        layer.borderColor = CGColor(red: 0.2, green: 0.95, blue: 0.72, alpha: 0.85)
+        // layout.origin is top-left normalized; CALayer Y is bottom-up.
+        let centerX = size.width * (spec.layout.originX + spec.layout.size / 2)
+        let centerY = size.height * (1 - (spec.layout.originY + spec.layout.size / 2))
+        layer.position = CGPoint(x: centerX, y: centerY)
+
+        let anim = CAKeyframeAnimation(keyPath: "contents")
+        anim.values = images.map { $0 as Any }
+        anim.keyTimes = keyTimes
+        anim.duration = total
+        anim.calculationMode = .discrete
+        anim.beginTime = AVCoreAnimationBeginTimeAtZero
+        anim.fillMode = .both
+        anim.isRemovedOnCompletion = false
+        layer.add(anim, forKey: "chessFrames")
+
+        let visibleStart = max(0, spec.startOffset - 0.05)
+        let visibleEnd = min(duration, spec.endTime(moveCount: moveCount) + 0.15)
+        Self.scheduleVisibility(
+            on: layer,
+            startTime: visibleStart,
+            endTime: visibleEnd,
+            opacity: 1,
+            timelineDuration: duration
+        )
+        root.addSublayer(layer)
     }
 
     /// Schedule when a layer is visible during offline export.

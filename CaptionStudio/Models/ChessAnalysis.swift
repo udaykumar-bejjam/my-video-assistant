@@ -222,3 +222,35 @@ struct ChessAnalysisResult: Equatable {
     var moves: [ChessAnnotatedMove]
     var summary: String
 }
+
+/// How a chess walkthrough is composited onto an imported project video.
+struct ChessWalkthroughSpec: Equatable, Codable {
+    var pgn: String
+    /// Seconds each ply is held on the video timeline.
+    var secondsPerMove: Double = 1.35
+    /// When ply 0→1 begins on the project timeline.
+    var startOffset: TimeInterval = 0
+    var layout: ChessBoardLayout = .init()
+    var includeCallouts: Bool = true
+    var includeSFX: Bool = true
+    /// Optional title shown above the board in export frames.
+    var title: String = "Chess"
+
+    /// Absolute end time of the last move hold.
+    func endTime(moveCount: Int) -> TimeInterval {
+        startOffset + Double(max(0, moveCount)) * secondsPerMove
+    }
+
+    /// Board snapshot index (0 = start) visible at `time`.
+    func boardIndex(at time: TimeInterval, moveCount: Int) -> Int {
+        guard moveCount > 0, time >= startOffset else { return 0 }
+        let idx = Int(floor((time - startOffset) / max(0.05, secondsPerMove))) + 1
+        return min(moveCount, max(0, idx))
+    }
+
+    func shifted(by delta: TimeInterval) -> ChessWalkthroughSpec {
+        var copy = self
+        copy.startOffset = max(0, startOffset + delta)
+        return copy
+    }
+}

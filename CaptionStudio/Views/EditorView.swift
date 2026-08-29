@@ -397,6 +397,9 @@ struct VideoPreviewPane: View {
 
                         LiveOverlayCanvas()
 
+                        ChessProjectOverlayPreview()
+                            .allowsHitTesting(false)
+
                         if editor.showSafeZone {
                             SafeZoneGuideView(zone: editor.activeSafeZone)
                         }
@@ -519,6 +522,31 @@ struct SafeZoneGuideView: View {
                     .position(x: rect.midX, y: rect.midY)
             }
             .allowsHitTesting(false)
+        }
+    }
+}
+
+/// Live corner board when `project.chessOverlay` is attached.
+struct ChessProjectOverlayPreview: View {
+    @EnvironmentObject private var editor: EditorViewModel
+
+    var body: some View {
+        GeometryReader { geo in
+            if let spec = editor.project.chessOverlay,
+               let state = editor.chessPreviewState(at: editor.currentTime) {
+                let side = min(geo.size.width, geo.size.height) * spec.layout.size
+                let x = geo.size.width * (spec.layout.originX + spec.layout.size / 2)
+                let y = geo.size.height * (spec.layout.originY + spec.layout.size / 2)
+                ChessBoardView(board: state.board, move: state.move, pulse: state.move?.category)
+                    .frame(width: side, height: side)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color(red: 0.2, green: 0.95, blue: 0.72).opacity(0.85), lineWidth: 2)
+                    )
+                    .position(x: x, y: y)
+                    .opacity(editor.currentTime >= spec.startOffset - 0.05 ? 1 : 0.35)
+            }
         }
     }
 }
