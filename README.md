@@ -2,6 +2,21 @@
 
 AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effects — for **iOS** and **macOS**.
 
+## Documentation
+
+Deep project docs for humans and agents live under [`docs/`](./docs/README.md):
+
+| Doc | Purpose |
+|-----|---------|
+| [Architecture](./docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
+| [Features](./docs/FEATURES.md) | Shipped capabilities |
+| [File index](./docs/FILE_INDEX.md) | Important source map |
+| [Data model](./docs/DATA_MODEL.md) | Runtime + disk schema |
+| [Development](./docs/DEVELOPMENT.md) | Build, test, release, debug |
+| [Roadmap](./docs/ROADMAP.md) | Planned enhancements |
+| [Contributing](./docs/CONTRIBUTING.md) | Change rules / regressions |
+| [Shorts maker plan](./docs/SHORTS_MAKER_PLAN.md) | Phases A–C (shipped) |
+
 ## Architecture
 
 ```

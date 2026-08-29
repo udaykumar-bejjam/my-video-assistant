@@ -17,13 +17,19 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | Significant word hits (punch, color-pulse, etc.) | Done |
 | 9:16 & 16:9 canvases | Done |
 | Long-video chunk → enhance → stitch | Done |
+| Full-duration AI Place (no ~8–10s clamp) | Done |
 | MP4 export + share | Done |
 | Shorts Packs + opening hooks + batch export | Done |
 | Auto B-roll / sticker moments on strong words | Done |
 | Animated GIF preview + export burn-in | Done |
 | Expanded GIF library + B-roll GIF bias (power/emotion/reveal) | Done |
-| Drafts / brand kit / language lock / trim assist | Done |
+| Project save/load + session resume (playhead/tab/selection) | Done |
+| `.captionstudio` package import/export | Done |
+| Audio layer panel + enhancer presets + duck/mute/normalize | Done |
+| Brand kit / language lock / trim assist | Done |
 | Distribution copy + cover / safe zones / loudness | Done |
+
+**Living docs (prefer for ongoing work):** [README.md](./README.md) index → [ARCHITECTURE.md](./ARCHITECTURE.md), [FEATURES.md](./FEATURES.md), [ROADMAP.md](./ROADMAP.md).
 
 ---
 
@@ -144,17 +150,18 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ## Phase B — Daily workflow speed
 
 ### B1. Project history / drafts
-**Status:** Shipped (Application Support Drafts + Home list + Save Draft / leave save)
+**Status:** Shipped (Application Support projects + Home list + Save / leave save + session resume + `.captionstudio` packages)
 
-**What:** Save/load projects (video bookmark, captions, overlays, SFX, aspect, language, pack).
+**What:** Save/load projects (video bookmark, captions, overlays, SFX, audio settings, aspect, language, pack) and resume UI session (playhead, tab, selections).
 
 **Storage:**
-- App Support / Documents JSON + copy of imported video hash/path  
-- List on Home: thumbnail, title, duration, last edited  
+- `Application Support/CaptionStudio/Projects/<id>.json` (pretty JSON) + media refs  
+- Optional shareable `.captionstudio` package (`project.json` + media)  
+- List on Home: Saved projects + Open package  
 
-**Model:** `SavedProject` Codable beside `VideoProject`  
+**Model:** `SavedProject` + `ProjectSessionState` via `ProjectStore`  
 
-**Acceptance:** Kill app → reopen draft → scrub → export without re-transcribe  
+**Acceptance:** Kill app → reopen project → playhead/tab restored → scrub → export without re-transcribe  
 
 ---
 
@@ -258,7 +265,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 ---
 
 ### C3. Loudness normalize
-**Status:** Shipped (peak RMS + `AVMutableAudioMix` on export)
+**Status:** Shipped (peak RMS + `AVMutableAudioMix` on export; extended by **Audio layer** panel)
 
 **What:** Consistent dialogue + SFX levels across daily posts.
 
@@ -267,9 +274,11 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 - Apply `AVMutableAudioMix` input gains so voice ≈ target LUFS-ish (approx)  
 - Cap SFX gain relative to voice (brand kit `defaultSfxGain`)  
 
+**Also shipped (Audio layer):** `ProjectAudioSettings` + presets — dialogue/SFX gains, duck under SFX windows, mute skip, normalize toggle; timeline Audio + SFX lanes; persisted on save.
+
 **v2:** True LUFS with more accurate metering  
 
-**Acceptance:** Exports don’t clip; SFX sit under voice consistently  
+**Acceptance:** Exports don’t clip; SFX sit under voice consistently; UI mix settings survive save/load  
 
 ---
 
@@ -392,4 +401,4 @@ App rule: **validate → align → apply** remains the single edit path (`allEdi
 - Dual-aspect export without re-edit  
 - Reopen yesterday’s draft in one tap  
 
-When you’re ready to implement, start with **Phase A1 (Shorts Pack)** and we can build it end-to-end on the current branch.
+Phases **A–C are shipped**. Next work lives in [ROADMAP.md](./ROADMAP.md) (P0–P4). Keep this plan as the historical A–C checklist; update status rows here only when revisiting A–C scope.
