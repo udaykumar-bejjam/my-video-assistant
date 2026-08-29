@@ -751,7 +751,9 @@ struct ExportPanelView: View {
                             editor.setAspectRatio(aspect)
                         } label: {
                             Label(aspect.rawValue, systemImage: aspect.systemImage)
-                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .font(.custom("AvenirNext-DemiBold", size: 11))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                                 .background(
@@ -782,7 +784,9 @@ struct ExportPanelView: View {
                             editor.toggleBatchAspect(aspect)
                         } label: {
                             Label(aspect.rawValue, systemImage: on ? "checkmark.square.fill" : "square")
-                                .font(.custom("AvenirNext-DemiBold", size: 12))
+                                .font(.custom("AvenirNext-DemiBold", size: 11))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                                 .background(

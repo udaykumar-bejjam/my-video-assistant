@@ -19,9 +19,9 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 
 ### P0 — Reliability & parity
 
-| Item | Why | Touches |
-|------|-----|---------|
-| Aspect-aware overlay Y remap on batch 9:16→16:9→1:1 | Positions stay in chrome-safe zones | `AspectOverlayRemapper` | **Shipped** |
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Aspect-aware overlay remap on batch 9:16↔16:9↔1:1 | Positions stay in chrome-safe zones | `AspectOverlayRemapper` | **Shipped** |
 | Notarized / Developer ID macOS builds | Gatekeeper friction on Releases | CI signing secrets, `build-macos.sh` | Open |
 | CI smoke: enhance full-duration + export dry path | Catch duration regressions | GitHub Actions, Node tests | **Shipped** (enhancer-smokes) |
 | Keep Xcode membership in sync for new GIF/Swift files | Silent missing burn-in / compile gaps | `project.pbxproj` checklist | Open |
