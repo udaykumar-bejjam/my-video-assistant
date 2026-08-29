@@ -42,8 +42,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.29') }}
-          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.29') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('macos-build-{0}', github.run_number) || 'v1.0.30') }}
+          name: CaptionStudio macOS ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'workflow_dispatch' && format('build {0}', github.run_number) || 'v1.0.30') }}
           draft: false
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           generate_release_notes: true
@@ -53,6 +53,11 @@ jobs:
             ## CaptionStudio for macOS
 
             Download **CaptionStudio-macOS.zip**, unzip, then **right-click → Open** the first time (ad-hoc signed).
+
+            ### v1.0.30
+            - **Chess VO / video clock sync**: Mark start/end on the project timeline
+            - **Fixed pace** or **Fit to range** spaces ply times for overlay + SFX
+            - Attach / Retarget clock rebuilds keyframes without re-analyzing
 
             ### v1.0.29
             - **Preview SFX on play**: cues fire as the playhead crosses them

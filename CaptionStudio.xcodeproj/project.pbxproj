@@ -19,6 +19,7 @@
 		A100000000000000000000AB /* TimelineSnap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AA /* TimelineSnap.swift */; };
 		A100000000000000000000AD /* ChessPGNImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AC /* ChessPGNImportService.swift */; };
 		A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AE /* TimelineSFXPreview.swift */; };
+		A100000000000000000000B1 /* ChessVOClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000B0 /* ChessVOClock.swift */; };
 		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
 		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
@@ -77,6 +78,7 @@
 		A100000000000000000000AA /* TimelineSnap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineSnap.swift; sourceTree = "<group>"; };
 		A100000000000000000000AC /* ChessPGNImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessPGNImportService.swift; sourceTree = "<group>"; };
 		A100000000000000000000AE /* TimelineSFXPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineSFXPreview.swift; sourceTree = "<group>"; };
+		A100000000000000000000B0 /* ChessVOClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessVOClock.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 				A100000000000000000000AA /* TimelineSnap.swift */,
 				A100000000000000000000AC /* ChessPGNImportService.swift */,
 				A100000000000000000000AE /* TimelineSFXPreview.swift */,
+				A100000000000000000000B0 /* ChessVOClock.swift */,
 				A100000000000000000000A4 /* EditorHistory.swift */,
 				A10000000000000000000072 /* APIKeyStore.swift */,
 			);
@@ -377,6 +380,7 @@
 				A100000000000000000000AB /* TimelineSnap.swift in Sources */,
 				A100000000000000000000AD /* ChessPGNImportService.swift in Sources */,
 				A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */,
+				A100000000000000000000B1 /* ChessVOClock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -451,7 +455,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.29;
+				MARKETING_VERSION = 1.0.30;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -499,7 +503,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.29;
+				MARKETING_VERSION = 1.0.30;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

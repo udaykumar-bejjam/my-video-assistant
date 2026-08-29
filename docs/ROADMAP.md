@@ -43,7 +43,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 |------|-----|---------|--------|
 | Burn chess walkthrough into export | Ship analysis videos | `ChessExportService` | **Shipped** (standalone MP4) |
 | Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEvalService` | **Shipped** (heuristic always; Stockfish if binary present) |
-| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI | Open |
+| Sync board clock to imported game VO | Coach commentary + board | `ChessVOClock`, Mark start/end | **Shipped** |
 | PGN from file / lichess / chess.com URL | Lower friction | `ChessPGNImportService` | **Shipped** |
 | Chess board as overlay on project video | Composite with VO | `VideoExportService` + `ChessWalkthroughSpec` | **Shipped** |
 
@@ -102,8 +102,8 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 ## Suggested implementation order
 
 ```text
-P1b sync chess overlay to VO clock + bundle Stockfish
 P1.3 keyboard shortcuts (J/K/L, delete, nudge)
+P1.7 bundle Stockfish
 P2 music bed track
 P3 trim v2 / long Speech / more Indic languages
 P4 expand Iconify presets + enhance trim suggestions

@@ -226,31 +226,109 @@ struct ChessAnalysisResult: Equatable {
 /// How a chess walkthrough is composited onto an imported project video.
 struct ChessWalkthroughSpec: Equatable, Codable {
     var pgn: String
-    /// Seconds each ply is held on the video timeline.
+    /// Seconds each ply is held when `timingMode == .fixedPace`.
     var secondsPerMove: Double = 1.35
     /// When ply 0→1 begins on the project timeline.
     var startOffset: TimeInterval = 0
+    /// Exclusive end of the last ply when `timingMode == .fitRange` (VO / commentary end mark).
+    var endOffset: TimeInterval? = nil
+    var timingMode: ChessTimingMode = .fixedPace
     var layout: ChessBoardLayout = .init()
     var includeCallouts: Bool = true
     var includeSFX: Bool = true
     /// Optional title shown above the board in export frames.
     var title: String = "Chess"
 
+    enum CodingKeys: String, CodingKey {
+        case pgn, secondsPerMove, startOffset, endOffset, timingMode
+        case layout, includeCallouts, includeSFX, title
+    }
+
+    init(
+        pgn: String,
+        secondsPerMove: Double = 1.35,
+        startOffset: TimeInterval = 0,
+        endOffset: TimeInterval? = nil,
+        timingMode: ChessTimingMode = .fixedPace,
+        layout: ChessBoardLayout = .init(),
+        includeCallouts: Bool = true,
+        includeSFX: Bool = true,
+        title: String = "Chess"
+    ) {
+        self.pgn = pgn
+        self.secondsPerMove = secondsPerMove
+        self.startOffset = startOffset
+        self.endOffset = endOffset
+        self.timingMode = timingMode
+        self.layout = layout
+        self.includeCallouts = includeCallouts
+        self.includeSFX = includeSFX
+        self.title = title
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pgn = try c.decode(String.self, forKey: .pgn)
+        secondsPerMove = try c.decodeIfPresent(Double.self, forKey: .secondsPerMove) ?? 1.35
+        startOffset = try c.decodeIfPresent(TimeInterval.self, forKey: .startOffset) ?? 0
+        endOffset = try c.decodeIfPresent(TimeInterval.self, forKey: .endOffset)
+        timingMode = try c.decodeIfPresent(ChessTimingMode.self, forKey: .timingMode) ?? .fixedPace
+        layout = try c.decodeIfPresent(ChessBoardLayout.self, forKey: .layout) ?? .init()
+        includeCallouts = try c.decodeIfPresent(Bool.self, forKey: .includeCallouts) ?? true
+        includeSFX = try c.decodeIfPresent(Bool.self, forKey: .includeSFX) ?? true
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? "Chess"
+    }
+
+    /// Absolute start times for each ply.
+    func moveStartTimes(moveCount: Int) -> [TimeInterval] {
+        ChessVOClock.moveStartTimes(
+            mode: timingMode,
+            startOffset: startOffset,
+            endOffset: endOffset,
+            moveCount: moveCount,
+            secondsPerMove: secondsPerMove
+        )
+    }
+
     /// Absolute end time of the last move hold.
     func endTime(moveCount: Int) -> TimeInterval {
-        startOffset + Double(max(0, moveCount)) * secondsPerMove
+        ChessVOClock.endTime(
+            mode: timingMode,
+            startOffset: startOffset,
+            endOffset: endOffset,
+            moveCount: moveCount,
+            secondsPerMove: secondsPerMove
+        )
     }
 
     /// Board snapshot index (0 = start) visible at `time`.
     func boardIndex(at time: TimeInterval, moveCount: Int) -> Int {
-        guard moveCount > 0, time >= startOffset else { return 0 }
-        let idx = Int(floor((time - startOffset) / max(0.05, secondsPerMove))) + 1
-        return min(moveCount, max(0, idx))
+        ChessVOClock.boardIndex(
+            at: time,
+            mode: timingMode,
+            startOffset: startOffset,
+            endOffset: endOffset,
+            moveCount: moveCount,
+            secondsPerMove: secondsPerMove
+        )
+    }
+
+    func effectivePace(moveCount: Int) -> Double {
+        ChessVOClock.effectivePace(
+            mode: timingMode,
+            startOffset: startOffset,
+            endOffset: endOffset,
+            moveCount: moveCount,
+            secondsPerMove: secondsPerMove
+        )
     }
 
     func shifted(by delta: TimeInterval) -> ChessWalkthroughSpec {
         var copy = self
         copy.startOffset = max(0, startOffset + delta)
+        if let end = endOffset {
+            copy.endOffset = max(copy.startOffset + 0.05, end + delta)
+        }
         return copy
     }
 }

@@ -861,7 +861,7 @@ final class VideoExportService: ObservableObject {
                 size: renderSize,
                 transparentBackground: true
             ) else { continue }
-            let t = min(1, max(0, (spec.startOffset + Double(i) * spec.secondsPerMove) / total))
+            let t = min(1, max(0, (spec.moveStartTimes(moveCount: moveCount)[i]) / total))
             images.append(image)
             keyTimes.append(NSNumber(value: t))
             _ = callout

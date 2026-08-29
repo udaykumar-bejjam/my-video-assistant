@@ -42,7 +42,7 @@ list when implementing; keep this index updated when adding modules.
 | `ShortsPack.swift` | Pack recipe model, `EnhancementHook` |
 | `SafeZoneAndDistribution.swift` | Safe rects, `DistributionPackage` |
 | `ColorHex.swift` | Hex → Color |
-| `ChessAnalysis.swift` | Move categories, colors, arrows, annotated moves |
+| `ChessAnalysis.swift` | Move categories, colors, arrows, annotated moves, walkthrough spec |
 
 ---
 
@@ -79,6 +79,7 @@ list when implementing; keep this index updated when adding modules.
 | `AudioNormalizeService.swift` | LUFS (BS.1770) + peak ceiling; duck windows |
 | `AnimatedGIFDecoder.swift` | Decode GIF frames for preview/export |
 | `ChessEngine.swift` | Board state, SAN apply, PGN parser |
+| `ChessVOClock.swift` | Fixed pace / fit-to-range ply start times for overlay + SFX |
 | `ChessPGNImportService.swift` | File / Lichess / chess.com URL → PGN text |
 
 ---
@@ -100,7 +101,7 @@ list when implementing; keep this index updated when adding modules.
 | `BrandKitSettingsView.swift` | Brand kit sheet |
 | `OpenAIKeySheet.swift` | OpenAI API key entry |
 | `AnimatedGIFView.swift` | Scrub-synced GIF preview |
-| `ChessWalkthroughView.swift` | PGN board, arrows, highlights, transport |
+| `ChessWalkthroughView.swift` | PGN board, arrows, highlights, transport, VO clock panel |
 
 ---
 

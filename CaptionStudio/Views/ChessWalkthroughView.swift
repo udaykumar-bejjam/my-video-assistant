@@ -29,6 +29,7 @@ struct ChessWalkthroughView: View {
                     boardCard
                     calloutBanner
                     transport
+                    voSyncPanel
                     importBar
                     notationEditor
                 }
@@ -64,15 +65,35 @@ struct ChessWalkthroughView: View {
                         editor.attachChessOverlay(
                             pgn: vm.pgnText,
                             secondsPerMove: vm.secondsPerMove,
-                            startOffset: editor.currentTime,
+                            startOffset: vm.voStartMark ?? editor.currentTime,
+                            endOffset: vm.voEndMark,
+                            timingMode: vm.timingMode,
                             includeSFX: true,
                             title: vm.result?.summary ?? "Chess"
                         )
-                        attachNote = "Attached at playhead — burns into project export."
+                        attachNote = vm.timingMode == .fitRange
+                            ? "Attached with VO fit range — burns into project export."
+                            : "Attached at start mark — burns into project export."
                     } label: {
                         Label("Attach to video", systemImage: "rectangle.badge.plus")
                     }
                     .disabled(vm.result == nil || vm.isAnalyzing || editor.project.videoURL == nil)
+                }
+                ToolbarItem(placement: .automatic) {
+                    if editor.project.chessOverlay != nil {
+                        Button {
+                            editor.updateChessOverlayClock(
+                                startOffset: vm.voStartMark ?? editor.currentTime,
+                                endOffset: vm.voEndMark,
+                                timingMode: vm.timingMode,
+                                secondsPerMove: vm.secondsPerMove
+                            )
+                            attachNote = "VO clock retargeted on attached overlay."
+                        } label: {
+                            Label("Retarget clock", systemImage: "clock.arrow.2.circlepath")
+                        }
+                        .disabled(vm.result == nil)
+                    }
                 }
                 ToolbarItem(placement: .automatic) {
                     if editor.project.chessOverlay != nil {
@@ -220,6 +241,95 @@ struct ChessWalkthroughView: View {
 
             legend
         }
+    }
+
+    private var voSyncPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("VO / video clock")
+                .font(.custom("AvenirNext-DemiBold", size: 12))
+                .foregroundStyle(.white.opacity(0.7))
+
+            HStack(spacing: 8) {
+                ForEach(ChessTimingMode.allCases) { mode in
+                    Button {
+                        vm.timingMode = mode
+                    } label: {
+                        Text(mode.title)
+                            .font(.custom("AvenirNext-DemiBold", size: 11))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                vm.timingMode == mode
+                                ? Color(red: 0.2, green: 0.95, blue: 0.72)
+                                : Color.white.opacity(0.08),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .foregroundStyle(vm.timingMode == mode ? .black : .white)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    vm.voStartMark = editor.currentTime
+                    attachNote = "Start mark @ \(clockLabel(editor.currentTime))"
+                } label: {
+                    Label("Mark start", systemImage: "flag.fill")
+                        .font(.custom("AvenirNext-DemiBold", size: 11))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(editor.project.videoURL == nil)
+
+                Button {
+                    vm.voEndMark = editor.currentTime
+                    if vm.timingMode == .fixedPace { vm.timingMode = .fitRange }
+                    attachNote = "End mark @ \(clockLabel(editor.currentTime))"
+                } label: {
+                    Label("Mark end", systemImage: "flag.checkered")
+                        .font(.custom("AvenirNext-DemiBold", size: 11))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(editor.project.videoURL == nil)
+            }
+
+            HStack {
+                Text("Start \(clockLabel(vm.voStartMark ?? editor.currentTime))")
+                Spacer()
+                if let end = vm.voEndMark {
+                    Text("End \(clockLabel(end))")
+                } else if vm.timingMode == .fitRange {
+                    Text("End — mark end on video")
+                        .foregroundStyle(Color(red: 1, green: 0.75, blue: 0.35))
+                }
+            }
+            .font(.custom("AvenirNext-Medium", size: 11))
+            .foregroundStyle(.white.opacity(0.5))
+
+            Text(vm.voSyncSummary)
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(Color(red: 0.2, green: 0.95, blue: 0.72).opacity(0.9))
+
+            Text(vm.timingMode.subtitle)
+                .font(.custom("AvenirNext-Medium", size: 10))
+                .foregroundStyle(.white.opacity(0.35))
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func clockLabel(_ t: TimeInterval) -> String {
+        let m = Int(max(0, t)) / 60
+        let s = Int(max(0, t)) % 60
+        return String(format: "%d:%02d", m, s)
     }
 
     private var legend: some View {

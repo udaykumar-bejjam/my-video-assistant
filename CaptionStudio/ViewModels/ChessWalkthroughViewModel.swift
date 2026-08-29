@@ -12,6 +12,11 @@ final class ChessWalkthroughViewModel: ObservableObject {
     @Published var plyIndex: Int = 0
     @Published var isPlaying = false
     @Published var secondsPerMove: Double = 1.35
+    /// Project-video mark where the first ply begins (VO sync).
+    @Published var voStartMark: TimeInterval? = nil
+    /// Project-video mark where the last ply ends (fit-range mode).
+    @Published var voEndMark: TimeInterval? = nil
+    @Published var timingMode: ChessTimingMode = .fixedPace
     @Published var errorMessage: String?
     @Published var lastCallout: String?
     @Published var animatingMove: ChessAnnotatedMove?
@@ -37,6 +42,37 @@ final class ChessWalkthroughViewModel: ObservableObject {
     }
 
     var moves: [ChessAnnotatedMove] { result?.moves ?? [] }
+
+    var voSyncSummary: String {
+        let n = max(1, moves.count)
+        let start = voStartMark ?? 0
+        let pace = ChessVOClock.effectivePace(
+            mode: timingMode,
+            startOffset: start,
+            endOffset: voEndMark,
+            moveCount: n,
+            secondsPerMove: secondsPerMove
+        )
+        let end = ChessVOClock.endTime(
+            mode: timingMode,
+            startOffset: start,
+            endOffset: voEndMark,
+            moveCount: n,
+            secondsPerMove: secondsPerMove
+        )
+        let fmt: (TimeInterval) -> String = { t in
+            let m = Int(t) / 60
+            let s = Int(t) % 60
+            return String(format: "%d:%02d", m, s)
+        }
+        switch timingMode {
+        case .fixedPace:
+            return "Start \(fmt(start)) · \(String(format: "%.2fs", pace))/move · ends ~\(fmt(end))"
+        case .fitRange:
+            return "VO \(fmt(start))→\(fmt(end)) · \(n) plies · \(String(format: "%.2fs", pace))/move"
+        }
+    }
+
     var currentBoard: ChessBoard {
         let idx = min(max(0, plyIndex), boards.count - 1)
         return boards[idx]

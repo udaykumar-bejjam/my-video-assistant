@@ -22,6 +22,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - **1:1 square** canvas + **AspectOverlayRemapper** (9:16 / 16:9 / 1:1 batch)
 - **App ↔ server enhance heuristic parity** (`AssetLibraries/heuristic/parity-contract.json`, `heuristicCore.js`, `HeuristicParity.swift`)
 - **True LUFS loudness** on export (`AudioNormalizeService` BS.1770 → −14 LUFS + peak ceiling)
+- **Chess VO clock sync** (`ChessVOClock` fixed pace / fit-to-range start+end marks)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -54,7 +55,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 | ID | Enhancement |
 |----|-------------|
 | P1.7 | Bundle Stockfish binary in app for guaranteed UCI |
-| P1.8 | Sync chess to imported game video clock (multi-offset UI) |
+| ~~P1.8~~ | ~~Sync chess to imported game video clock~~ | **Shipped** (`ChessVOClock` fixed/fit) |
 | ~~P1.9~~ | ~~PGN from file / lichess / chess.com URL~~ | **Shipped** |
 
 ---
@@ -85,8 +86,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.8** — sync chess overlay to game video clock.
-2. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
-3. **P0.5** — notarized Mac builds.
-4. **P1.7** — bundle Stockfish binary.
-5. **P1.4** — waveform on audio lane.
+1. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+2. **P0.5** — notarized Mac builds.
+3. **P1.7** — bundle Stockfish binary.
+4. **P1.4** — waveform on audio lane.
+5. **P2** — music bed track.

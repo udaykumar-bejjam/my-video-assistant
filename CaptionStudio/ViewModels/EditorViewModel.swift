@@ -1823,37 +1823,83 @@ final class EditorViewModel: ObservableObject {
         pgn: String,
         secondsPerMove: Double,
         startOffset: TimeInterval? = nil,
+        endOffset: TimeInterval? = nil,
+        timingMode: ChessTimingMode = .fixedPace,
         includeSFX: Bool = true,
         title: String = "Chess"
     ) {
         registerUndoCheckpoint()
         let offset = startOffset ?? currentTime
+        var end = endOffset
+        if timingMode == .fitRange {
+            let moves = (try? ChessPGNParser.parse(pgn).moves.count) ?? 0
+            let minEnd = offset + Double(max(1, moves)) * 0.05
+            if let e = end {
+                end = max(minEnd, e)
+            } else {
+                end = offset + Double(max(1, moves)) * max(0.05, secondsPerMove)
+            }
+        }
         let layout = ChessBoardLayout(originX: 0.58, originY: 0.58, size: 0.38, whiteAtBottom: true)
         let spec = ChessWalkthroughSpec(
             pgn: pgn,
             secondsPerMove: secondsPerMove,
             startOffset: max(0, offset),
+            endOffset: end,
+            timingMode: timingMode,
             layout: layout,
             includeCallouts: true,
             includeSFX: includeSFX,
             title: title
         )
         project.chessOverlay = spec
+        rebuildChessOverlaySFX(spec: spec, includeSFX: includeSFX)
+        let moveCount = (try? ChessPGNParser.parse(pgn).moves.count) ?? 0
+        let pace = spec.effectivePace(moveCount: moveCount)
+        draftMessage = timingMode == .fitRange
+            ? "Chess VO sync \(formatClock(spec.startOffset))→\(formatClock(spec.endTime(moveCount: moveCount))) · \(String(format: "%.2fs", pace))/move"
+            : "Chess overlay attached at \(formatClock(spec.startOffset))"
+    }
 
-        project.soundEffects.removeAll { ($0.reason ?? "").hasPrefix("chess:") }
-        if includeSFX, let moves = try? ChessPGNParser.parse(pgn).moves {
-            for (i, move) in moves.enumerated() {
-                project.soundEffects.append(
-                    SoundEffectCue(
-                        assetId: move.category.sfxId,
-                        startTime: spec.startOffset + Double(i) * spec.secondsPerMove,
-                        gain: move.category == .normal ? 0.45 : 0.85,
-                        reason: "chess:\(move.san)"
-                    )
-                )
-            }
+    /// Update start/end/mode on an existing chess overlay and rebuild SFX cues.
+    func updateChessOverlayClock(
+        startOffset: TimeInterval? = nil,
+        endOffset: TimeInterval? = nil,
+        timingMode: ChessTimingMode? = nil,
+        secondsPerMove: Double? = nil
+    ) {
+        guard var spec = project.chessOverlay else { return }
+        registerUndoCheckpoint()
+        if let startOffset { spec.startOffset = max(0, startOffset) }
+        if let timingMode { spec.timingMode = timingMode }
+        if let secondsPerMove { spec.secondsPerMove = max(0.05, secondsPerMove) }
+        if let endOffset {
+            spec.endOffset = max(spec.startOffset + 0.05, endOffset)
         }
-        draftMessage = "Chess overlay attached at \(formatClock(spec.startOffset))"
+        if spec.timingMode == .fitRange, spec.endOffset == nil {
+            let moves = (try? ChessPGNParser.parse(spec.pgn).moves.count) ?? 0
+            spec.endOffset = spec.startOffset + Double(max(1, moves)) * spec.secondsPerMove
+        }
+        project.chessOverlay = spec
+        rebuildChessOverlaySFX(spec: spec, includeSFX: spec.includeSFX)
+        draftMessage = "Chess VO clock updated"
+    }
+
+    private func rebuildChessOverlaySFX(spec: ChessWalkthroughSpec, includeSFX: Bool) {
+        project.soundEffects.removeAll { ($0.reason ?? "").hasPrefix("chess:") }
+        guard includeSFX, let moves = try? ChessPGNParser.parse(spec.pgn).moves, !moves.isEmpty else { return }
+        let starts = spec.moveStartTimes(moveCount: moves.count)
+        for (i, move) in moves.enumerated() {
+            let t = i < starts.count ? starts[i] : spec.startOffset + Double(i) * spec.secondsPerMove
+            project.soundEffects.append(
+                SoundEffectCue(
+                    assetId: move.category.sfxId,
+                    startTime: t,
+                    gain: move.category == .normal ? 0.45 : 0.85,
+                    reason: "chess:\(move.san)"
+                )
+            )
+        }
     }
 
     func clearChessOverlay() {
