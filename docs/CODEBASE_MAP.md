@@ -115,6 +115,7 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 |--------|------------|
 | Telugu timing | `WhisperTranscriptionClient.swift`, [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
 | Timeline drag | `TimelineWorkspaceView.swift`, `EditorViewModel.applyTimelineDrag` / `applyTimelineMultiRetime`, `TimelineSnap` |
+| Preview SFX | `TimelineSFXPreview.swift`, `EditorViewModel.syncTimelineSFX` / Audio layer toggle |
 | AI Place | `CursorEnhancerClient.swift` → `enhance.js` / `libraries.js` |
 | Export | `VideoExportService.swift` |
 | Chess | `ChessEngine.swift`, `ChessWalkthroughViewModel.swift` |
