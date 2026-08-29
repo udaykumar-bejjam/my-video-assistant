@@ -108,6 +108,7 @@ list when implementing; keep this index updated when adding modules.
 |------|---------|
 | `src/server.js` | Express app, routes, static libraries, `/transcribe` |
 | `src/enhance.js` | Cursor SDK vs heuristic entry; duration resolve |
+| `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
 | `src/broll.js` | Sticker pairing for strong hits |
