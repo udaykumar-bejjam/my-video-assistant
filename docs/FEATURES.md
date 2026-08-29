@@ -81,7 +81,7 @@ for how they are wired.
 
 - Enhancer presets: Balanced / Podcast / Hype / Quiet
 - Dialogue gain, SFX bus gain
-- Normalize loudness (export peak match)
+- Normalize loudness (export **−14 LUFS** BS.1770 + peak ceiling; peak fallback if clip too short)
 - Duck dialogue under SFX (+ duck amount)
 - Every timeline SFX listed: start, gain, mute, preview
 - Settings persist on project and drive export mix

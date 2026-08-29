@@ -76,7 +76,7 @@ list when implementing; keep this index updated when adding modules.
 | `VideoExportService.swift` | Burn-in captions/overlays/GIF frames; SFX mix; audio settings |
 | `VideoStitchService.swift` | Chunked export then concatenate |
 | `CoverExportService.swift` | Cover PNG from frame + cover text |
-| `AudioNormalizeService.swift` | Peak analysis; per-track gains + duck windows |
+| `AudioNormalizeService.swift` | LUFS (BS.1770) + peak ceiling; duck windows |
 | `AnimatedGIFDecoder.swift` | Decode GIF frames for preview/export |
 | `ChessEngine.swift` | Board state, SAN apply, PGN parser |
 | `ChessPGNImportService.swift` | File / Lichess / chess.com URL → PGN text |
@@ -113,6 +113,7 @@ list when implementing; keep this index updated when adding modules.
 | `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/timelineSnap.js` | Timeline snap / multi-retime helpers (P1.2) |
 | `src/chessPgnImport.js` | Lichess / chess.com URL resolve + PGN fetch (P1.9) |
+| `src/lufs.js` | BS.1770 LUFS metering + gain (P1.14) |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
 | `src/broll.js` | Sticker pairing for strong hits |

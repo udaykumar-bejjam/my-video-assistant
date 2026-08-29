@@ -219,7 +219,7 @@ struct AudioLayerPanel: View {
                     Text("Normalize loudness")
                         .font(.custom("AvenirNext-DemiBold", size: 12))
                         .foregroundStyle(.white)
-                    Text("Peak-match dialogue on export")
+                    Text("Target −14 LUFS (BS.1770) with peak ceiling")
                         .font(.custom("AvenirNext-Medium", size: 10))
                         .foregroundStyle(.white.opacity(0.4))
                 }
@@ -806,7 +806,7 @@ struct ExportPanelView: View {
                     Text("Normalize loudness")
                         .font(.custom("AvenirNext-DemiBold", size: 13))
                         .foregroundStyle(.white)
-                    Text("Keeps dialogue + SFX levels consistent across posts")
+                    Text("−14 LUFS (BS.1770) with peak ceiling on export")
                         .font(.custom("AvenirNext-Medium", size: 11))
                         .foregroundStyle(.white.opacity(0.45))
                 }

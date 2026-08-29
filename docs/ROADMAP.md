@@ -63,7 +63,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 
 | Item | Why | Touches |
 |------|-----|---------|
-| True LUFS metering (replace peak-only) | Platform-safe loudness | `AudioNormalizeService` |
+| True LUFS metering (replace peak-only) | Platform-safe loudness | `AudioNormalizeService` | **Shipped** (−14 LUFS + peak ceiling) |
 | Per-track EQ / compressor presets on Audio layer | Stronger enhancers story | Export audio taps |
 | Music bed track (ducked under dialogue) | Beyond one-shot SFX | New cue type + mix |
 

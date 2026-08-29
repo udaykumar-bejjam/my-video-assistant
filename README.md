@@ -160,7 +160,7 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 - **Distribution:** enhance returns `title` / `coverText` / `hashtags` / `hookLine` — shown on Export + share sheet with one-tap copy and cover PNG export  
 - **Safe zone:** Reels/TikTok chrome guide in preview (toggle); placements clamped in enhancer + Swift aligner  
-- **Loudness:** optional peak normalize on export so dialogue + SFX stay consistent across daily posts  
+- **Loudness:** optional normalize on export targets **−14 LUFS** (BS.1770) with a sample-peak ceiling so dialogue + SFX stay consistent without clipping  
 
 ## Languages, fonts & significant word hits
 

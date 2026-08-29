@@ -10,8 +10,6 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 - Telugu + EN dual-pass ASR (`WhisperTranscriptionClient`)
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
-- Timeline **multi-select + snap guides** (`TimelineSnap`, Multi toggle / Shift·⌘)
-- Chess Walkthrough (interactive)
 - Chess **PGN import** from file / Lichess / chess.com (`ChessPGNImportService`)
 - Chess **MP4 export** (`ChessExportService`)
 - Chess **project video overlay** (`ChessWalkthroughSpec` + export/preview)
@@ -20,6 +18,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
 - **1:1 square** canvas + **AspectOverlayRemapper** (9:16 / 16:9 / 1:1 batch)
 - **App ↔ server enhance heuristic parity** (`AssetLibraries/heuristic/parity-contract.json`, `heuristicCore.js`, `HeuristicParity.swift`)
+- Timeline **multi-select + snap guides** (`TimelineSnap`, Multi toggle / Shift·⌘)
+- **True LUFS loudness** on export (`AudioNormalizeService` BS.1770 → −14 LUFS + peak ceiling)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -65,7 +65,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 | P1.11 | Brand kit fully honored on server agent path |
 | P1.12 | User-imported GIF/PNG/SFX folders |
 | P1.13 | Placement density slider |
-| P1.14 | True LUFS loudness |
+| ~~P1.14~~ | ~~True LUFS loudness~~ | **Shipped** (−14 LUFS + peak ceiling) |
 | P1.15 | ~~1:1 aspect preset~~ | **Shipped** (1080×1080 + batch) |
 | P1.16 | Soft-sub track toggle |
 
@@ -83,8 +83,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.14** — true LUFS loudness.
-2. **P0.5** — notarized Mac builds.
-3. **P1.7** — bundle Stockfish binary.
-4. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
-5. **P1.8** — sync chess overlay to game video clock.
+1. **P0.5** — notarized Mac builds.
+2. **P1.7** — bundle Stockfish binary.
+3. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+4. **P1.8** — sync chess overlay to game video clock.
+5. **P1.4** — waveform on audio lane.
