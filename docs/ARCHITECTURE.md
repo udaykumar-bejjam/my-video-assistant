@@ -1,7 +1,7 @@
 # CaptionStudio — Architecture
 
-Last updated for `master` (Audio layer, project save/load + session resume,
-full-duration AI Place, animated GIF export).
+Last updated for `master` after merge of Telugu ASR, zoomable timeline, Chess
+Walkthrough, Iconify sync, and documentation suites.
 
 ---
 
@@ -11,15 +11,16 @@ full-duration AI Place, animated GIF export).
 ┌─────────────┐     ┌──────────────────┐     ┌────────────────────┐
 │  SwiftUI    │────▶│  EditorViewModel │────▶│  AVFoundation      │
 │  Editor     │◀────│  (single source  │     │  export / stitch   │
-└─────────────┘     │   of truth)      │     └────────────────────┘
-                    └────────┬─────────┘
-                             │
+│  + Chess    │     │   of truth)      │     └────────────────────┘
+│  Walkthrough│     └────────┬─────────┘
+└─────────────┘              │
               ┌──────────────┼──────────────┐
               ▼              ▼              ▼
       Transcription    Media libraries   ProjectStore
-      (Apple Speech)   (catalog.json)    (Projects/*.json)
-              │
-              ▼
+      Apple Speech +   (catalog.json)    (Projects/*.json)
+      Whisper (TE)           │
+              │              ▼
+              ▼         TimelineWorkspaceView
       CursorEnhancerClient ──HTTP──▶ enhancer-server :8787
                                          │
                               ┌──────────┴──────────┐
@@ -30,6 +31,9 @@ full-duration AI Place, animated GIF export).
 
 Without `CURSOR_API_KEY` (or if the server is down), enhance returns the **same
 JSON schema** via heuristics so the editor stays usable offline.
+
+Chess Walkthrough uses a separate view model (`ChessWalkthroughViewModel`) and
+is interactive-only today (not burned into export yet).
 
 ---
 
@@ -68,12 +72,16 @@ shape / watermark overlays (no library ids) are preserved across re-enhance.
 ### 3.1 Captions
 
 1. Import copies video into app sandbox (Caches → later Projects on save).
-2. `TranscriptionService` extracts audio → `SFSpeechRecognizer` (locale from
-   `AppLanguage`) → phrase segments (~4–5 words) with word timings.
-3. Demo captions fill in when Speech is denied / unavailable.
+2. Language branch:
+   - **English** — `TranscriptionService` + Apple `SFSpeechRecognizer`
+   - **Telugu + EN** — `WhisperTranscriptionClient`: `gpt-transcribe` text +
+     `whisper-1` word clocks (never `language=te` on whisper-1); see
+     [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md)
+   - **Hindi** — Apple when available, else Whisper
+3. Demo captions fill in when Speech is denied / unavailable (EN path).
 4. Preview: `CaptionOverlayView` (karaoke / typewriter / pop…).
-5. Export: `VideoExportService.addCaptionLayers` (karaoke/typewriter burn-in on
-   master; plain phrase fallback).
+5. Export: `VideoExportService.addCaptionLayers` (karaoke/typewriter burn-in;
+   plain phrase fallback).
 
 ### 3.2 AI Place (enhance)
 

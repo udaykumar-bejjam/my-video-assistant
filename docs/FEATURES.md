@@ -18,13 +18,16 @@ for how they are wired.
 
 ## Captions
 
-- **AI Captions** — on-device Apple Speech (EN / Hindi / Telugu locales)
-- Word-level timings when Speech provides them
-- Demo captions if permission / recognizer unavailable
+- **AI Captions**
+  - English → on-device Apple Speech
+  - **Telugu + EN** → OpenAI (`gpt-transcribe` + `whisper-1` clocks); paste key via Home / Brand Kit (`APIKeyStore`)
+  - Hindi → Apple when available, else Whisper
+- Word-level timings when the engine provides them
+- Demo captions if permission / recognizer unavailable (EN)
 - Caption list: edit text, delete, scrub to segment
 - Styles: Bold White, Neon, Boxed, Outline, Soft Shadow, lowercase, UPPER
 - Animations in preview: none / fade / pop / bounce / karaoke / typewriter
-- Export burn-in matches style (including karaoke / typewriter on master)
+- Export burn-in matches style (including karaoke / typewriter)
 
 ---
 
@@ -43,10 +46,22 @@ for how they are wired.
 
 ## Layers & timeline
 
-- Multi-lane scrubber: Caps / Hits / Stick / Text / **Audio** / **SFX** / Trim
+- **`TimelineWorkspaceView`** — zoomable multi-lane workspace (fit media+1h → ~frame zoom)
+- Drag L/R to retime; drag across lanes to change kind / bring-to-front (`applyTimelineDrag`)
+- Lanes: Caps / Hits / Stick / Text / **Audio** / **SFX** (+ trim marks)
 - Layers tab: visual overlays (start/end/scale) + **Audio layer panel**
 - Select lane items → seek + focus inspector
 - Drag overlays on preview to reposition
+
+---
+
+## Chess Walkthrough
+
+- Home **Chess Walkthrough** or editor checkerboard button
+- Paste PGN / move list → animated Unicode board, category colors, arrows, boxes, SFX
+- Classification from annotations / NAGs / checks (no Stockfish yet)
+- Interactive only — **not** burned into video export yet
+- Details: [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md)
 
 ---
 

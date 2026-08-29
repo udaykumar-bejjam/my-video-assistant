@@ -42,6 +42,7 @@ list when implementing; keep this index updated when adding modules.
 | `ShortsPack.swift` | Pack recipe model, `EnhancementHook` |
 | `SafeZoneAndDistribution.swift` | Safe rects, `DistributionPackage` |
 | `ColorHex.swift` | Hex → Color |
+| `ChessAnalysis.swift` | Move categories, colors, arrows, annotated moves |
 
 ---
 
@@ -49,7 +50,8 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `ViewModels/EditorViewModel.swift` | All editor state: load, captions, enhance (chunked), apply plan, library place, trim, export, save/open session, audio settings |
+| `ViewModels/EditorViewModel.swift` | Editor hub: load, captions, enhance, timeline drag, trim, export, save |
+| `ViewModels/ChessWalkthroughViewModel.swift` | PGN snapshots, play/step, category SFX |
 
 ---
 
@@ -57,7 +59,9 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `TranscriptionService.swift` | Apple Speech → captions; demo fallback |
+| `TranscriptionService.swift` | Apple Speech → captions; routes Telugu to Whisper client |
+| `WhisperTranscriptionClient.swift` | OpenAI gpt-transcribe + whisper-1 clocks (Telugu dual-pass) |
+| `APIKeyStore.swift` | Keychain for OpenAI API key |
 | `CursorEnhancerClient.swift` | HTTP enhance + local heuristic plan |
 | `MediaLibraryStore.swift` | Load catalogs; resolve file URLs |
 | `PackLibrary.swift` | Load Shorts Packs |
@@ -72,6 +76,7 @@ list when implementing; keep this index updated when adding modules.
 | `CoverExportService.swift` | Cover PNG from frame + cover text |
 | `AudioNormalizeService.swift` | Peak analysis; per-track gains + duck windows |
 | `AnimatedGIFDecoder.swift` | Decode GIF frames for preview/export |
+| `ChessEngine.swift` | Board state, SAN apply, PGN parser |
 
 ---
 

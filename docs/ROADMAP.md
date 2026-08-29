@@ -27,12 +27,21 @@ Use technical scope (not calendar estimates).
 
 ### P1 — Edit surface
 
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
+| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history | Open |
+| Multi-select + snap guides | Precision edits | Timeline | Open |
+| Hide or dim phrase captions under dense word hits (optional toggle) | Reduce clutter | Export + preview flags | Open |
+
+### P1b — Chess (next)
+
 | Item | Why | Touches |
 |------|-----|---------|
-| Zoomable / drag-to-retime timeline | Faster than sliders alone | `EditorView` timeline, overlay/SFX models |
-| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history |
-| Preview SFX while playhead crosses cues | WYSIWYG audio | Player time observer + `previewSFX` |
-| Hide or dim phrase captions under dense word hits (optional toggle) | Reduce “two caption systems” clutter | Export + preview flags |
+| Burn chess walkthrough into export | Ship analysis videos | `VideoExportService` + board snapshots |
+| Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | New service → `ChessAnalysis` |
+| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI |
+| PGN from file / lichess / chess.com URL | Lower friction | Network + parse |
 
 ### P2 — Audio v2
 

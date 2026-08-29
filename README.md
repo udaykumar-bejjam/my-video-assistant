@@ -4,18 +4,21 @@ AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effect
 
 ## Documentation
 
-Deep project docs for humans and agents live under [`docs/`](./docs/README.md):
+Deep project docs live under [`docs/INDEX.md`](docs/INDEX.md) (also [`docs/README.md`](docs/README.md)):
 
 | Doc | Purpose |
 |-----|---------|
-| [Architecture](./docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
-| [Features](./docs/FEATURES.md) | Shipped capabilities |
-| [File index](./docs/FILE_INDEX.md) | Important source map |
-| [Data model](./docs/DATA_MODEL.md) | Runtime + disk schema |
-| [Development](./docs/DEVELOPMENT.md) | Build, test, release, debug |
-| [Roadmap](./docs/ROADMAP.md) | Planned enhancements |
-| [Contributing](./docs/CONTRIBUTING.md) | Change rules / regressions |
-| [Shorts maker plan](./docs/SHORTS_MAKER_PLAN.md) | Phases A–C (shipped) |
+| [INDEX](docs/INDEX.md) | Documentation hub |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
+| [FEATURES](docs/FEATURES.md) | Shipped capabilities |
+| [CODEBASE_MAP](docs/CODEBASE_MAP.md) / [FILE_INDEX](docs/FILE_INDEX.md) | Source maps |
+| [DATA_MODEL](docs/DATA_MODEL.md) | Runtime + disk schema |
+| [DEVELOPMENT](docs/DEVELOPMENT.md) | Build, test, release, debug |
+| [ROADMAP](docs/ROADMAP.md) / [ENHANCEMENT_ROADMAP](docs/ENHANCEMENT_ROADMAP.md) | Planned enhancements |
+| [TELUGU_ASR_PLAN](docs/TELUGU_ASR_PLAN.md) | Telugu / bilingual ASR |
+| [CHESS_WALKTHROUGH](docs/CHESS_WALKTHROUGH.md) | PGN chess walkthrough |
+| [CONTRIBUTING](docs/CONTRIBUTING.md) | Change rules / regressions |
+| [AGENTS.md](AGENTS.md) | Cursor Cloud (Linux = Node only) |
 
 ## Architecture
 
