@@ -114,6 +114,7 @@ list when implementing; keep this index updated when adding modules.
 | `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/timelineSnap.js` | Timeline snap / multi-retime helpers (P1.2) |
 | `src/chessPgnImport.js` | Lichess / chess.com URL resolve + PGN fetch (P1.9) |
+| `src/chessVOClock.js` | Fixed pace / fit-to-range ply times (P1.8) |
 | `src/lufs.js` | BS.1770 LUFS metering + gain (P1.14) |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
