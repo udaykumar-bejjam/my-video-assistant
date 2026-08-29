@@ -1,0 +1,21 @@
+{
+  "name": "captionstudio-iconify-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fetch Iconify icons as PNGs into CaptionStudio AssetLibraries",
+  "bin": {
+    "iconify-sync": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "sync-moods": "node src/cli.js sync-moods",
+    "search": "node src/cli.js search"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

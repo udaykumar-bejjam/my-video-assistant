@@ -42,6 +42,20 @@ Without `CURSOR_API_KEY`, the enhancer returns the **same JSON schema** via a mo
 
 Catalogs are JSON (`catalog.json`). The same trees are copied into `CaptionStudio/Resources/Libraries` for the app bundle.
 
+## Iconify sticker sync (optional)
+
+Fetch open-license icons into the PNG library for auto B-roll:
+
+```bash
+cd tools/iconify-sync
+npm install
+npm start -- search fire
+npm start -- add mdi:fire --tags power,hype,energy
+npm start -- sync-moods          # power / reveal / emotion / numbers / cta
+```
+
+See `tools/iconify-sync/README.md`. Writes to `AssetLibraries/pngs/` and the app Resources copy.
+
 ## Download (macOS)
 
 GitHub Actions builds an ad-hoc signed **CaptionStudio.app** zip:

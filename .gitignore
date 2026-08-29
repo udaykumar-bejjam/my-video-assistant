@@ -26,3 +26,4 @@ enhancer-server/.env
 *.mp4
 !AssetLibraries/**
 !CaptionStudio/Resources/Libraries/**
+tools/iconify-sync/node_modules/
