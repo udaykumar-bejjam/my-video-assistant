@@ -79,6 +79,7 @@ list when implementing; keep this index updated when adding modules.
 | `AudioNormalizeService.swift` | Peak analysis; per-track gains + duck windows |
 | `AnimatedGIFDecoder.swift` | Decode GIF frames for preview/export |
 | `ChessEngine.swift` | Board state, SAN apply, PGN parser |
+| `ChessPGNImportService.swift` | File / Lichess / chess.com URL → PGN text |
 
 ---
 
@@ -111,6 +112,7 @@ list when implementing; keep this index updated when adding modules.
 | `src/enhance.js` | Cursor SDK vs heuristic entry; duration resolve |
 | `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/timelineSnap.js` | Timeline snap / multi-retime helpers (P1.2) |
+| `src/chessPgnImport.js` | Lichess / chess.com URL resolve + PGN fetch (P1.9) |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
 | `src/broll.js` | Sticker pairing for strong hits |

@@ -112,7 +112,7 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .opacity(appear ? 1 : 0)
 
-                    Text("Paste PGN → animated move-by-move replay with Brilliant / Blunder callouts, arrows & SFX.")
+                    Text("Paste PGN, open a .pgn file, or fetch a Lichess / chess.com URL → animated move-by-move replay with Brilliant / Blunder callouts, arrows & SFX.")
                         .font(.custom("AvenirNext-Medium", size: 12))
                         .foregroundStyle(.white.opacity(0.4))
                         .multilineTextAlignment(.center)

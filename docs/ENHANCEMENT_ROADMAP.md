@@ -12,6 +12,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
 - Timeline **multi-select + snap guides** (`TimelineSnap`, Multi toggle / Shift·⌘)
 - Chess Walkthrough (interactive)
+- Chess **PGN import** from file / Lichess / chess.com (`ChessPGNImportService`)
 - Chess **MP4 export** (`ChessExportService`)
 - Chess **project video overlay** (`ChessWalkthroughSpec` + export/preview)
 - Heuristic + optional **Stockfish** eval (`ChessEvalService`)
@@ -52,7 +53,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 |----|-------------|
 | P1.7 | Bundle Stockfish binary in app for guaranteed UCI |
 | P1.8 | Sync chess to imported game video clock (multi-offset UI) |
-| P1.9 | PGN from file / lichess / chess.com URL |
+| ~~P1.9~~ | ~~PGN from file / lichess / chess.com URL~~ | **Shipped** |
 
 ---
 
@@ -82,8 +83,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.9** — PGN from file / lichess / chess.com URL.
-2. **P1.14** — true LUFS loudness.
-3. **P0.5** — notarized Mac builds.
-4. **P1.7** — bundle Stockfish binary.
-5. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+1. **P1.14** — true LUFS loudness.
+2. **P0.5** — notarized Mac builds.
+3. **P1.7** — bundle Stockfish binary.
+4. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+5. **P1.8** — sync chess overlay to game video clock.

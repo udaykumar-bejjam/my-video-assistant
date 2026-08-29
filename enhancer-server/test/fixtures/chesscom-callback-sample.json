@@ -1,0 +1,23 @@
+{
+  "game": {
+    "id": 169227053782,
+    "pgnHeaders": {
+      "Event": "Live Chess",
+      "Site": "Chess.com",
+      "Date": "2026.05.25",
+      "White": "LeonLiur",
+      "Black": "PLAYING_FROM_WORK",
+      "Result": "1/2-1/2",
+      "ECO": "B00",
+      "WhiteElo": 1304,
+      "BlackElo": 1286,
+      "TimeControl": "600",
+      "EndTime": "18:03:49 GMT+0000",
+      "Termination": "Game drawn by agreement",
+      "SetUp": "1",
+      "FEN": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    },
+    "moveList": "mC0KlB5QBKQKgvKUfA9zkszIpxZReg6SAS1SfeSK...",
+    "plyCount": 161
+  }
+}

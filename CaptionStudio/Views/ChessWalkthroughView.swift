@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Animated chess game walkthrough from pasted PGN / move notation.
 /// Steps through the board with colored move callouts, arrows, square boxes, and SFX.
@@ -7,6 +8,7 @@ struct ChessWalkthroughView: View {
     @EnvironmentObject private var editor: EditorViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var attachNote: String?
+    @State private var showFileImporter = false
 
     var body: some View {
         NavigationStack {
@@ -27,6 +29,7 @@ struct ChessWalkthroughView: View {
                     boardCard
                     calloutBanner
                     transport
+                    importBar
                     notationEditor
                 }
                 .padding(16)
@@ -94,6 +97,22 @@ struct ChessWalkthroughView: View {
             .sheet(isPresented: $vm.showExportShare) {
                 if let url = vm.exportURL {
                     ChessExportShareSheet(url: url)
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: {
+                    var types: [UTType] = [.plainText, .utf8PlainText, .data, .item]
+                    if let pgn = UTType(filenameExtension: "pgn") { types.insert(pgn, at: 0) }
+                    return types
+                }(),
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first { vm.importFromFile(url: url) }
+                case .failure(let error):
+                    vm.errorMessage = error.localizedDescription
                 }
             }
         }
@@ -247,6 +266,55 @@ struct ChessWalkthroughView: View {
             Text("Tip: mark moves with !! ? ?? !? or PGN $1–$6 NAGs. Unannotated moves get heuristic eval (or Stockfish if installed on PATH). Export MP4 burns the board walkthrough.")
                 .font(.custom("AvenirNext-Medium", size: 10))
                 .foregroundStyle(.white.opacity(0.35))
+        }
+    }
+
+    private var importBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Import game")
+                .font(.custom("AvenirNext-Medium", size: 11))
+                .foregroundStyle(.white.opacity(0.45))
+            HStack(spacing: 8) {
+                TextField("lichess.org/… or chess.com/game/live/…", text: $vm.importURLText)
+                    .textFieldStyle(.plain)
+                    .font(.system(.caption, design: .monospaced))
+                    .padding(8)
+                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Button {
+                    vm.importFromURL()
+                } label: {
+                    if vm.isImporting {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Fetch")
+                            .font(.custom("AvenirNext-DemiBold", size: 12))
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color(red: 0.2, green: 0.95, blue: 0.72).opacity(0.2), in: Capsule())
+                .foregroundStyle(Color(red: 0.2, green: 0.95, blue: 0.72))
+                .disabled(vm.isImporting || vm.importURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button {
+                    showFileImporter = true
+                } label: {
+                    Label("File", systemImage: "doc.badge.arrow.up")
+                        .font(.custom("AvenirNext-DemiBold", size: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08), in: Capsule())
+                .foregroundStyle(.white.opacity(0.85))
+                .disabled(vm.isImporting)
+            }
+            if let note = vm.importNote {
+                Text(note)
+                    .font(.custom("AvenirNext-Medium", size: 10))
+                    .foregroundStyle(Color(red: 0.2, green: 0.95, blue: 0.72).opacity(0.9))
+            }
         }
     }
 }

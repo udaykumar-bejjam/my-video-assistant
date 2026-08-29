@@ -17,9 +17,10 @@ This is a Linux cloud VM, so the **Swift/Xcode app cannot be built or run here**
 - `CURSOR_API_KEY` is **optional**. Without it, `/enhance` and the CLI return the same JSON schema via a deterministic heuristic, so the service is fully testable offline. Set the key only to exercise the live `@cursor/sdk` (`composer-2.5`) path.
 - Endpoints on `master`: `GET /health`, `GET /libraries`, `POST /enhance` (`{ captions, duration, packId?, ... }`), plus `POST /transcribe` when OpenAI is configured.
 - Non-obvious: `express.static` is mounted at `/libraries` before the JSON `GET /libraries` route in `src/server.js`. Catalog fetch may 301 to `/libraries/` (trailing slash) — check middleware order if responses look wrong.
-- Smoke tests: `npm test` (includes packs, broll, distribution, trim, full-duration, chess-eval, aspect-remap, heuristic-parity, **timeline-snap**).
+- Smoke tests: `npm test` (includes packs, broll, distribution, trim, full-duration, chess-eval, aspect-remap, heuristic-parity, timeline-snap, **chess-pgn-import**).
 - Offline enhance heuristic is shared via `AssetLibraries/heuristic/parity-contract.json` (Node `heuristicCore.js` + Swift `HeuristicParity` / `CursorEnhancerClient.localHeuristicPlan`).
 - Timeline snap math is shared via `enhancer-server/src/timelineSnap.js` ↔ Swift `TimelineSnap`.
+- Chess PGN URL resolve is shared via `enhancer-server/src/chessPgnImport.js` ↔ Swift `ChessPGNImportService`.
 - CLI smoke (offline heuristic): `npm run enhance -- examples/sample-captions.json`.
 - There is no lint config or build step for the server; it runs directly from source.
 - Deep docs: [`docs/README.md`](docs/README.md) / [`docs/INDEX.md`](docs/INDEX.md). Merge history: [`docs/MERGE_HISTORY.md`](docs/MERGE_HISTORY.md).

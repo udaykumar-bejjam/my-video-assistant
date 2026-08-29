@@ -23,6 +23,9 @@ final class ChessWalkthroughViewModel: ObservableObject {
     @Published var exportURL: URL?
     @Published var evalEngineName: String = "heuristic"
     @Published var showExportShare = false
+    @Published var importURLText: String = ""
+    @Published var isImporting = false
+    @Published var importNote: String?
 
     private var playTask: Task<Void, Never>?
     private var sfxPlayers: [AVAudioPlayer] = []
@@ -43,7 +46,7 @@ final class ChessWalkthroughViewModel: ObservableObject {
         return moves[plyIndex - 1]
     }
     var progressLabel: String {
-        guard let result else { return "Paste notation to begin" }
+        guard let result else { return "Paste notation, import a file, or paste a game URL" }
         if plyIndex == 0 { return "Start · \(result.moves.count) moves · eval:\(evalEngineName)" }
         if let m = currentMove {
             let side = m.isWhite ? "White" : "Black"
@@ -82,6 +85,49 @@ final class ChessWalkthroughViewModel: ObservableObject {
             result = nil
             boards = [ChessBoard.starting()]
             plyIndex = 0
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Load PGN from a Lichess / chess.com / .pgn URL, then analyze.
+    func importFromURL() {
+        let raw = importURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            errorMessage = "Paste a Lichess, chess.com, or .pgn URL first."
+            return
+        }
+        isImporting = true
+        errorMessage = nil
+        importNote = "Fetching game…"
+        Task {
+            defer { isImporting = false }
+            do {
+                let imported = try await ChessPGNImportService.fetch(from: raw)
+                pgnText = imported.pgn
+                importNote = "Imported via \(imported.source)"
+                loadNotation()
+            } catch {
+                importNote = nil
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Load PGN bytes from a file picker URL (security-scoped).
+    func importFromFile(url: URL) {
+        isImporting = true
+        errorMessage = nil
+        defer { isImporting = false }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let text = try ChessPGNImportService.loadFile(url: url)
+            pgnText = text
+            importURLText = url.lastPathComponent
+            importNote = "Loaded \(url.lastPathComponent)"
+            loadNotation()
+        } catch {
+            importNote = nil
             errorMessage = error.localizedDescription
         }
     }

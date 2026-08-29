@@ -63,6 +63,7 @@ for how they are wired.
 
 - Home **Chess Walkthrough** or editor checkerboard button
 - Paste PGN / move list → animated Unicode board, category colors, arrows, boxes, SFX
+- **Import** from `.pgn` file, Lichess URL, or chess.com live/daily game URL
 - Classification from annotations / NAGs / checks, then **heuristic or Stockfish eval** for remaining moves
 - **Export MP4** of the walkthrough alone, or **Attach to video** to composite a corner board onto the project timeline (preview + burn-in + SFX)
 - Details: [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md)

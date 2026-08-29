@@ -44,7 +44,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Burn chess walkthrough into export | Ship analysis videos | `ChessExportService` | **Shipped** (standalone MP4) |
 | Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEvalService` | **Shipped** (heuristic always; Stockfish if binary present) |
 | Sync board clock to imported game VO | Coach commentary + board | Shared offset UI | Open |
-| PGN from file / lichess / chess.com URL | Lower friction | Network + parse | Open |
+| PGN from file / lichess / chess.com URL | Lower friction | `ChessPGNImportService` | **Shipped** |
 | Chess board as overlay on project video | Composite with VO | `VideoExportService` + `ChessWalkthroughSpec` | **Shipped** |
 
 ### P1c — Editor history
