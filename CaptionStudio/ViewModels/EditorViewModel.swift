@@ -1324,22 +1324,49 @@ final class EditorViewModel: ObservableObject {
     func togglePlayback() {
         guard let player else { return }
         if isPlaying {
-            player.pause()
-            isPlaying = false
-            stopPreviewSFXPlayers()
-            previewDuckUntil = nil
-            refreshPreviewDialogueVolume()
+            pausePlayback()
         } else {
             if currentTime >= project.duration - 0.05 {
                 seek(to: 0)
             }
-            // Set playing BEFORE play() so the first time-observer tick can fire SFX.
-            prepareTimelineSFXForPlayback(at: currentTime)
-            isPlaying = true
-            Self.activatePlaybackAudioSessionIfNeeded()
-            refreshPreviewDialogueVolume()
-            player.play()
+            applyPlaybackRate(1)
         }
+    }
+
+    /// Pause and clear shuttle rate (K / Space while playing).
+    func pausePlayback() {
+        guard let player else { return }
+        player.pause()
+        player.rate = 0
+        isPlaying = false
+        stopPreviewSFXPlayers()
+        previewDuckUntil = nil
+        refreshPreviewDialogueVolume()
+    }
+
+    /// Apply AVPlayer rate for J/K/L shuttle (negative = reverse when the asset allows).
+    func applyPlaybackRate(_ rate: Float) {
+        guard let player else { return }
+        if abs(rate) < 0.01 {
+            pausePlayback()
+            return
+        }
+        if currentTime >= project.duration - 0.05, rate > 0 {
+            seek(to: 0)
+        }
+        prepareTimelineSFXForPlayback(at: currentTime)
+        isPlaying = true
+        Self.activatePlaybackAudioSessionIfNeeded()
+        refreshPreviewDialogueVolume()
+        player.rate = rate
+    }
+
+    /// J / L shuttle bump. `forward` true = L, false = J.
+    func bumpPlaybackJKL(forward: Bool) {
+        guard player != nil else { return }
+        let current = player?.rate ?? 0
+        let next = EditorShortcuts.nextRate(current: current, forward: forward)
+        applyPlaybackRate(next)
     }
 
     func seek(to time: TimeInterval) {
@@ -1347,6 +1374,61 @@ final class EditorViewModel: ObservableObject {
         player?.seek(to: cm, toleranceBefore: .zero, toleranceAfter: .zero)
         currentTime = max(0, time)
         resetTimelineSFXTracking(at: currentTime)
+    }
+
+    /// Nudge selected timeline clips, or step the playhead when nothing is selected.
+    @discardableResult
+    func nudgeSelectionOrPlayhead(delta: TimeInterval) -> Bool {
+        let refs = timelineKeyboardSelectionRefs()
+        if !refs.isEmpty {
+            applyTimelineMultiRetime(refs: refs, delta: delta, seekToSelection: false)
+            return true
+        }
+        seek(to: min(max(0, currentTime + delta), max(project.duration, 0)))
+        return true
+    }
+
+    /// Delete all currently selected captions / overlays / SFX (one undo step).
+    @discardableResult
+    func deleteTimelineSelection() -> Bool {
+        var captionIDs = selectedCaptionIDs
+        if let id = selectedCaptionID { captionIDs.insert(id) }
+        var overlayIDs = selectedOverlayIDs
+        if let id = selectedOverlayID { overlayIDs.insert(id) }
+        var sfxIDs = selectedSoundEffectIDs
+        if let id = selectedSoundEffectID { sfxIDs.insert(id) }
+
+        guard !captionIDs.isEmpty || !overlayIDs.isEmpty || !sfxIDs.isEmpty else { return false }
+
+        registerUndoCheckpoint()
+        if !captionIDs.isEmpty {
+            project.captions.removeAll { captionIDs.contains($0.id) }
+        }
+        if !overlayIDs.isEmpty {
+            project.overlays.removeAll { overlayIDs.contains($0.id) }
+        }
+        if !sfxIDs.isEmpty {
+            project.soundEffects.removeAll { sfxIDs.contains($0.id) }
+        }
+        selectedCaptionID = nil
+        selectedOverlayID = nil
+        selectedSoundEffectID = nil
+        clearTimelineMultiSelection()
+        return true
+    }
+
+    private func timelineKeyboardSelectionRefs() -> [TimelineClipRef] {
+        var refs: [TimelineClipRef] = []
+        var captionIDs = selectedCaptionIDs
+        if let id = selectedCaptionID { captionIDs.insert(id) }
+        refs.append(contentsOf: captionIDs.map { .caption($0) })
+        var overlayIDs = selectedOverlayIDs
+        if let id = selectedOverlayID { overlayIDs.insert(id) }
+        refs.append(contentsOf: overlayIDs.map { .overlay($0) })
+        var sfxIDs = selectedSoundEffectIDs
+        if let id = selectedSoundEffectID { sfxIDs.insert(id) }
+        refs.append(contentsOf: sfxIDs.map { .sfx($0) })
+        return refs
     }
 
     // MARK: - Captions / style
@@ -1369,6 +1451,7 @@ final class EditorViewModel: ObservableObject {
         registerUndoCheckpoint()
         project.captions.removeAll { $0.id == id }
         if selectedCaptionID == id { selectedCaptionID = nil }
+        selectedCaptionIDs.remove(id)
     }
 
     // MARK: - Overlays
@@ -1402,6 +1485,7 @@ final class EditorViewModel: ObservableObject {
         registerUndoCheckpoint()
         project.overlays.removeAll { $0.id == id }
         if selectedOverlayID == id { selectedOverlayID = nil }
+        selectedOverlayIDs.remove(id)
     }
 
     /// Retiming + optional lane change from the zoomable timeline drag.
@@ -1453,7 +1537,7 @@ final class EditorViewModel: ObservableObject {
     }
 
     /// Shift several same-kind clips by the same delta (multi-select drag). Lane stays put.
-    func applyTimelineMultiRetime(refs: [TimelineClipRef], delta: TimeInterval) {
+    func applyTimelineMultiRetime(refs: [TimelineClipRef], delta: TimeInterval, seekToSelection: Bool = true) {
         guard abs(delta) > 0.0005, !refs.isEmpty else { return }
         registerUndoCheckpoint()
         let mediaEnd = max(project.duration, 0.1)
@@ -1505,22 +1589,21 @@ final class EditorViewModel: ObservableObject {
         project.overlays = overlays
         project.soundEffects = sfx
 
-        if let first = refs.first {
-            switch first {
-            case .caption(let id):
-                selectedCaptionID = id
-                seek(to: project.captions.first(where: { $0.id == id })?.startTime ?? currentTime)
-                editorTab = .captions
-            case .overlay(let id):
-                selectedOverlayID = id
-                seek(to: project.overlays.first(where: { $0.id == id })?.startTime ?? currentTime)
-                editorTab = .overlays
-            case .sfx(let id):
-                selectSoundEffect(id)
-                seek(to: project.soundEffects.first(where: { $0.id == id })?.startTime ?? currentTime)
-            default:
-                break
-            }
+        guard seekToSelection, let first = refs.first else { return }
+        switch first {
+        case .caption(let id):
+            selectedCaptionID = id
+            seek(to: project.captions.first(where: { $0.id == id })?.startTime ?? currentTime)
+            editorTab = .captions
+        case .overlay(let id):
+            selectedOverlayID = id
+            seek(to: project.overlays.first(where: { $0.id == id })?.startTime ?? currentTime)
+            editorTab = .overlays
+        case .sfx(let id):
+            selectSoundEffect(id)
+            seek(to: project.soundEffects.first(where: { $0.id == id })?.startTime ?? currentTime)
+        default:
+            break
         }
     }
 
@@ -1796,6 +1879,7 @@ final class EditorViewModel: ObservableObject {
         registerUndoCheckpoint()
         project.soundEffects.removeAll { $0.id == id }
         if selectedSoundEffectID == id { selectedSoundEffectID = nil }
+        selectedSoundEffectIDs.remove(id)
     }
 
     func updateAudioSettings(_ settings: ProjectAudioSettings) {

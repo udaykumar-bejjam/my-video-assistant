@@ -65,6 +65,7 @@ list when implementing; keep this index updated when adding modules.
 | `CursorEnhancerClient.swift` | HTTP enhance + local heuristic (parity-contract v1) |
 | `HeuristicParity.swift` | Loads shared filler/punchy/rules; thinWordHits |
 | `TimelineSnap.swift` | Snap interval / anchors (parity with `timelineSnap.js`) |
+| `EditorShortcuts.swift` | J/K/L rate ladder + nudge step constants |
 | `MediaLibraryStore.swift` | Load catalogs; resolve file URLs |
 | `PackLibrary.swift` | Load Shorts Packs |
 | `BrandKitStore.swift` | UserDefaults brand kit |
@@ -90,6 +91,7 @@ list when implementing; keep this index updated when adding modules.
 |------|---------|
 | `HomeView.swift` | Landing, import/demo, packs, saved projects, Chess CTA, API key |
 | `EditorView.swift` | Chrome, preview, tabs, AI actions, chess button |
+| `EditorShortcutsModifier.swift` | J/K/L, Space, Delete, arrow nudge (skips text fields) |
 | `TimelineWorkspaceView.swift` | Zoomable multi-lane timeline; multi-select, snap guides, drag retime |
 | `CaptionListView.swift` | Caption editing + style picker |
 | `CaptionOverlayView.swift` | Live captions + `LiveOverlayCanvas` |
@@ -113,6 +115,7 @@ list when implementing; keep this index updated when adding modules.
 | `src/enhance.js` | Cursor SDK vs heuristic entry; duration resolve |
 | `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/timelineSnap.js` | Timeline snap / multi-retime helpers (P1.2) |
+| `src/editorShortcuts.js` | J/K/L rate ladder + nudge steps (P1.3) |
 | `src/chessPgnImport.js` | Lichess / chess.com URL resolve + PGN fetch (P1.9) |
 | `src/chessVOClock.js` | Fixed pace / fit-to-range ply times (P1.8) |
 | `src/lufs.js` | BS.1770 LUFS metering + gain (P1.14) |

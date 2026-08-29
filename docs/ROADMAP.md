@@ -34,6 +34,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
 | Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorHistory` | **Shipped** |
 | Multi-select + snap guides | Precision edits | `TimelineSnap`, multi-retime | **Shipped** |
+| Keyboard shortcuts (J/K/L, delete, nudge) | Faster transport + trim | `EditorShortcuts`, `EditorShortcutsModifier` | **Shipped** |
 | Preview SFX while playhead crosses cues | WYSIWYG audio | `TimelineSFXPreview`, Audio layer toggle | **Shipped** |
 | Hide or dim phrase captions under dense word hits | Reduce clutter | Export + preview flags | Open |
 
@@ -102,7 +103,6 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 ## Suggested implementation order
 
 ```text
-P1.3 keyboard shortcuts (J/K/L, delete, nudge)
 P1.7 bundle Stockfish
 P2 music bed track
 P3 trim v2 / long Speech / more Indic languages

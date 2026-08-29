@@ -60,6 +60,7 @@ struct EditorView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .editorTransportShortcuts()
     }
 
     private var editorChrome: some View {

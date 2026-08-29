@@ -23,6 +23,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - **App ↔ server enhance heuristic parity** (`AssetLibraries/heuristic/parity-contract.json`, `heuristicCore.js`, `HeuristicParity.swift`)
 - **True LUFS loudness** on export (`AudioNormalizeService` BS.1770 → −14 LUFS + peak ceiling)
 - **Chess VO clock sync** (`ChessVOClock` fixed pace / fit-to-range start+end marks)
+- **Keyboard shortcuts** J/K/L, Delete, arrow nudge (`EditorShortcuts`)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -44,7 +45,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 | ID | Enhancement |
 |----|-------------|
 | ~~P1.2~~ | ~~Multi-select + snap guides~~ | **Shipped** |
-| P1.3 | Keyboard shortcuts (J/K/L, delete, nudge) beyond undo |
+| ~~P1.3~~ | ~~Keyboard shortcuts (J/K/L, delete, nudge) beyond undo~~ | **Shipped** |
 | P1.4 | Waveform on audio lane |
 | P1.5 | Word-level caption split/merge editor |
 
@@ -86,8 +87,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P1.3** — more keyboard shortcuts (J/K/L, delete, nudge).
+1. **P1.7** — bundle Stockfish binary.
 2. **P0.5** — notarized Mac builds.
-3. **P1.7** — bundle Stockfish binary.
-4. **P1.4** — waveform on audio lane.
-5. **P2** — music bed track.
+3. **P1.4** — waveform on audio lane.
+4. **P2** — music bed track.
+5. **P1.5** — word-level caption split/merge.

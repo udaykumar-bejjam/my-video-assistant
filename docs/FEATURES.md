@@ -75,6 +75,19 @@ for how they are wired.
 - Editor chrome undo / redo (⌘Z / ⇧⌘Z on Mac)
 - Covers captions, overlays, AI Place apply, timeline drag, library place, trim apply, audio settings
 
+## Keyboard shortcuts (editor)
+
+| Key | Action |
+|-----|--------|
+| **J** / **L** | Shuttle reverse / forward (1×→2×→4×→8×) |
+| **K** / **Space** | Pause / toggle play |
+| **←** / **→** | Nudge selection (~1 frame) or step playhead |
+| **⇧←** / **⇧→** | Coarse nudge (1s) |
+| **Delete** | Remove selected captions / overlays / SFX |
+| **Esc** | Clear multi-select |
+
+Shortcuts idle while a text field is focused.
+
 ---
 
 ## Audio layer

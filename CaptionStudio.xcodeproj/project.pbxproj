@@ -20,6 +20,8 @@
 		A100000000000000000000AD /* ChessPGNImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AC /* ChessPGNImportService.swift */; };
 		A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000AE /* TimelineSFXPreview.swift */; };
 		A100000000000000000000B1 /* ChessVOClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000B0 /* ChessVOClock.swift */; };
+		A100000000000000000000B3 /* EditorShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000B2 /* EditorShortcuts.swift */; };
+		A100000000000000000000B5 /* EditorShortcutsModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000B4 /* EditorShortcutsModifier.swift */; };
 		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
 		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
@@ -79,6 +81,8 @@
 		A100000000000000000000AC /* ChessPGNImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessPGNImportService.swift; sourceTree = "<group>"; };
 		A100000000000000000000AE /* TimelineSFXPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineSFXPreview.swift; sourceTree = "<group>"; };
 		A100000000000000000000B0 /* ChessVOClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessVOClock.swift; sourceTree = "<group>"; };
+		A100000000000000000000B2 /* EditorShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorShortcuts.swift; sourceTree = "<group>"; };
+		A100000000000000000000B4 /* EditorShortcutsModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorShortcutsModifier.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
@@ -211,6 +215,7 @@
 				A100000000000000000000AC /* ChessPGNImportService.swift */,
 				A100000000000000000000AE /* TimelineSFXPreview.swift */,
 				A100000000000000000000B0 /* ChessVOClock.swift */,
+				A100000000000000000000B2 /* EditorShortcuts.swift */,
 				A100000000000000000000A4 /* EditorHistory.swift */,
 				A10000000000000000000072 /* APIKeyStore.swift */,
 			);
@@ -231,6 +236,7 @@
 			children = (
 				0E20188223DB4025895DE90E /* HomeView.swift */,
 				62FEDBFB5EF34F7A8A8A0A94 /* EditorView.swift */,
+				A100000000000000000000B4 /* EditorShortcutsModifier.swift */,
 				3DEDC6A8D5FF4CE99CB0D887 /* CaptionOverlayView.swift */,
 				386983F2C5A0468FBFC08732 /* CaptionListView.swift */,
 				89A977D380854EEFBAFAFB8F /* OverlayEditorView.swift */,
@@ -381,6 +387,8 @@
 				A100000000000000000000AD /* ChessPGNImportService.swift in Sources */,
 				A100000000000000000000AF /* TimelineSFXPreview.swift in Sources */,
 				A100000000000000000000B1 /* ChessVOClock.swift in Sources */,
+				A100000000000000000000B3 /* EditorShortcuts.swift in Sources */,
+				A100000000000000000000B5 /* EditorShortcutsModifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -455,7 +463,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.30;
+				MARKETING_VERSION = 1.0.31;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -503,7 +511,7 @@
 					"@executable_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.30;
+				MARKETING_VERSION = 1.0.31;
 				PRODUCT_BUNDLE_IDENTIFIER = com.captionstudio.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
