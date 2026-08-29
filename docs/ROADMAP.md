@@ -104,7 +104,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 ```text
 P1b sync chess overlay to VO clock + bundle Stockfish
 P1.3 keyboard shortcuts (J/K/L, delete, nudge)
-P2 LUFS / music bed
+P2 music bed track
 P3 trim v2 / long Speech / more Indic languages
 P4 expand Iconify presets + enhance trim suggestions
 P0 notarized Mac builds
