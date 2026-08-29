@@ -160,8 +160,8 @@ final class ChessExportService: ObservableObject {
             aspect: .portrait9x16,
             audioSettings: ProjectAudioSettings(
                 dialogueGain: 0,
-                sfxMasterGain: 1,
                 normalizeLoudness: false,
+                sfxMasterGain: 1,
                 duckDialogueUnderSFX: false,
                 duckAmount: 0,
                 enhancerPreset: .balanced

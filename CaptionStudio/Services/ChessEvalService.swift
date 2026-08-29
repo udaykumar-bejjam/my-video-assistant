@@ -296,7 +296,8 @@ extension ChessBoard {
         let ff = from % 8, fr = from / 8
         let tf = to % 8, tr = to / 8
         let df = tf - ff, dr = tr - fr
-        if let target = piece(atFile: tf, rank: tr), target.isWhite == isWhite { return false }
+        // `piece` param shadows `piece(atFile:rank:)` — call via self.
+        if let target = self.piece(atFile: tf, rank: tr), target.isWhite == isWhite { return false }
 
         switch piece {
         case .knight:
