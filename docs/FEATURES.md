@@ -59,9 +59,16 @@ for how they are wired.
 
 - Home **Chess Walkthrough** or editor checkerboard button
 - Paste PGN / move list → animated Unicode board, category colors, arrows, boxes, SFX
-- Classification from annotations / NAGs / checks (no Stockfish yet)
-- Interactive only — **not** burned into video export yet
+- Classification from annotations / NAGs / checks, then **heuristic or Stockfish eval** for remaining moves
+- **Export MP4** of the walkthrough (board + callouts + SFX)
 - Details: [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md)
+
+---
+
+## Undo / redo
+
+- Editor chrome undo / redo (⌘Z / ⇧⌘Z on Mac)
+- Covers captions, overlays, AI Place apply, timeline drag, library place, trim apply, audio settings
 
 ---
 

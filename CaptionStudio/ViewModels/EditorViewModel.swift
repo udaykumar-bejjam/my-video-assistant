@@ -32,7 +32,9 @@ final class EditorViewModel: ObservableObject {
     @Published var language: AppLanguage = .english {
         didSet {
             project.language = language
-            applyLanguageCaptionDefaults()
+            if !isRestoringHistory {
+                applyLanguageCaptionDefaults()
+            }
         }
     }
     @Published var batchExportAspects: Set<AspectRatioPreset> = [.portrait9x16]
@@ -66,6 +68,12 @@ final class EditorViewModel: ObservableObject {
     let projectStore = ProjectStore()
     let enhancer = CursorEnhancerClient()
 
+    // MARK: - Undo / redo
+    private let history = EditorHistory()
+    private var isRestoringHistory = false
+    @Published private(set) var canUndo = false
+    @Published private(set) var canRedo = false
+
     var selectedPack: ShortsPack? {
         packs.pack(id: project.packId)
     }
@@ -92,6 +100,67 @@ final class EditorViewModel: ObservableObject {
         }
     }
 
+    // MARK: - History
+
+    private func documentSnapshot() -> EditorDocumentSnapshot {
+        EditorDocumentSnapshot(
+            project: project,
+            selectedCaptionID: selectedCaptionID,
+            selectedOverlayID: selectedOverlayID,
+            selectedSoundEffectID: selectedSoundEffectID,
+            isAudioLayerSelected: isAudioLayerSelected,
+            selectedPreset: selectedPreset,
+            language: language,
+            trimSuggestions: trimSuggestions,
+            selectedTrimIDs: selectedTrimIDs,
+            distribution: distribution,
+            editorTab: editorTab,
+            lastEnhancementNote: lastEnhancementNote
+        )
+    }
+
+    private func publishHistoryFlags() {
+        canUndo = history.canUndo
+        canRedo = history.canRedo
+    }
+
+    /// Call before a discrete document mutation.
+    func registerUndoCheckpoint() {
+        guard !isRestoringHistory else { return }
+        history.push(documentSnapshot())
+        publishHistoryFlags()
+    }
+
+    func undo() {
+        guard let snap = history.undo(current: documentSnapshot()) else { return }
+        applyDocumentSnapshot(snap)
+        publishHistoryFlags()
+    }
+
+    func redo() {
+        guard let snap = history.redo(current: documentSnapshot()) else { return }
+        applyDocumentSnapshot(snap)
+        publishHistoryFlags()
+    }
+
+    private func applyDocumentSnapshot(_ snap: EditorDocumentSnapshot) {
+        isRestoringHistory = true
+        defer { isRestoringHistory = false }
+        project = snap.project
+        selectedCaptionID = snap.selectedCaptionID
+        selectedOverlayID = snap.selectedOverlayID
+        selectedSoundEffectID = snap.selectedSoundEffectID
+        isAudioLayerSelected = snap.isAudioLayerSelected
+        selectedPreset = snap.selectedPreset
+        language = snap.language
+        trimSuggestions = snap.trimSuggestions
+        selectedTrimIDs = snap.selectedTrimIDs
+        distribution = snap.distribution
+        editorTab = snap.editorTab
+        lastEnhancementNote = snap.lastEnhancementNote
+        normalizeLoudness = project.audio.normalizeLoudness
+    }
+
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var sfxPlayers: [AVAudioPlayer] = []
@@ -100,7 +169,7 @@ final class EditorViewModel: ObservableObject {
     /// Last playhead sample used to detect cue crossings (and backwards seeks).
     private var lastSFXCheckTime: TimeInterval = -1
 
-    enum EditorTab: String, CaseIterable, Identifiable {
+    enum EditorTab: String, CaseIterable, Identifiable, Equatable {
         case captions, styles, overlays, libraries, trim, export
         var id: String { rawValue }
         var title: String {
@@ -137,6 +206,8 @@ final class EditorViewModel: ObservableObject {
 
     func loadVideo(url: URL) async {
         tearDownPlayer()
+        history.clear()
+        publishHistoryFlags()
 
         // Copy into app sandbox so security-scoped imports stay readable.
         let localURL: URL
@@ -225,6 +296,7 @@ final class EditorViewModel: ObservableObject {
             return
         }
 
+        registerUndoCheckpoint()
         isTranscribing = true
         errorMessage = nil
         defer { isTranscribing = false }
@@ -617,6 +689,8 @@ final class EditorViewModel: ObservableObject {
 
     func leaveWithoutSaving() {
         tearDownPlayer()
+        history.clear()
+        publishHistoryFlags()
         let packId = project.packId
         project = .empty()
         project.packId = packId
@@ -669,6 +743,7 @@ final class EditorViewModel: ObservableObject {
             return
         }
 
+        registerUndoCheckpoint()
         isTrimming = true
         chunkProgressLabel = "Applying trims…"
         defer {
@@ -739,6 +814,7 @@ final class EditorViewModel: ObservableObject {
     }
 
     func apply(plan: EnhancementPlan) {
+        registerUndoCheckpoint()
         var newOverlays: [OverlayItem] = []
         var newSFX: [SoundEffectCue] = []
         // Throttle audio so hits don't fire a whoosh on every punch.
@@ -961,6 +1037,7 @@ final class EditorViewModel: ObservableObject {
     }
 
     func addLibraryItem(_ item: MediaLibraryItem, kind: MediaLibraryKind) {
+        registerUndoCheckpoint()
         switch kind {
         case .textStyles:
             let placement = EnhancementPlacement(
@@ -1202,6 +1279,7 @@ final class EditorViewModel: ObservableObject {
     // MARK: - Captions / style
 
     func applyPreset(_ preset: CaptionPreset) {
+        registerUndoCheckpoint()
         selectedPreset = preset
         project.captionStyle = preset.style
         // Presets ship with Latin fonts + UPPER case — re-apply script defaults for TE/HI.
@@ -1209,11 +1287,13 @@ final class EditorViewModel: ObservableObject {
     }
 
     func updateCaption(_ caption: CaptionSegment) {
+        registerUndoCheckpoint()
         guard let index = project.captions.firstIndex(where: { $0.id == caption.id }) else { return }
         project.captions[index] = caption
     }
 
     func deleteCaption(_ id: CaptionSegment.ID) {
+        registerUndoCheckpoint()
         project.captions.removeAll { $0.id == id }
         if selectedCaptionID == id { selectedCaptionID = nil }
     }
@@ -1221,6 +1301,7 @@ final class EditorViewModel: ObservableObject {
     // MARK: - Overlays
 
     func addTextOverlay(_ text: String = "Your text") {
+        registerUndoCheckpoint()
         let item = OverlayItem.textSticker(text, at: currentTime)
         project.overlays.append(item)
         selectedOverlayID = item.id
@@ -1230,6 +1311,7 @@ final class EditorViewModel: ObservableObject {
     }
 
     func addEmojiOverlay(_ emoji: String) {
+        registerUndoCheckpoint()
         let item = OverlayItem.emoji(emoji, at: currentTime)
         project.overlays.append(item)
         selectedOverlayID = item.id
@@ -1238,11 +1320,13 @@ final class EditorViewModel: ObservableObject {
     }
 
     func updateOverlay(_ item: OverlayItem) {
+        registerUndoCheckpoint()
         guard let index = project.overlays.firstIndex(where: { $0.id == item.id }) else { return }
         project.overlays[index] = item
     }
 
     func deleteOverlay(_ id: OverlayItem.ID) {
+        registerUndoCheckpoint()
         project.overlays.removeAll { $0.id == id }
         if selectedOverlayID == id { selectedOverlayID = nil }
     }
@@ -1255,6 +1339,7 @@ final class EditorViewModel: ObservableObject {
         start: TimeInterval,
         end: TimeInterval
     ) {
+        registerUndoCheckpoint()
         let mediaEnd = max(project.duration, 0.1)
         let clampedStart = min(max(0, start), mediaEnd - 0.05)
         let clampedEnd = min(mediaEnd, max(clampedStart + 0.05, end))
@@ -1432,24 +1517,32 @@ final class EditorViewModel: ObservableObject {
     }
 
     func updateSoundEffect(_ cue: SoundEffectCue) {
+        registerUndoCheckpoint()
         guard let index = project.soundEffects.firstIndex(where: { $0.id == cue.id }) else { return }
         project.soundEffects[index] = cue
     }
 
     func deleteSoundEffect(_ id: SoundEffectCue.ID) {
+        registerUndoCheckpoint()
         project.soundEffects.removeAll { $0.id == id }
         if selectedSoundEffectID == id { selectedSoundEffectID = nil }
     }
 
     func updateAudioSettings(_ settings: ProjectAudioSettings) {
+        registerUndoCheckpoint()
         project.audio = settings
         normalizeLoudness = settings.normalizeLoudness
     }
 
     func applyAudioEnhancer(_ preset: AudioEnhancerPreset) {
+        registerUndoCheckpoint()
         var settings = project.audio
         settings.apply(preset: preset)
-        updateAudioSettings(settings)
+        // Avoid double checkpoint inside updateAudioSettings
+        isRestoringHistory = true
+        project.audio = settings
+        normalizeLoudness = settings.normalizeLoudness
+        isRestoringHistory = false
     }
 
     /// Resolved play length for a cue from the SFX library (fallback 0.35s).

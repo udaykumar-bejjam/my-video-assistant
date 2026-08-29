@@ -36,12 +36,25 @@ Use technical scope (not calendar estimates).
 
 ### P1b — Chess (next)
 
-| Item | Why | Touches |
-|------|-----|---------|
-| Burn chess walkthrough into export | Ship analysis videos | `VideoExportService` + board snapshots |
-| Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | New service → `ChessAnalysis` |
-| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI |
-| PGN from file / lichess / chess.com URL | Lower friction | Network + parse |
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Burn chess walkthrough into export | Ship analysis videos | `ChessExportService` | **Shipped** (standalone MP4) |
+| Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEvalService` | **Shipped** (heuristic always; Stockfish if binary present) |
+| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI | Open |
+| PGN from file / lichess / chess.com URL | Lower friction | Network + parse | Open |
+| Chess board as overlay on project video | Composite with VO | `VideoExportService` | Open |
+
+### P1c — Editor history
+
+| Item | Status |
+|------|--------|
+| Undo / redo for captions, overlays, enhance, timeline, trim | **Shipped** (`EditorHistory`, ⌘Z / ⇧⌘Z) |
+
+### P0 — CI
+
+| Item | Status |
+|------|--------|
+| Linux enhancer smokes on PR (`npm test` incl. full-duration + chess-eval) | **Shipped** (`.github/workflows/enhancer-smokes.yml`) |
 
 ### P2 — Audio v2
 

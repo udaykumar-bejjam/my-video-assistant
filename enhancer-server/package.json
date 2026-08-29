@@ -14,7 +14,10 @@
     "test:packs": "node test/packs-smoke.mjs",
     "test:broll": "node test/broll-smoke.mjs",
     "test:distribution": "node test/distribution-safezone-smoke.mjs",
-    "test:trim": "node test/trim-logic-smoke.mjs"
+    "test:trim": "node test/trim-logic-smoke.mjs",
+    "test:full-duration": "node test/full-duration-smoke.mjs",
+    "test:chess-eval": "node test/chess-eval-smoke.mjs",
+    "test": "npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim && npm run test:full-duration && npm run test:chess-eval"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.26",
