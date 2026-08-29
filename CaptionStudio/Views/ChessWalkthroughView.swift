@@ -37,15 +37,34 @@ struct ChessWalkthroughView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        Task { await vm.exportVideo() }
+                    } label: {
+                        if vm.isExporting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label("Export MP4", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                    .disabled(vm.result == nil || vm.isExporting || vm.isAnalyzing)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Analyze") { vm.loadNotation() }
                         .fontWeight(.semibold)
+                        .disabled(vm.isAnalyzing)
                 }
             }
             .onAppear {
                 if vm.result == nil { vm.loadNotation() }
             }
             .onDisappear { vm.stop() }
+            .sheet(isPresented: $vm.showExportShare) {
+                if let url = vm.exportURL {
+                    ChessExportShareSheet(url: url)
+                }
+            }
         }
     }
 
@@ -57,6 +76,18 @@ struct ChessWalkthroughView: View {
             Text(vm.progressLabel)
                 .font(.custom("AvenirNext-Medium", size: 12))
                 .foregroundStyle(.white.opacity(0.5))
+            if vm.isAnalyzing {
+                Text("Running \(vm.evalEngineName) eval…")
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(Color(red: 0.2, green: 0.95, blue: 0.72))
+            }
+            if vm.isExporting {
+                ProgressView(value: max(0.05, vm.exportProgress))
+                    .tint(Color(red: 0.2, green: 0.95, blue: 0.72))
+                Text(vm.exportStatus.isEmpty ? "Exporting chess MP4…" : vm.exportStatus)
+                    .font(.custom("AvenirNext-Medium", size: 11))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
             if let err = vm.errorMessage {
                 Text(err)
                     .font(.custom("AvenirNext-Medium", size: 12))
@@ -177,12 +208,61 @@ struct ChessWalkthroughView: View {
                 .padding(10)
                 .frame(minHeight: 110, maxHeight: 160)
                 .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text("Tip: mark moves with !! ? ?? !? or PGN $1–$6 NAGs for Brilliant / Mistake / Blunder colors.")
+            Text("Tip: mark moves with !! ? ?? !? or PGN $1–$6 NAGs. Unannotated moves get heuristic eval (or Stockfish if installed on PATH). Export MP4 burns the board walkthrough.")
                 .font(.custom("AvenirNext-Medium", size: 10))
                 .foregroundStyle(.white.opacity(0.35))
         }
     }
 }
+
+#if os(macOS)
+import AppKit
+
+private struct ChessExportShareSheet: View {
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Chess video ready")
+                .font(.headline)
+            Text(url.lastPathComponent)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                Button("Save As…") {
+                    let panel = NSSavePanel()
+                    panel.allowedContentTypes = [.mpeg4Movie]
+                    panel.nameFieldStringValue = url.lastPathComponent
+                    if panel.runModal() == .OK, let dest = panel.url {
+                        try? FileManager.default.removeItem(at: dest)
+                        try? FileManager.default.copyItem(at: url, to: dest)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Done") { dismiss() }
+            }
+        }
+        .padding(24)
+        .frame(minWidth: 360)
+    }
+}
+#elseif os(iOS)
+import UIKit
+
+private struct ChessExportShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+#endif
 
 // MARK: - Board
 

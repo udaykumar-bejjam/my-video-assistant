@@ -88,6 +88,38 @@ struct EditorView: View {
             Spacer()
 
             Button {
+                editor.undo()
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(editor.canUndo ? .white : .white.opacity(0.25))
+                    .padding(8)
+                    .background(.white.opacity(editor.canUndo ? 0.12 : 0.05), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!editor.canUndo)
+            .help("Undo")
+            #if os(macOS)
+            .keyboardShortcut("z", modifiers: [.command])
+            #endif
+
+            Button {
+                editor.redo()
+            } label: {
+                Image(systemName: "arrow.uturn.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(editor.canRedo ? .white : .white.opacity(0.25))
+                    .padding(8)
+                    .background(.white.opacity(editor.canRedo ? 0.12 : 0.05), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!editor.canRedo)
+            .help("Redo")
+            #if os(macOS)
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+            #endif
+
+            Button {
                 do {
                     _ = try editor.saveProject()
                 } catch {

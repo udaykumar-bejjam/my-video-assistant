@@ -1,0 +1,37 @@
+name: Enhancer smokes
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+    paths:
+      - "enhancer-server/**"
+      - "AssetLibraries/**"
+      - ".github/workflows/enhancer-smokes.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Node enhance smokes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: enhancer-server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: enhancer-server/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Run all smokes
+        run: npm test

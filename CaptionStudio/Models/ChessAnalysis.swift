@@ -135,6 +135,10 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
     var criticalSquares: [String]
     /// Extra arrows beyond the played move.
     var ideaArrows: [ChessArrowIdea]
+    /// Centipawn swing for the mover when eval ran (optional).
+    var evalDeltaCp: Int? = nil
+    /// `annotation` | `heuristic` | `stockfish`
+    var evalSource: String? = nil
 
     init(
         plyIndex: Int,
@@ -149,7 +153,9 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
         isCastle: Bool,
         comment: String?,
         criticalSquares: [String],
-        ideaArrows: [ChessArrowIdea]
+        ideaArrows: [ChessArrowIdea],
+        evalDeltaCp: Int? = nil,
+        evalSource: String? = nil
     ) {
         self.plyIndex = plyIndex
         self.moveNumber = moveNumber
@@ -164,6 +170,8 @@ struct ChessAnnotatedMove: Identifiable, Equatable, Codable {
         self.comment = comment
         self.criticalSquares = criticalSquares
         self.ideaArrows = ideaArrows
+        self.evalDeltaCp = evalDeltaCp
+        self.evalSource = evalSource
     }
 }
 

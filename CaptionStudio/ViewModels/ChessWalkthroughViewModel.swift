@@ -16,10 +16,18 @@ final class ChessWalkthroughViewModel: ObservableObject {
     @Published var lastCallout: String?
     @Published var animatingMove: ChessAnnotatedMove?
     @Published var pulseCategory: ChessMoveCategory?
+    @Published var isAnalyzing = false
+    @Published var isExporting = false
+    @Published var exportProgress: Double = 0
+    @Published var exportStatus: String = ""
+    @Published var exportURL: URL?
+    @Published var evalEngineName: String = "heuristic"
+    @Published var showExportShare = false
 
     private var playTask: Task<Void, Never>?
     private var sfxPlayers: [AVAudioPlayer] = []
     private let libraries = MediaLibraryStore()
+    private let exporter = ChessExportService()
 
     init() {
         pgnText = ChessWalkthroughViewModel.samplePGN
@@ -36,10 +44,14 @@ final class ChessWalkthroughViewModel: ObservableObject {
     }
     var progressLabel: String {
         guard let result else { return "Paste notation to begin" }
-        if plyIndex == 0 { return "Start · \(result.moves.count) moves" }
+        if plyIndex == 0 { return "Start · \(result.moves.count) moves · eval:\(evalEngineName)" }
         if let m = currentMove {
             let side = m.isWhite ? "White" : "Black"
-            return "\(m.moveNumber)\(m.isWhite ? "." : "...") \(m.san) · \(m.category.label) · \(side)"
+            var label = "\(m.moveNumber)\(m.isWhite ? "." : "...") \(m.san) · \(m.category.label) · \(side)"
+            if let d = m.evalDeltaCp {
+                label += " · \(d >= 0 ? "+" : "")\(d)cp"
+            }
+            return label
         }
         return "End of game"
     }
@@ -50,6 +62,8 @@ final class ChessWalkthroughViewModel: ObservableObject {
         lastCallout = nil
         pulseCategory = nil
         animatingMove = nil
+        exportURL = nil
+        isAnalyzing = true
         do {
             let parsed = try ChessPGNParser.parse(pgnText)
             result = parsed
@@ -62,11 +76,57 @@ final class ChessWalkthroughViewModel: ObservableObject {
             boards = snaps
             plyIndex = 0
             lastCallout = parsed.summary
+            Task { await self.runEvalEnrichment() }
         } catch {
+            isAnalyzing = false
             result = nil
             boards = [ChessBoard.starting()]
             plyIndex = 0
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func runEvalEnrichment() async {
+        guard let parsed = result else {
+            isAnalyzing = false
+            return
+        }
+        let engine = ChessEvalService.preferred()
+        evalEngineName = engine.name
+        let enriched = await engine.enrich(parsed)
+        result = enriched
+        lastCallout = enriched.summary
+        isAnalyzing = false
+    }
+
+    func exportVideo() async {
+        guard result != nil, boards.count > 1 else {
+            errorMessage = "Analyze a game before exporting."
+            return
+        }
+        if result == nil { loadNotation() }
+        stop()
+        isExporting = true
+        exportProgress = 0
+        exportStatus = "Rendering…"
+        errorMessage = nil
+        defer { isExporting = false }
+        do {
+            let title = result?.summary ?? "Chess Walkthrough"
+            let url = try await exporter.export(
+                boards: boards,
+                moves: moves,
+                secondsPerMove: secondsPerMove,
+                title: title
+            )
+            exportURL = url
+            exportProgress = 1
+            exportStatus = "Ready"
+            lastCallout = "Exported chess video"
+            showExportShare = true
+        } catch {
+            errorMessage = error.localizedDescription
+            exportStatus = ""
         }
     }
 
@@ -163,6 +223,9 @@ final class ChessWalkthroughViewModel: ObservableObject {
         var parts = ["\(move.moveNumber)\(move.isWhite ? "." : "...") \(move.san)"]
         if move.category.isHighlightWorthy {
             parts.append(move.category.label.uppercased())
+        }
+        if let d = move.evalDeltaCp {
+            parts.append("\(d >= 0 ? "+" : "")\(d)cp")
         }
         if move.givesCheck { parts.append("Check!") }
         if move.isCapture { parts.append("Capture") }
