@@ -83,7 +83,7 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 | `BrollPlanner.swift` | Client B-roll helpers |
 | `VideoExportService.swift` | Burn-in export |
 | `CoverExportService.swift` | Cover PNG |
-| `AudioNormalizeService.swift` | Peak normalize / duck |
+| `AudioNormalizeService.swift` | LUFS normalize / peak ceiling / duck |
 | `VideoStitchService.swift` | Long-video stitch |
 | `TrimService.swift` | Trim suggestions |
 | `VideoTrimComposer.swift` | Apply trims |

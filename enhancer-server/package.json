@@ -22,7 +22,8 @@
     "test:timeline-snap": "node test/timeline-snap-smoke.mjs",
     "test:chess-pgn-import": "node test/chess-pgn-import-smoke.mjs",
     "test:timeline-sfx-preview": "node test/timeline-sfx-preview-smoke.mjs",
-    "test": "npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim && npm run test:full-duration && npm run test:chess-eval && npm run test:aspect-remap && npm run test:heuristic-parity && npm run test:timeline-snap && npm run test:chess-pgn-import && npm run test:timeline-sfx-preview"
+    "test:lufs": "node test/lufs-smoke.mjs",
+    "test": "npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim && npm run test:full-duration && npm run test:chess-eval && npm run test:aspect-remap && npm run test:heuristic-parity && npm run test:timeline-snap && npm run test:chess-pgn-import && npm run test:timeline-sfx-preview && npm run test:lufs"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.26",

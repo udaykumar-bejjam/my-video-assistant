@@ -17,5 +17,6 @@ Recorded when open draft PRs were integrated into `master`.
 | `cursor/heuristic-parity-ac05` | App ↔ server enhance heuristic parity-contract v1 |
 | `cursor/timeline-multiselect-ac05` | Timeline multi-select + snap guides (P1.2) |
 | `cursor/chess-pgn-import-ac05` | PGN from file / Lichess / chess.com (P1.9) |
+| `cursor/lufs-loudness-ac05` | True LUFS loudness on export (P1.14) |
 
-After this wave, Telugu ASR, timeline drag/zoom/multi-select, Chess Walkthrough (+ export/overlay/eval/import), Iconify sync, deep docs, undo/redo, enhancer CI, 1:1 aspect remap, and heuristic parity are on `master` (PGN import PR pending merge). See [ROADMAP.md](./ROADMAP.md) for follow-ons.
+After this wave, Telugu ASR, timeline drag/zoom/multi-select, Chess Walkthrough (+ export/overlay/eval/import), Iconify sync, deep docs, undo/redo, enhancer CI, 1:1 aspect remap, heuristic parity, and **LUFS normalize** are on `master` (LUFS PR pending merge). See [ROADMAP.md](./ROADMAP.md) for follow-ons.

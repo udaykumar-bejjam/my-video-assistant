@@ -95,15 +95,21 @@ final class VideoExportService: ObservableObject {
         var norm = AudioNormalizeService.Normalization(
             dialogueGain: 1,
             measuredPeak: AudioNormalizeService.targetPeak,
-            sfxGainScale: brandSfxGain * audioSettings.sfxMasterGain
+            measuredLUFS: nil,
+            targetLUFS: AudioNormalizeService.targetLUFS,
+            sfxGainScale: brandSfxGain * audioSettings.sfxMasterGain,
+            mode: "off"
         )
         if audioSettings.normalizeLoudness {
-            statusMessage = "Measuring loudness…"
-            let peak = try await AudioNormalizeService.analyzeDialoguePeak(videoURL: videoURL)
+            statusMessage = "Measuring loudness (LUFS)…"
+            let measurement = try await AudioNormalizeService.analyzeDialogueLoudness(videoURL: videoURL)
             norm = AudioNormalizeService.normalization(
-                measuredPeak: peak,
+                measurement: measurement,
                 brandSfxGain: brandSfxGain * audioSettings.sfxMasterGain
             )
+            if let lufs = measurement.lufs {
+                statusMessage = String(format: "LUFS %.1f → %.0f…", lufs, AudioNormalizeService.targetLUFS)
+            }
         }
 
         // Mix in library SFX cues (already shifted to local 0-based timeline when chunked).

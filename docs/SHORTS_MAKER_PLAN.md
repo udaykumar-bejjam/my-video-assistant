@@ -277,7 +277,7 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 
 **Also shipped (Audio layer):** `ProjectAudioSettings` + presets — dialogue/SFX gains, duck under SFX windows, mute skip, normalize toggle; timeline Audio + SFX lanes; persisted on save.
 
-**v2:** True LUFS with more accurate metering  
+**v2:** True LUFS with more accurate metering — **Shipped** (`AudioNormalizeService` BS.1770 integrated LUFS → −14 with peak ceiling; `enhancer-server/src/lufs.js` smoke)  
 
 **Acceptance:** Exports don’t clip; SFX sit under voice consistently; UI mix settings survive save/load  
 
