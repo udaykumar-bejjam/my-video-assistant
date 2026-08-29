@@ -11,7 +11,7 @@ Canonical hub also: [README.md](./README.md).
 | [DATA_MODEL.md](./DATA_MODEL.md) | Persistence + package schema |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | Build / test / release |
 | [ENHANCEMENT_ROADMAP.md](./ENHANCEMENT_ROADMAP.md) / [ROADMAP.md](./ROADMAP.md) | Prioritized enhancement plans |
-| [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md) | Merged feature-line history |
+| [MERGE_HISTORY.md](./MERGE_HISTORY.md) | Feature PR merge wave |
 | [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) | Telugu ASR design (shipped) |
 | [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md) | Chess PGN walkthrough (shipped) |
 | [SHORTS_MAKER_PLAN.md](./SHORTS_MAKER_PLAN.md) | Original Shorts-maker product vision |
@@ -24,7 +24,7 @@ Canonical hub also: [README.md](./README.md).
 |------|------|
 | [`README.md`](../README.md) | Product overview, install, API, packaging |
 | [`AGENTS.md`](../AGENTS.md) | Cursor Cloud constraints (Linux = Node only) |
-| [`enhancer-server/`](../enhancer-server/) | Enhancer service; CLI/HTTP also summarized in root README |
+| [`enhancer-server/`](../enhancer-server/) | Enhancer service |
 | [`.github/workflows/build-macos.yml`](../.github/workflows/build-macos.yml) | Tag `v*` → macOS zip release |
 
 ## Mental model (one paragraph)

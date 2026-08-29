@@ -1,6 +1,6 @@
 # Codebase map (`master`)
 
-Paths are repo-relative. For files that exist only on unmerged branches, see [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md).
+Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Iconify / docs merges. See [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 
 ## Top level
 
@@ -9,14 +9,15 @@ Paths are repo-relative. For files that exist only on unmerged branches, see [IN
 | `CaptionStudio/` | SwiftUI app (iOS 17+ / macOS 14+) |
 | `CaptionStudio.xcodeproj/` | Xcode project + schemes |
 | `AssetLibraries/` | Shared catalogs + media |
-| `enhancer-server/` | Node/Express placement service |
+| `enhancer-server/` | Node/Express placement + optional Whisper proxy |
+| `tools/iconify-sync/` | Iconify → PNG catalog importer |
 | `scripts/build-macos.sh` | Local macOS zip build |
 | `.github/workflows/build-macos.yml` | Tag `v*` → GitHub Release zip |
-| `docs/` | Architecture, features, roadmap |
+| `docs/` | Architecture, features, roadmaps |
 | `AGENTS.md` | Cursor Cloud: Linux = enhancer-server only |
 | `README.md` | Public product overview |
 
-`AssetLibraries/` is mirrored into `CaptionStudio/Resources/Libraries/` for the app bundle.
+`AssetLibraries/` is mirrored into `CaptionStudio/Resources/Libraries/`.
 
 ---
 
@@ -26,114 +27,84 @@ Paths are repo-relative. For files that exist only on unmerged branches, see [IN
 
 | File | Responsibility |
 |------|----------------|
-| `CaptionStudio/CaptionStudioApp.swift` | `@main`; `RootView` shows `HomeView` or `EditorView`; owns `EditorViewModel` |
+| `CaptionStudio/CaptionStudioApp.swift` | `@main`; `RootView` Home ↔ Editor; shared `EditorViewModel` |
 
-### Views (`CaptionStudio/Views/`)
+### Views
 
 | File | Responsibility |
 |------|----------------|
-| `HomeView.swift` | Media pick, demo, drafts, pack entry |
-| `EditorView.swift` | Preview, tabs, AI Captions / AI Place, **lane scrubber** (`TimelineScrubber`) |
+| `HomeView.swift` | Import, demo, drafts, packs, Chess CTA, API key |
+| `EditorView.swift` | Preview chrome, tabs, AI Captions / AI Place, chess button |
+| `TimelineWorkspaceView.swift` | Zoomable multi-lane timeline; drag retime / cross-lane |
 | `CaptionListView.swift` | Caption list editing |
 | `CaptionOverlayView.swift` | On-preview captions |
-| `WordHitView.swift` | Significant-word hit overlays |
-| `OverlayEditorView.swift` | Layers list + per-lane timing/scale/mute; `TimelineLaneStyle` |
-| `LibraryBrowserView.swift` | Browse bundled libraries |
+| `WordHitView.swift` | Word-hit overlays |
+| `OverlayEditorView.swift` | Layers + audio panel; `TimelineLaneStyle` |
+| `LibraryBrowserView.swift` | Browse libraries |
 | `PackPickerView.swift` | Shorts Pack picker |
-| `BrandKitSettingsView.swift` | Brand kit (incl. Telugu font id field for future/locale fonts) |
-| `TrimAssistView.swift` | Trim suggestions UI |
-| `AnimatedGIFView.swift` | Scrub-synced GIF playback |
+| `BrandKitSettingsView.swift` | Brand kit |
+| `OpenAIKeySheet.swift` | OpenAI API key entry |
+| `TrimAssistView.swift` | Trim suggestions |
+| `AnimatedGIFView.swift` | Scrub-synced GIFs |
+| `ChessWalkthroughView.swift` | PGN board UI |
 
 ### View models
 
 | File | Responsibility |
 |------|----------------|
-| `ViewModels/EditorViewModel.swift` | Hub: media, ASR, enhance, packs, brand, drafts, trim, export, SFX preview |
+| `EditorViewModel.swift` | Hub: media, ASR, enhance, timeline drag, packs, drafts, trim, export |
+| `ChessWalkthroughViewModel.swift` | PGN parse, ply snapshots, play/step, SFX |
 
-### Models (`CaptionStudio/Models/`)
+### Models
 
 | File | Responsibility |
 |------|----------------|
 | `Caption.swift` | Segments, words, presets |
-| `Overlay.swift` | Overlay items, SFX cues |
-| `AspectRatio.swift` | 9:16 / 16:9 |
+| `Overlay.swift` | Overlays, SFX, project audio settings |
+| `AspectRatio.swift` | 9:16 / 16:9, chunk planner |
 | `ShortsPack.swift` | Pack recipes |
-| `LanguageAndEffects.swift` | Languages + effect ids |
-| `MediaLibrary.swift` | Library item shapes |
-| `SafeZoneAndDistribution.swift` | Safe zone + title/hashtags |
+| `LanguageAndEffects.swift` | Languages + effects |
+| `MediaLibrary.swift` | Catalog + enhancement plan shapes |
+| `SafeZoneAndDistribution.swift` | Safe zone + distribution copy |
 | `SavedProject.swift` | Draft / session persistence |
 | `ColorHex.swift` | Color helpers |
+| `ChessAnalysis.swift` | Categories, colors, arrows, annotated moves |
 
-### Services (`CaptionStudio/Services/`)
+### Services
 
 | File | Responsibility |
 |------|----------------|
-| `TranscriptionService.swift` | Apple Speech → captions |
-| `CursorEnhancerClient.swift` | HTTP → `/enhance`, health, libraries; local heuristic fallback |
-| `PackLibrary.swift` | Load packs from bundle |
-| `PlacementAligner.swift` | Clamp/snap placements |
+| `TranscriptionService.swift` | Apple Speech + language routing |
+| `WhisperTranscriptionClient.swift` | OpenAI gpt-transcribe + whisper clocks (Telugu) |
+| `APIKeyStore.swift` | Keychain OpenAI key |
+| `CursorEnhancerClient.swift` | HTTP enhance + local heuristic |
+| `PackLibrary.swift` | Packs from bundle |
+| `PlacementAligner.swift` | Snap/clamp placements |
 | `BrollPlanner.swift` | Client B-roll helpers |
 | `VideoExportService.swift` | Burn-in export |
 | `CoverExportService.swift` | Cover PNG |
-| `AudioNormalizeService.swift` | Optional peak normalize |
-| `VideoStitchService.swift` | Stitch long exports |
+| `AudioNormalizeService.swift` | Peak normalize / duck |
+| `VideoStitchService.swift` | Long-video stitch |
 | `TrimService.swift` | Trim suggestions |
 | `VideoTrimComposer.swift` | Apply trims |
 | `ProjectStore.swift` | Drafts / packages |
-| `BrandKitStore.swift` | Persist brand kit |
+| `BrandKitStore.swift` | Brand kit persistence |
 | `MediaLibraryStore.swift` | Catalog access |
-| `AnimatedGIFDecoder.swift` | GIF frames for preview/export |
+| `AnimatedGIFDecoder.swift` | GIF frames |
+| `ChessEngine.swift` | Board + SAN + PGN parser |
 
 ---
 
-## Asset libraries (`AssetLibraries/`)
-
-| Folder | Contents |
-|--------|----------|
-| `text-styles/` | Stylish text + `catalog.json` |
-| `fonts/` | Font catalog |
-| `effects/` | slam, bounce, zoom, … |
-| `gifs/` | Looping stickers |
-| `pngs/` | Static stickers |
-| `sfx/` | Sound effects + durations |
-| `packs/` | Hook / Story / Tip / Hype / Tutorial |
-
-*(Lexicon JSON trees appear on in-flight branches for stronger B-roll word scoring.)*
-
----
-
-## Enhancer server (`enhancer-server/`)
+## Enhancer (`enhancer-server/src/`)
 
 | File | Responsibility |
 |------|----------------|
-| `package.json` | Node ≥22.13; `start` / `dev` / `enhance` / smoke scripts |
-| `src/server.js` | `/health`, `/libraries`, `/enhance`, static assets |
-| `src/enhance.js` | Cursor SDK or heuristic |
-| `src/libraries.js` | Catalogs + heuristic placement (large) |
-| `src/packs.js` | Pack biases |
-| `src/broll.js` | Auto B-roll stickers |
-| `src/lexicon.js` | Word significance |
-| `src/safezone.js` | Safe zone + distribution helpers |
-| `src/cli.js` | CLI enhance |
-| `examples/*.json` | Sample timelines |
-| `test/*-smoke.mjs` | Packs, b-roll, distribution, trim, full-duration |
-
-### HTTP (master)
-
-| Method | Path | Role |
-|--------|------|------|
-| GET | `/health` | Liveness + key flags |
-| GET | `/libraries` | Catalog JSON |
-| GET | `/libraries/*` | Static files via `express.static` |
-| POST | `/enhance` | Placement plan |
-
-```bash
-cd enhancer-server && npm install
-npm start
-npm run enhance -- examples/sample-captions.json
-npm run test:packs && npm run test:broll && npm run test:distribution && npm run test:trim
-node test/full-duration-smoke.mjs
-```
+| `server.js` | `/health`, `/libraries`, `/enhance`, `/transcribe`, static |
+| `enhance.js` | Cursor SDK or heuristic |
+| `libraries.js` | Catalogs + heuristic placement |
+| `packs.js` / `broll.js` / `lexicon.js` / `safezone.js` | Pack bias, B-roll, words, safe zone |
+| `transcribe.js` | Whisper proxy |
+| `cli.js` | CLI enhance |
 
 ---
 
@@ -141,11 +112,9 @@ node test/full-duration-smoke.mjs
 
 | Intent | Start here |
 |--------|------------|
-| Caption ASR | `TranscriptionService.swift` |
+| Telugu timing | `WhisperTranscriptionClient.swift`, [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
+| Timeline drag | `TimelineWorkspaceView.swift`, `EditorViewModel.applyTimelineDrag` |
 | AI Place | `CursorEnhancerClient.swift` → `enhance.js` / `libraries.js` |
-| Lane scrubber | `EditorView.swift` (`TimelineScrubber`) |
-| Layer editing | `OverlayEditorView.swift` |
-| Export burn-in | `VideoExportService.swift` |
-| Drafts | `ProjectStore.swift` |
-| Packs / B-roll | `packs.js`, `broll.js`, `ShortsPack.swift` |
-| Telugu / chess / drag timeline | [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md) |
+| Export | `VideoExportService.swift` |
+| Chess | `ChessEngine.swift`, `ChessWalkthroughViewModel.swift` |
+| Iconify PNGs | `tools/iconify-sync/` |

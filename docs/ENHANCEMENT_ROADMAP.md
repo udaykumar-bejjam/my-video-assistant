@@ -1,8 +1,18 @@
-# Enhancement roadmap
+# Enhancement roadmap (agent companion)
 
-Prioritized plan for future agents. Prefer small vertical slices. Former in-flight Telugu / timeline / chess work is **on `master`** — see [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md). Compact list: [ROADMAP.md](./ROADMAP.md).
+Companion to [ROADMAP.md](./ROADMAP.md). Prefer that file for product prioritization; use this for agent-oriented slices after the big merge ([MERGE_HISTORY.md](./MERGE_HISTORY.md)).
 
 Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3** explore
+
+---
+
+## Shipped (do not re-implement)
+
+- Telugu + EN dual-pass ASR (`WhisperTranscriptionClient`)
+- Zoomable cross-lane timeline (`TimelineWorkspaceView`)
+- Chess Walkthrough (interactive)
+- Iconify PNG sync tool
+- Documentation suites
 
 ---
 
@@ -12,99 +22,62 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 |----|-------------|--------------|
 | P0.1 | Sync app-local enhance heuristic with server heuristic | `CursorEnhancerClient` ↔ `libraries.js` |
 | P0.2 | `/libraries` static vs JSON route hygiene | `server.js` |
-| P0.3 | Wire `test:full-duration` into `package.json` + PR CI (Linux) | `package.json`, `.github/workflows` |
-| P0.4 | ~~Land Telugu + timeline + chess~~ | **Done** — merged to `master` |
-| P0.5 | Aspect-aware overlay Y remap on batch 9:16→16:9 | Export / packs |
-| P0.6 | Notarized / Developer ID macOS builds | CI signing |
+| P0.3 | Wire `test:full-duration` into `package.json` + Linux PR CI | `package.json`, `.github/workflows` |
+| P0.4 | Aspect-aware overlay remap on batch 9:16→16:9 | `EditorViewModel` |
+| P0.5 | Notarized / Developer ID macOS builds | CI secrets, `build-macos.sh` |
 
 ---
 
-## P1 — Editor & timeline
+## P1 — Editor
 
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P1.1 | ~~Zoomable multi-lane drag workspace~~ | **Shipped** (`TimelineWorkspaceView`) |
-| P1.2 | Undo / redo | `EditorViewModel` command stack |
-| P1.3 | Multi-select + snap guides | Timeline |
-| P1.4 | Trim remaps captions/overlays | Avoid silent desync |
-| P1.5 | Keyboard shortcuts (J/K/L, nudge) | Mac |
-| P1.6 | Audio waveform lane | Scrub accuracy |
-
----
-
-## P1 — Captions & languages
-
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P1.7 | ~~Telugu + EN via OpenAI dual-pass~~ | **Shipped** — [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
-| P1.8 | Word-level split/merge editor | ASR fix-up |
-| P1.9 | More Indic languages | Same pattern as Telugu |
-| P1.10 | Optional whisper.cpp offline | Packaging cost |
+| ID | Enhancement |
+|----|-------------|
+| P1.1 | Undo / redo for timeline + captions |
+| P1.2 | Multi-select + snap guides |
+| P1.3 | Keyboard shortcuts (J/K/L, delete, nudge) |
+| P1.4 | Waveform on audio lane |
+| P1.5 | Word-level caption split/merge editor |
 
 ---
 
-## P1 — Enhance & libraries
+## P1 — Chess & export
 
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P1.11 | Brand kit fully honored on agent path | `enhance.js` |
-| P1.12 | User-imported GIF/PNG/SFX | Sandbox folders |
-| P1.13 | Placement density slider | UX |
-| P1.14 | Lexicon files in AssetLibraries on master | Align with in-flight B-roll |
-
----
-
-## P1 — Export & distribution
-
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P1.15 | True LUFS (not only peak) | `AudioNormalizeService` |
-| P1.16 | 1:1 aspect | IG feed |
-| P1.17 | Soft-sub track toggle | Accessibility |
-| P1.18 | Cancel/progress for long stitch | UX |
+| ID | Enhancement |
+|----|-------------|
+| P1.6 | **Burn chess into video export** (highest chess follow-on) |
+| P1.7 | Stockfish / cloud eval categories |
+| P1.8 | Sync chess to imported game video clock |
 
 ---
 
-## P2 — Chess & analysis overlays
+## P1 — Captions / enhance / export
 
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P2.1 | ~~PGN animated walkthrough~~ | **Shipped** — [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md) |
-| P2.2 | Stockfish (or cloud) eval categories | Next chess step |
-| P2.3 | Burn chess into video export | Main follow-on |
-| P2.4 | Sync board to imported game VO | Shared clock |
-
----
-
-## P2 — Architecture & quality
-
-| ID | Enhancement | Notes |
-|----|-------------|-------|
-| P2.5 | Split `EditorViewModel` | Captions / Enhance / Export stores |
-| P2.6 | Shared JSON schema fixtures (Zod + Codable) | Drift prevention |
-| P2.7 | XCTest on Mac CI + Node smokes on Linux CI | Gates |
-| P2.8 | Structured logging (request ids) | Support |
+| ID | Enhancement |
+|----|-------------|
+| P1.9 | More Indic languages (same dual-pass pattern) |
+| P1.10 | Brand kit fully honored on server agent path |
+| P1.11 | User-imported GIF/PNG/SFX folders |
+| P1.12 | Placement density slider |
+| P1.13 | True LUFS loudness |
+| P1.14 | 1:1 aspect preset |
+| P1.15 | Soft-sub track toggle |
 
 ---
 
-## P3 — Product expansion
+## P2 — Architecture
 
-Templates marketplace, auto-cut silence, TTS hooks, collaborative review, richer iOS timeline, non-Apple enhance JSON preview. Also see [SHORTS_MAKER_PLAN.md](./SHORTS_MAKER_PLAN.md).
+| ID | Enhancement |
+|----|-------------|
+| P2.1 | Split `EditorViewModel` into focused stores |
+| P2.2 | Shared JSON schema fixtures (Zod + Codable) |
+| P2.3 | XCTest on Mac CI |
 
 ---
 
 ## Suggested next slices
 
-1. **P2.3** — burn Chess Walkthrough into video export (CALayer path).
-2. **P1.2** — undo/redo for timeline + trim.
-3. **P0.3** — Linux CI for enhancer full-duration smokes on every PR.
-4. **P0.1** — single heuristic source of truth.
-5. **P0.5 + P1.16** — aspect Y remap + 1:1 batch export.
-6. **P2.2** — Stockfish categories once export exists.
-7. **P1.15** — true LUFS + music bed (see ROADMAP).
-
-## Definition of done
-
-- Code + these docs updated.
-- Verification: Node smokes and/or Mac GHA when Swift changes.
-- No silent schema drift between `/enhance` and `EditorViewModel.apply(plan:)`.
+1. **P0.3** — Linux CI for enhancer smokes on every PR.
+2. **P1.6** — Chess export burn-in vertical slice (silent board animation first).
+3. **P1.1** — Undo stack.
+4. **P0.1** — Single heuristic source of truth.
+5. **P1.7** — Stockfish once export path exists.

@@ -42,6 +42,7 @@ list when implementing; keep this index updated when adding modules.
 | `ShortsPack.swift` | Pack recipe model, `EnhancementHook` |
 | `SafeZoneAndDistribution.swift` | Safe rects, `DistributionPackage` |
 | `ColorHex.swift` | Hex → Color |
+| `ChessAnalysis.swift` | Move categories, colors, arrows, annotated moves |
 
 ---
 
@@ -49,7 +50,8 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `ViewModels/EditorViewModel.swift` | All editor state: load, captions, enhance (chunked), apply plan, library place, trim, export, save/open session, audio settings |
+| `ViewModels/EditorViewModel.swift` | Editor hub: load, captions, enhance, timeline drag, trim, export, save |
+| `ViewModels/ChessWalkthroughViewModel.swift` | PGN snapshots, play/step, category SFX |
 
 ---
 
@@ -57,7 +59,9 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `TranscriptionService.swift` | Apple Speech → captions; demo fallback |
+| `TranscriptionService.swift` | Apple Speech → captions; routes Telugu to Whisper client |
+| `WhisperTranscriptionClient.swift` | OpenAI gpt-transcribe + whisper-1 clocks (Telugu dual-pass) |
+| `APIKeyStore.swift` | Keychain for OpenAI API key |
 | `CursorEnhancerClient.swift` | HTTP enhance + local heuristic plan |
 | `MediaLibraryStore.swift` | Load catalogs; resolve file URLs |
 | `PackLibrary.swift` | Load Shorts Packs |
@@ -72,6 +76,7 @@ list when implementing; keep this index updated when adding modules.
 | `CoverExportService.swift` | Cover PNG from frame + cover text |
 | `AudioNormalizeService.swift` | Peak analysis; per-track gains + duck windows |
 | `AnimatedGIFDecoder.swift` | Decode GIF frames for preview/export |
+| `ChessEngine.swift` | Board state, SAN apply, PGN parser |
 
 ---
 
@@ -79,8 +84,9 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `HomeView.swift` | Landing, import/demo, packs, saved projects, open package |
-| `EditorView.swift` | Chrome, preview, multi-lane timeline, tabs |
+| `HomeView.swift` | Landing, import/demo, packs, saved projects, Chess CTA, API key |
+| `EditorView.swift` | Chrome, preview, tabs, AI actions, chess button |
+| `TimelineWorkspaceView.swift` | Zoomable multi-lane timeline; drag retime / cross-lane |
 | `CaptionListView.swift` | Caption editing + style picker |
 | `CaptionOverlayView.swift` | Live captions + `LiveOverlayCanvas` |
 | `WordHitView.swift` | Word-hit styling / motion |
@@ -89,7 +95,9 @@ list when implementing; keep this index updated when adding modules.
 | `PackPickerView.swift` | Pack chips |
 | `TrimAssistView.swift` | Trim suggestions UI |
 | `BrandKitSettingsView.swift` | Brand kit sheet |
+| `OpenAIKeySheet.swift` | OpenAI API key entry |
 | `AnimatedGIFView.swift` | Scrub-synced GIF preview |
+| `ChessWalkthroughView.swift` | PGN board, arrows, highlights, transport |
 
 ---
 
@@ -97,13 +105,14 @@ list when implementing; keep this index updated when adding modules.
 
 | File | Purpose |
 |------|---------|
-| `src/server.js` | Express app, routes, static libraries |
+| `src/server.js` | Express app, routes, static libraries, `/transcribe` |
 | `src/enhance.js` | Cursor SDK vs heuristic entry; duration resolve |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
 | `src/broll.js` | Sticker pairing for strong hits |
 | `src/lexicon.js` | Strong-word categories |
 | `src/safezone.js` | Clamp + distribution normalize |
+| `src/transcribe.js` | Whisper proxy for optional `/transcribe` |
 | `src/cli.js` | Offline CLI enhance |
 | `test/*-smoke.mjs` | Packs, B-roll, distribution, trim, full-duration |
 

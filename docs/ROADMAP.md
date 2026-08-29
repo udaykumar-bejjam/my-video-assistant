@@ -1,7 +1,8 @@
 # CaptionStudio — Enhancement roadmap
 
 Prioritized future work after Phases A–C (see [SHORTS_MAKER_PLAN.md](./SHORTS_MAKER_PLAN.md)).
-Use technical scope (not calendar estimates).
+Use technical scope (not calendar estimates). Longer backlog: [ENHANCEMENT_ROADMAP.md](./ENHANCEMENT_ROADMAP.md).
+Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 
 ---
 
@@ -27,41 +28,50 @@ Use technical scope (not calendar estimates).
 
 ### P1 — Edit surface
 
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Zoomable / drag-to-retime timeline | Faster than sliders alone | `TimelineWorkspaceView`, `applyTimelineDrag` | **Shipped** |
+| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history | Open |
+| Multi-select + snap guides | Precision edits | Timeline | Open |
+| Preview SFX while playhead crosses cues | WYSIWYG audio | Player + `previewSFX` | Open |
+| Hide or dim phrase captions under dense word hits | Reduce clutter | Export + preview flags | Open |
+
+### P1b — Chess (next)
+
 | Item | Why | Touches |
 |------|-----|---------|
-| ~~Zoomable / drag-to-retime timeline~~ | **Shipped** (`TimelineWorkspaceView`) | — |
-| Undo stack for apply(plan) / trim / delete | Safe daily experimentation | `EditorViewModel` command history |
-| Preview SFX while playhead crosses cues | WYSIWYG audio | Player time observer + `previewSFX` |
-| Hide or dim phrase captions under dense word hits (optional toggle) | Reduce “two caption systems” clutter | Export + preview flags |
-| Chess Walkthrough → export burn-in | Shareable chess shorts | `VideoExportService` + chess layers |
-| Stockfish (or cloud) move categories | Stronger than annotation-only | `ChessEngine` |
+| Burn chess walkthrough into export | Shareable chess shorts | `VideoExportService` + board layers |
+| Stockfish (or cloud) eval → categories | Real analysis beyond NAGs | `ChessEngine` / new service |
+| Sync board clock to imported game VO | Coach commentary + board | Shared offset UI |
+| PGN from file / lichess / chess.com URL | Lower friction | Network + parse |
 
 ### P2 — Audio v2
 
 | Item | Why | Touches |
 |------|-----|---------|
-| True LUFS metering (replace peak-only) | Platform-safe loudness | `AudioNormalizeService`, Accelerate / AVAudio |
-| Per-track EQ / compressor presets on Audio layer | Stronger “enhancers” story | Export audio taps or offline render |
-| Music bed track (ducked under dialogue) | Beyond one-shot SFX | New cue type + library + mix |
+| True LUFS metering (replace peak-only) | Platform-safe loudness | `AudioNormalizeService` |
+| Per-track EQ / compressor presets on Audio layer | Stronger enhancers story | Export audio taps |
+| Music bed track (ducked under dialogue) | Beyond one-shot SFX | New cue type + mix |
 
 ### P3 — Trim & captions v2
 
-| Item | Why | Touches |
-|------|-----|---------|
-| Trim auto-apply + undo | Faster silence cleanup | `TrimService`, confirm UI |
-| Chunked Speech for long files | Avoid truncated transcripts | `TranscriptionService` |
-| Caption translation / bilingual burn-in | Growth in HI/TE markets | Models + export layers |
-| ~~Telugu Whisper dual-pass~~ | **Shipped** | [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) |
-| Word-level split/merge editor | Fix ASR mistakes | Caption list UI |
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Telugu Whisper dual-pass | Apple has no te-IN | Whisper + gpt-transcribe | **Shipped** |
+| Trim auto-apply + undo | Faster silence cleanup | `TrimService` | Open |
+| Chunked Speech for long files | Avoid truncated transcripts | `TranscriptionService` | Open |
+| Word-level split/merge editor | Fix ASR mistakes | Caption list UI | Open |
+| Caption translation / bilingual burn-in | HI/TE growth | Models + export | Open |
+| More Indic languages (same as Telugu path) | Market expand | Whisper client | Open |
 
 ### P4 — Libraries & AI Place
 
-| Item | Why | Touches |
-|------|-----|---------|
-| Merge / maintain Iconify sync on master | Richer sticker set | `tools/iconify-sync`, catalogs |
-| Square 1:1 batch export | IG feed | `AspectRatioPreset`, export UI |
-| Enhancer returns `trimSuggestions` | Single AI pass for cuts | `enhance.js` schema, Trim tab seed |
-| Per-project brand kit snapshot | Watermark/fonts freeze with draft | `SavedProject`, BrandKit |
+| Item | Why | Touches | Status |
+|------|-----|---------|--------|
+| Iconify sync tool | Richer sticker set | `tools/iconify-sync` | **Shipped** (expand presets next) |
+| Square 1:1 batch export | IG feed | `AspectRatioPreset` | Open |
+| Enhancer returns `trimSuggestions` | Single AI pass for cuts | `enhance.js` | Open |
+| Per-project brand kit snapshot | Freeze fonts/watermark with draft | `SavedProject` | Open |
 
 ---
 
@@ -80,7 +90,8 @@ Use technical scope (not calendar estimates).
 ```text
 P0 aspect remap + CI smoke + signing path
 P1 undo + chess export burn-in + preview SFX polish
-P2 Stockfish categories + LUFS / music bed
+P1b Stockfish categories + PGN import URLs
+P2 LUFS / music bed
 P3 trim v2 / long Speech / more Indic languages
 P4 library growth + 1:1 + enhance trim suggestions
 ```
@@ -98,11 +109,14 @@ Ask before building:
 2. LUFS required vs peak normalize enough?  
 3. Square 1:1 in batch export now or later?  
 4. Per-project brand kit vs keep global UserDefaults?  
+5. Chess export burn-in before Stockfish, or Stockfish first?
 
 ---
 
 ## Related docs
 
-- Architecture invariants: [ARCHITECTURE.md](./ARCHITECTURE.md) §9  
+- Architecture invariants: [ARCHITECTURE.md](./ARCHITECTURE.md)  
 - Shipped baseline: [FEATURES.md](./FEATURES.md)  
 - Original A–C plan status: [SHORTS_MAKER_PLAN.md](./SHORTS_MAKER_PLAN.md)  
+- Longer backlog: [ENHANCEMENT_ROADMAP.md](./ENHANCEMENT_ROADMAP.md)  
+- Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md)  

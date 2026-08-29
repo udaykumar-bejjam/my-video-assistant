@@ -4,22 +4,22 @@ AI captions + Cursor SDK placement of stylish text, GIFs, PNGs, and sound effect
 
 ## Documentation
 
-Deep project docs for humans and agents:
+Deep project docs live under [`docs/INDEX.md`](docs/INDEX.md) (also [`docs/README.md`](docs/README.md)):
 
 | Doc | Purpose |
 |-----|---------|
-| [`docs/README.md`](./docs/README.md) / [`docs/INDEX.md`](./docs/INDEX.md) | Doc hubs |
-| [Architecture](./docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
-| [Features](./docs/FEATURES.md) | Shipped capabilities |
-| [File index](./docs/FILE_INDEX.md) / [Codebase map](./docs/CODEBASE_MAP.md) | Source maps |
-| [Data model](./docs/DATA_MODEL.md) | Runtime + disk schema |
-| [Development](./docs/DEVELOPMENT.md) | Build, test, release, debug |
-| [Roadmap](./docs/ROADMAP.md) / [Enhancement roadmap](./docs/ENHANCEMENT_ROADMAP.md) | Planned work |
-| [Telugu ASR](./docs/TELUGU_ASR_PLAN.md) | Whisper / gpt-transcribe path |
-| [Chess walkthrough](./docs/CHESS_WALKTHROUGH.md) | PGN replay feature |
-| [Merged feature lines](./docs/IN_FLIGHT_BRANCHES.md) | What landed from open PRs |
-| [Contributing](./docs/CONTRIBUTING.md) | Change rules / regressions |
-| [`AGENTS.md`](./AGENTS.md) | Cursor Cloud (Linux = Node only) |
+| [INDEX](docs/INDEX.md) / [README](docs/README.md) | Documentation hubs |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | Pipelines, persistence, invariants |
+| [FEATURES](docs/FEATURES.md) | Shipped capabilities |
+| [CODEBASE_MAP](docs/CODEBASE_MAP.md) / [FILE_INDEX](docs/FILE_INDEX.md) | Source maps |
+| [DATA_MODEL](docs/DATA_MODEL.md) | Runtime + disk schema |
+| [DEVELOPMENT](docs/DEVELOPMENT.md) | Build, test, release, debug |
+| [ROADMAP](docs/ROADMAP.md) / [ENHANCEMENT_ROADMAP](docs/ENHANCEMENT_ROADMAP.md) | Planned enhancements |
+| [TELUGU_ASR_PLAN](docs/TELUGU_ASR_PLAN.md) | Telugu / bilingual ASR |
+| [CHESS_WALKTHROUGH](docs/CHESS_WALKTHROUGH.md) | PGN chess walkthrough |
+| [MERGE_HISTORY](docs/MERGE_HISTORY.md) | What landed from open PRs |
+| [CONTRIBUTING](docs/CONTRIBUTING.md) | Change rules / regressions |
+| [AGENTS.md](AGENTS.md) | Cursor Cloud (Linux = Node only) |
 
 ## Architecture
 

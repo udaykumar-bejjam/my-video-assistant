@@ -3,6 +3,8 @@
 Living docs for understanding, extending, and shipping CaptionStudio
 (`my-video-assistant`). Prefer these over chat history when returning to the project.
 
+Also: [INDEX.md](./INDEX.md) (alternate hub).
+
 | Doc | Purpose |
 |-----|---------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System design, data flow, persistence, enhance/export pipelines |
@@ -14,9 +16,9 @@ Living docs for understanding, extending, and shipping CaptionStudio
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Agent/human change rules and regression guards |
 | [TELUGU_ASR_PLAN.md](./TELUGU_ASR_PLAN.md) | Telugu Whisper / gpt-transcribe design |
 | [CHESS_WALKTHROUGH.md](./CHESS_WALKTHROUGH.md) | Chess PGN walkthrough |
-| [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md) | Historical map of merged feature PRs |
+| [MERGE_HISTORY.md](./MERGE_HISTORY.md) | What landed from open PRs |
+| [IN_FLIGHT_BRANCHES.md](./IN_FLIGHT_BRANCHES.md) | Points at merge history (formerly unmerged work) |
 | [SHORTS_MAKER_PLAN.md](./SHORTS_MAKER_PLAN.md) | Original phased plan (A–C) with ship status |
-| [INDEX.md](./INDEX.md) | Alternate hub (suite B) |
 | [`../AGENTS.md`](../AGENTS.md) | Cursor Cloud constraints |
 
 **Start here if new to the repo:** `ARCHITECTURE.md` → `FEATURES.md` → `DATA_MODEL.md` → `FILE_INDEX.md`.
