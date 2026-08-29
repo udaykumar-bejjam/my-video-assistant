@@ -12,5 +12,8 @@ Recorded when open draft PRs were integrated into `master`.
 | `cursor/project-docs-ce40` (#20) | ARCHITECTURE, FEATURES, FILE_INDEX, DATA_MODEL, DEVELOPMENT, ROADMAP, CONTRIBUTING |
 | `cursor/project-documentation-ac05` (#21) | INDEX, CODEBASE_MAP, ENHANCEMENT_ROADMAP, hub links |
 | `cursor/rebuild-v110-ac05` (#16) | Workflow bump only; **marketing version kept at 1.0.27** (chess tip) |
+| `cursor/four-enhancements-ac05` (#22) | Chess MP4 export, eval, undo/redo, enhancer CI |
+| `cursor/chess-video-overlay-ac05` (#23) | Chess walkthrough overlay on project video |
+| `cursor/heuristic-parity-ac05` | App ↔ server enhance heuristic parity-contract v1 |
 
-After this wave, Telugu ASR, timeline drag/zoom, Chess Walkthrough, Iconify sync, and deep docs are **on `master`**. See [ROADMAP.md](./ROADMAP.md) for follow-ons.
+After this wave, Telugu ASR, timeline drag/zoom, Chess Walkthrough (+ export/overlay/eval), Iconify sync, deep docs, undo/redo, enhancer CI, and **heuristic parity** are on `master` (parity PR pending merge). See [ROADMAP.md](./ROADMAP.md) for follow-ons.

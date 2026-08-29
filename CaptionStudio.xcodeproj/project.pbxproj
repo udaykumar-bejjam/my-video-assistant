@@ -15,6 +15,7 @@
 		A100000000000000000000A3 /* ChessExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A2 /* ChessExportService.swift */; };
 		A100000000000000000000A5 /* EditorHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A4 /* EditorHistory.swift */; };
 		A100000000000000000000A7 /* ChessBoardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A6 /* ChessBoardRenderer.swift */; };
+		A100000000000000000000A9 /* HeuristicParity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A8 /* HeuristicParity.swift */; };
 		A1000000000000000000001A /* WordHitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* WordHitView.swift */; };
 		A10000000000000000000019 /* LanguageAndEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* LanguageAndEffects.swift */; };
 		A10000000000000000000018 /* VideoStitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* VideoStitchService.swift */; };
@@ -69,6 +70,7 @@
 		A100000000000000000000A2 /* ChessExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessExportService.swift; sourceTree = "<group>"; };
 		A100000000000000000000A4 /* EditorHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHistory.swift; sourceTree = "<group>"; };
 		A100000000000000000000A6 /* ChessBoardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessBoardRenderer.swift; sourceTree = "<group>"; };
+		A100000000000000000000A8 /* HeuristicParity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeuristicParity.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* WordHitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordHitView.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* LanguageAndEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageAndEffects.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* VideoStitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoStitchService.swift; sourceTree = "<group>"; };
@@ -196,6 +198,7 @@
 				A100000000000000000000A0 /* ChessEvalService.swift */,
 				A100000000000000000000A2 /* ChessExportService.swift */,
 				A100000000000000000000A6 /* ChessBoardRenderer.swift */,
+				A100000000000000000000A8 /* HeuristicParity.swift */,
 				A100000000000000000000A4 /* EditorHistory.swift */,
 				A10000000000000000000072 /* APIKeyStore.swift */,
 			);
@@ -361,6 +364,7 @@
 				A100000000000000000000A3 /* ChessExportService.swift in Sources */,
 				A100000000000000000000A5 /* EditorHistory.swift in Sources */,
 				A100000000000000000000A7 /* ChessBoardRenderer.swift in Sources */,
+				A100000000000000000000A9 /* HeuristicParity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

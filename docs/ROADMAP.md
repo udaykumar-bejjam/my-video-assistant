@@ -22,6 +22,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Item | Why | Touches | Status |
 |------|-----|---------|--------|
 | Aspect-aware overlay remap on batch 9:16↔16:9↔1:1 | Positions stay in chrome-safe zones | `AspectOverlayRemapper` | **Shipped** |
+| App ↔ server enhance heuristic parity | Offline Swift fallback matches Node | `parity-contract.json` + `heuristicCore.js` + `HeuristicParity` | **Shipped** |
 | Notarized / Developer ID macOS builds | Gatekeeper friction on Releases | CI signing secrets, `build-macos.sh` | Open |
 | CI smoke: enhance full-duration + export dry path | Catch duration regressions | GitHub Actions, Node tests | **Shipped** (enhancer-smokes) |
 | Keep Xcode membership in sync for new GIF/Swift files | Silent missing burn-in / compile gaps | `project.pbxproj` checklist | Open |

@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "description": "Shared offline enhance heuristic contract. Node (heuristicCore.js) and Swift (HeuristicParity + CursorEnhancerClient.localHeuristicPlan) must follow these rules so offline app fallback matches the enhancer-server heuristic.",
+  "fillerWords": [
+    "a", "an", "the", "to", "of", "and", "or", "in", "on", "is", "are", "for", "with", "this", "that",
+    "एक", "और", "की", "के", "को", "में", "से", "है", "हैं", "का", "कि",
+    "ఒక", "మరియు", "లో", "కి", "నుంచి", "ఉంది", "అని"
+  ],
+  "punchyEffectIds": [
+    "punch", "color-pulse", "fire-pulse", "stomp", "slam", "shake", "neon-pulse", "pulse", "glitch"
+  ],
+  "wordHitColors": ["#FFEF5A", "#FF2D2D", "#FF9F1C", "#33F2CF", "#FF2D9B"],
+  "rules": {
+    "captionStride": 2,
+    "maxWordsPerFilledCaption": 1,
+    "minTokenLengthEn": 3,
+    "minTokenLengthOther": 2,
+    "textPlacementCaptionModulo": 3,
+    "textPrefixWords": 3,
+    "textX": 0.5,
+    "textY": 0.28,
+    "textRotation": 0,
+    "wordHitXBase": 0.42,
+    "wordHitXStep": 0.16,
+    "wordHitYBase": 0.34,
+    "wordHitYStep": 0.05,
+    "wordHitScale": 1.2,
+    "openingSfxMinDuration": 1.5,
+    "openingSfxPreferredIds": ["riser", "bass-hit"],
+    "sourceTag": "heuristic-fallback",
+    "swiftOfflineNote": "Enhancer unreachable — local plan mirrors parity-contract v1"
+  }
+}

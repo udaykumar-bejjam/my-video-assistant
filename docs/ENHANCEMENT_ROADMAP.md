@@ -17,6 +17,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Editor **undo/redo** (`EditorHistory`, ⌘Z / ⇧⌘Z)
 - Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
 - **1:1 square** canvas + **AspectOverlayRemapper** (9:16 / 16:9 / 1:1 batch)
+- **App ↔ server enhance heuristic parity** (`AssetLibraries/heuristic/parity-contract.json`, `heuristicCore.js`, `HeuristicParity.swift`)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -26,7 +27,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement | Touch points |
 |----|-------------|--------------|
-| P0.1 | Sync app-local enhance heuristic with server heuristic | `CursorEnhancerClient` ↔ `libraries.js` |
+| ~~P0.1~~ | ~~Sync app-local enhance heuristic with server heuristic~~ | **Shipped** — shared parity-contract v1 |
 | P0.2 | `/libraries` static vs JSON route hygiene | `server.js` |
 | P0.4 | ~~Aspect-aware overlay remap on batch 9:16→16:9→1:1~~ | **Shipped** (`AspectOverlayRemapper`) |
 | P0.5 | Notarized / Developer ID macOS builds | CI secrets, `build-macos.sh` |

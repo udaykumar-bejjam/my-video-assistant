@@ -34,6 +34,8 @@ for how they are wired.
 ## AI Place
 
 - Calls local enhancer (`127.0.0.1:8787`) or falls back to Swift heuristic
+  aligned to the same **parity-contract v1** as the Node offline path
+  (`AssetLibraries/heuristic/parity-contract.json`)
 - **Full-duration** word hits (every caption window; gap-fill after sparse plans)
 - Opening **hook** (visual + SFX) inside pack hook window (~3s)
 - Pack-biased effects / SFX pools

@@ -62,7 +62,8 @@ list when implementing; keep this index updated when adding modules.
 | `TranscriptionService.swift` | Apple Speech → captions; routes Telugu to Whisper client |
 | `WhisperTranscriptionClient.swift` | OpenAI gpt-transcribe + whisper-1 clocks (Telugu dual-pass) |
 | `APIKeyStore.swift` | Keychain for OpenAI API key |
-| `CursorEnhancerClient.swift` | HTTP enhance + local heuristic plan |
+| `CursorEnhancerClient.swift` | HTTP enhance + local heuristic (parity-contract v1) |
+| `HeuristicParity.swift` | Loads shared filler/punchy/rules; thinWordHits |
 | `MediaLibraryStore.swift` | Load catalogs; resolve file URLs |
 | `PackLibrary.swift` | Load Shorts Packs |
 | `BrandKitStore.swift` | UserDefaults brand kit |
@@ -107,6 +108,7 @@ list when implementing; keep this index updated when adding modules.
 |------|---------|
 | `src/server.js` | Express app, routes, static libraries, `/transcribe` |
 | `src/enhance.js` | Cursor SDK vs heuristic entry; duration resolve |
+| `src/heuristicCore.js` | Shared offline heuristic (parity-contract v1) |
 | `src/libraries.js` | Load catalogs, validate/align, full-duration fill |
 | `src/packs.js` | Pack helpers (biases, hits per caption) |
 | `src/broll.js` | Sticker pairing for strong hits |
