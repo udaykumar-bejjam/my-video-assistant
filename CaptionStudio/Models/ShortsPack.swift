@@ -18,7 +18,7 @@ struct ShortsPack: Identifiable, Hashable, Codable {
     var accentColor: String?
 
     var aspectPreset: AspectRatioPreset {
-        aspect == "16:9" ? .landscape16x9 : .portrait9x16
+        AspectRatioPreset.fromPackAspect(aspect)
     }
 
     var captionPreset: CaptionPreset {

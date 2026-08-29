@@ -16,6 +16,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Heuristic + optional **Stockfish** eval (`ChessEvalService`)
 - Editor **undo/redo** (`EditorHistory`, ⌘Z / ⇧⌘Z)
 - Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
+- **1:1 square** canvas + **AspectOverlayRemapper** (9:16 / 16:9 / 1:1 batch)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -27,7 +28,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 |----|-------------|--------------|
 | P0.1 | Sync app-local enhance heuristic with server heuristic | `CursorEnhancerClient` ↔ `libraries.js` |
 | P0.2 | `/libraries` static vs JSON route hygiene | `server.js` |
-| P0.4 | Aspect-aware overlay remap on batch 9:16→16:9 | `EditorViewModel` |
+| P0.4 | ~~Aspect-aware overlay remap on batch 9:16→16:9→1:1~~ | **Shipped** (`AspectOverlayRemapper`) |
 | P0.5 | Notarized / Developer ID macOS builds | CI secrets, `build-macos.sh` |
 
 ---
@@ -62,7 +63,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 | P1.12 | User-imported GIF/PNG/SFX folders |
 | P1.13 | Placement density slider |
 | P1.14 | True LUFS loudness |
-| P1.15 | 1:1 aspect preset |
+| P1.15 | ~~1:1 aspect preset~~ | **Shipped** (1080×1080 + batch) |
 | P1.16 | Soft-sub track toggle |
 
 ---
@@ -79,7 +80,8 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P0.1** — single heuristic source of truth (app ↔ server).
-2. **P1.2** — multi-select timeline.
-3. **P1.7** — bundle Stockfish.
+1. **P1.2** — multi-select timeline + snap guides.
+2. **P1.9** — PGN from file / lichess / chess.com URL.
+3. **P1.14** — true LUFS loudness.
 4. **P0.5** — notarized Mac builds.
+5. **P1.7** — bundle Stockfish binary.

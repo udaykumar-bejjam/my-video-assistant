@@ -118,8 +118,9 @@ Optional: `tools/iconify-sync` imports Iconify icons into PNG catalogs.
 
 ## Export & share
 
-- Aspect: 9:16 and 16:9 (pack default applied)
-- Batch export: one file per checked aspect
+- Aspect: **9:16**, **16:9**, and **1:1** (pack default applied; Export picker + batch checkboxes)
+- Batch export remaps overlays (and chess board layout) through aspect safe zones
+- Switching aspect in Export remaps live overlays (undoable)
 - Normalize loudness toggle (wired to `project.audio`)
 - Chunked export + stitch for long timelines
 - Share sheet: video files, copy title/hashtags/hook, export cover PNG

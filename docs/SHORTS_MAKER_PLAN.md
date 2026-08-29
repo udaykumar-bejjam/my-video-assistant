@@ -15,7 +15,8 @@ Plan for day-to-day short-form creation on top of the current CaptionStudio stac
 | Cursor SDK / heuristic placements | Done |
 | Fonts, effects, GIF/PNG/SFX libraries | Done |
 | Significant word hits (punch, color-pulse, etc.) | Done |
-| 9:16 & 16:9 canvases | Done |
+| 9:16 / 16:9 / **1:1** canvases | Done |
+| Aspect-safe overlay remap on batch export | Done |
 | Long-video chunk → enhance → stitch | Done |
 | Full-duration AI Place (no ~8–10s clamp) | Done |
 | MP4 export + share | Done |

@@ -61,7 +61,7 @@ Paths are repo-relative. Reflects `master` after Telugu / timeline / chess / Ico
 |------|----------------|
 | `Caption.swift` | Segments, words, presets |
 | `Overlay.swift` | Overlays, SFX, project audio settings |
-| `AspectRatio.swift` | 9:16 / 16:9, chunk planner |
+| `AspectRatio.swift` | 9:16 / 16:9 / 1:1, chunk planner, `AspectOverlayRemapper` |
 | `ShortsPack.swift` | Pack recipes |
 | `LanguageAndEffects.swift` | Languages + effects |
 | `MediaLibrary.swift` | Catalog + enhancement plan shapes |

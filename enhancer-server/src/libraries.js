@@ -38,6 +38,7 @@ export function canvasForVideoSize(videoSize) {
 
 export function aspectLabel(size) {
   const r = size.width / size.height;
+  if (Math.abs(r - 1) < 0.08) return "1:1";
   if (Math.abs(r - 16 / 9) < 0.08) return "16:9";
   if (Math.abs(r - 9 / 16) < 0.08) return "9:16";
   return `${size.width}x${size.height}`;

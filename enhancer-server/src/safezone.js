@@ -1,8 +1,15 @@
 /**
- * Safe-zone helpers for Reels/TikTok chrome.
+ * Safe-zone helpers for Reels/TikTok/IG chrome.
  */
 export const DEFAULT_SAFE_ZONE = { xMin: 0.08, xMax: 0.82, yMin: 0.12, yMax: 0.78 };
 export const LANDSCAPE_SAFE_ZONE = { xMin: 0.06, xMax: 0.94, yMin: 0.1, yMax: 0.88 };
+export const SQUARE_SAFE_ZONE = { xMin: 0.06, xMax: 0.94, yMin: 0.1, yMax: 0.86 };
+
+export function safeZoneForAspect(aspect) {
+  if (aspect === "16:9") return { ...LANDSCAPE_SAFE_ZONE };
+  if (aspect === "1:1") return { ...SQUARE_SAFE_ZONE };
+  return { ...DEFAULT_SAFE_ZONE };
+}
 
 export function normalizeSafeZone(raw, videoSize = null) {
   if (raw && Number.isFinite(raw.xMin) && Number.isFinite(raw.xMax)) {
@@ -13,8 +20,10 @@ export function normalizeSafeZone(raw, videoSize = null) {
       yMax: Number(raw.yMax),
     };
   }
-  if (videoSize?.width && videoSize?.height && videoSize.width > videoSize.height) {
-    return { ...LANDSCAPE_SAFE_ZONE };
+  if (videoSize?.width && videoSize?.height) {
+    const r = videoSize.width / videoSize.height;
+    if (Math.abs(r - 1) < 0.08) return { ...SQUARE_SAFE_ZONE };
+    if (videoSize.width > videoSize.height) return { ...LANDSCAPE_SAFE_ZONE };
   }
   return { ...DEFAULT_SAFE_ZONE };
 }
@@ -25,6 +34,22 @@ export function clampToSafeZone(x, y, safeZone) {
     x: Math.min(safeZone.xMax, Math.max(safeZone.xMin, x)),
     y: Math.min(safeZone.yMax, Math.max(safeZone.yMin, y)),
   };
+}
+
+/** Remap a normalized point through source→target safe zones (mirrors Swift AspectOverlayRemapper). */
+export function remapPoint(x, y, fromAspect, toAspect) {
+  if (fromAspect === toAspect) return { x, y };
+  const src = safeZoneForAspect(fromAspect);
+  const dst = safeZoneForAspect(toAspect);
+  const nx = remapAxis(x, src.xMin, src.xMax, dst.xMin, dst.xMax);
+  const ny = remapAxis(y, src.yMin, src.yMax, dst.yMin, dst.yMax);
+  return clampToSafeZone(nx, ny, dst);
+}
+
+function remapAxis(value, fromMin, fromMax, toMin, toMax) {
+  const span = Math.max(fromMax - fromMin, 0.001);
+  const t = (value - fromMin) / span;
+  return toMin + t * (toMax - toMin);
 }
 
 /** Build distribution copy heuristically from caption text. */

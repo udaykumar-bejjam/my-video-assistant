@@ -174,7 +174,8 @@ Selecting a pack sets **9:16**, caption style, and biases AI Place (`effectBias`
 
 ## Aspect ratios & long videos
 
-- **9:16** (1080×1920) and **16:9** (1920×1080) canvases — auto-inferred from the source, overridable in Export
+- **9:16** (1080×1920), **16:9** (1920×1080), and **1:1** (1080×1080) canvases — auto-inferred from the source (near-square → 1:1), overridable in Export
+- Batch export remaps overlay + chess positions via safe-zone mapping so portrait layouts stay usable on landscape/square
 - Source video is **center-cropped to fill** the chosen canvas
 - Videos longer than **60s** are processed in **45s parts**:
   1. Enhance each part (with 1.5s caption context at boundaries)

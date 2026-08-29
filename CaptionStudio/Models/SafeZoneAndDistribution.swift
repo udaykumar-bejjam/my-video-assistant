@@ -12,9 +12,15 @@ struct SafeZone: Equatable, Codable, Hashable {
     /// Portrait defaults — leave room for top status, right buttons, bottom caption bar.
     static let reelsPortrait = SafeZone(xMin: 0.08, xMax: 0.82, yMin: 0.12, yMax: 0.78)
     static let reelsLandscape = SafeZone(xMin: 0.06, xMax: 0.94, yMin: 0.10, yMax: 0.88)
+    /// Instagram feed / square — side chrome lighter than Reels portrait.
+    static let igSquare = SafeZone(xMin: 0.06, xMax: 0.94, yMin: 0.10, yMax: 0.86)
 
     static func forAspect(_ aspect: AspectRatioPreset) -> SafeZone {
-        aspect == .landscape16x9 ? .reelsLandscape : .reelsPortrait
+        switch aspect {
+        case .landscape16x9: return .reelsLandscape
+        case .square1x1: return .igSquare
+        case .portrait9x16: return .reelsPortrait
+        }
     }
 
     func clamp(x: CGFloat, y: CGFloat) -> (CGFloat, CGFloat) {

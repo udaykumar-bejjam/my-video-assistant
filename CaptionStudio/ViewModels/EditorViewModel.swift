@@ -810,6 +810,22 @@ final class EditorViewModel: ObservableObject {
     }
 
     func setAspectRatio(_ aspect: AspectRatioPreset) {
+        let from = project.aspectRatio
+        guard from != aspect else { return }
+        registerUndoCheckpoint()
+        project.overlays = AspectOverlayRemapper.remapOverlays(
+            project.overlays,
+            from: from,
+            to: aspect
+        )
+        if var chess = project.chessOverlay {
+            chess.layout = AspectOverlayRemapper.remapChessLayout(
+                chess.layout,
+                from: from,
+                to: aspect
+            )
+            project.chessOverlay = chess
+        }
         project.aspectRatio = aspect
     }
 
@@ -1671,7 +1687,20 @@ final class EditorViewModel: ObservableObject {
         do {
             var results: [URL] = []
             for aspect in aspects {
-                let overlays = Self.remapOverlays(project.overlays, from: project.aspectRatio, to: aspect)
+                let overlays = AspectOverlayRemapper.remapOverlays(
+                    project.overlays,
+                    from: project.aspectRatio,
+                    to: aspect
+                )
+                let chessOverlay: ChessWalkthroughSpec? = {
+                    guard var chess = project.chessOverlay else { return nil }
+                    chess.layout = AspectOverlayRemapper.remapChessLayout(
+                        chess.layout,
+                        from: project.aspectRatio,
+                        to: aspect
+                    )
+                    return chess
+                }()
                 let chunks = VideoChunkPlanner.chunks(duration: max(project.duration, 0.1))
                 project.chunkCount = chunks.count
                 let result: URL
@@ -1690,7 +1719,7 @@ final class EditorViewModel: ObservableObject {
                         aspect: aspect,
                         audioSettings: project.audio,
                         brandSfxGain: brandKit.kit.defaultSfxGain,
-                        chessOverlay: project.chessOverlay
+                        chessOverlay: chessOverlay
                     )
                 } else {
                     let segments: [VideoStitchService.SegmentSpec] = chunks.map { chunk in
@@ -1717,7 +1746,7 @@ final class EditorViewModel: ObservableObject {
                         libraryRoot: libraries.rootURL,
                         audioSettings: project.audio,
                         brandSfxGain: brandKit.kit.defaultSfxGain,
-                        chessOverlay: project.chessOverlay
+                        chessOverlay: chessOverlay
                     )
                     exporter.progress = stitcher.progress
                     exporter.statusMessage = stitcher.statusMessage
@@ -1727,7 +1756,7 @@ final class EditorViewModel: ObservableObject {
                 if aspects.count > 1 {
                     let tagged = result.deletingLastPathComponent()
                         .appendingPathComponent(
-                            "CaptionStudio-\(aspect.rawValue.replacingOccurrences(of: ":", with: "x"))-\(UUID().uuidString).mp4"
+                            "CaptionStudio-\(aspect.fileToken)-\(UUID().uuidString).mp4"
                         )
                     try? FileManager.default.removeItem(at: tagged)
                     try FileManager.default.moveItem(at: result, to: tagged)
@@ -1782,30 +1811,6 @@ final class EditorViewModel: ObservableObject {
                 language: language,
                 packName: selectedPack?.name
             )
-        }
-    }
-
-    /// Light Y remap when exporting the same timeline to a different aspect canvas.
-    private static func remapOverlays(
-        _ overlays: [OverlayItem],
-        from: AspectRatioPreset,
-        to: AspectRatioPreset
-    ) -> [OverlayItem] {
-        guard from != to else { return overlays }
-        return overlays.map { item in
-            var copy = item
-            if from == .portrait9x16 && to == .landscape16x9 {
-                // Pull center-ish overlays slightly toward vertical middle for landscape.
-                copy.y = 0.35 + (item.y - 0.35) * 0.7
-            } else if from == .landscape16x9 && to == .portrait9x16 {
-                copy.y = 0.35 + (item.y - 0.35) / 0.7
-            }
-            copy.y = min(0.92, max(0.08, copy.y))
-            if copy.kind == .watermark {
-                // Keep watermark near bottom edge regardless of aspect remap.
-                copy.y = item.y
-            }
-            return copy
         }
     }
 

@@ -6,6 +6,7 @@ import AVFoundation
 enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
     case portrait9x16 = "9:16"
     case landscape16x9 = "16:9"
+    case square1x1 = "1:1"
 
     var id: String { rawValue }
 
@@ -13,6 +14,7 @@ enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .portrait9x16: return "9:16 Vertical"
         case .landscape16x9: return "16:9 Landscape"
+        case .square1x1: return "1:1 Square"
         }
     }
 
@@ -20,7 +22,13 @@ enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .portrait9x16: return "rectangle.portrait"
         case .landscape16x9: return "rectangle"
+        case .square1x1: return "square"
         }
+    }
+
+    /// Short filename token for batch exports (`9x16`, `16x9`, `1x1`).
+    var fileToken: String {
+        rawValue.replacingOccurrences(of: ":", with: "x")
     }
 
     /// Export / enhancer reference canvas in pixels.
@@ -28,6 +36,7 @@ enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .portrait9x16: return CGSize(width: 1080, height: 1920)
         case .landscape16x9: return CGSize(width: 1920, height: 1080)
+        case .square1x1: return CGSize(width: 1080, height: 1080)
         }
     }
 
@@ -38,7 +47,106 @@ enum AspectRatioPreset: String, CaseIterable, Identifiable, Codable {
     /// Pick a sensible default from the source video's oriented size.
     static func inferred(from orientedSize: CGSize) -> AspectRatioPreset {
         guard orientedSize.height > 0 else { return .portrait9x16 }
-        return orientedSize.width >= orientedSize.height ? .landscape16x9 : .portrait9x16
+        let r = orientedSize.width / orientedSize.height
+        if abs(r - 1) < 0.08 { return .square1x1 }
+        return r >= 1 ? .landscape16x9 : .portrait9x16
+    }
+
+    static func fromPackAspect(_ aspect: String) -> AspectRatioPreset {
+        switch aspect.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "16:9": return .landscape16x9
+        case "1:1", "square": return .square1x1
+        default: return .portrait9x16
+        }
+    }
+}
+
+/// Remaps normalized overlay positions when the export canvas aspect changes.
+/// Maps each coordinate through the source/target safe zones so Reels/IG chrome
+/// stays respected across 9:16 ↔ 16:9 ↔ 1:1 batch exports.
+enum AspectOverlayRemapper {
+    static func remapPoint(
+        x: CGFloat,
+        y: CGFloat,
+        from: AspectRatioPreset,
+        to: AspectRatioPreset
+    ) -> (CGFloat, CGFloat) {
+        guard from != to else { return (x, y) }
+        let src = SafeZone.forAspect(from)
+        let dst = SafeZone.forAspect(to)
+        let nx = remapAxis(value: x, fromMin: src.xMin, fromMax: src.xMax, toMin: dst.xMin, toMax: dst.xMax)
+        let ny = remapAxis(value: y, fromMin: src.yMin, fromMax: src.yMax, toMin: dst.yMin, toMax: dst.yMax)
+        return dst.clamp(x: nx, y: ny)
+    }
+
+    /// Mild scale adjust so stickers don't dominate the shorter canvas axis.
+    static func remapScale(
+        _ scale: CGFloat,
+        from: AspectRatioPreset,
+        to: AspectRatioPreset
+    ) -> CGFloat {
+        guard from != to else { return scale }
+        let fromMin = min(from.canvasSize.width, from.canvasSize.height)
+        let toMin = min(to.canvasSize.width, to.canvasSize.height)
+        let factor = toMin / max(fromMin, 1)
+        // Soften extreme shrink/grow (portrait→landscape ≈ 1080/1080 = 1 for min axis;
+        // portrait height 1920 vs square 1080 → stickers slightly smaller on square).
+        let soft = sqrt(factor)
+        return min(1.6, max(0.55, scale * soft))
+    }
+
+    static func remapOverlays(
+        _ overlays: [OverlayItem],
+        from: AspectRatioPreset,
+        to: AspectRatioPreset
+    ) -> [OverlayItem] {
+        guard from != to else { return overlays }
+        return overlays.map { item in
+            var copy = item
+            if copy.kind == .watermark {
+                // Keep brand watermark at its authored edge; only clamp into target safe X.
+                let zone = SafeZone.forAspect(to)
+                copy.x = min(zone.xMax, max(zone.xMin, item.x))
+                copy.y = item.y
+                return copy
+            }
+            let (nx, ny) = remapPoint(x: item.x, y: item.y, from: from, to: to)
+            copy.x = nx
+            copy.y = ny
+            copy.scale = remapScale(item.scale, from: from, to: to)
+            return copy
+        }
+    }
+
+    static func remapChessLayout(
+        _ layout: ChessBoardLayout,
+        from: AspectRatioPreset,
+        to: AspectRatioPreset
+    ) -> ChessBoardLayout {
+        guard from != to else { return layout }
+        let (nx, ny) = remapPoint(x: layout.originX, y: layout.originY, from: from, to: to)
+        var next = layout
+        next.originX = nx
+        next.originY = ny
+        // Board size is fraction of min(canvas W,H) already in export; nudge slightly on square.
+        if to == .square1x1 {
+            next.size = min(0.48, layout.size * 0.92)
+        } else if from == .square1x1 && to == .portrait9x16 {
+            next.size = min(0.55, layout.size / 0.92)
+        }
+        return next
+    }
+
+    private static func remapAxis(
+        value: CGFloat,
+        fromMin: CGFloat,
+        fromMax: CGFloat,
+        toMin: CGFloat,
+        toMax: CGFloat
+    ) -> CGFloat {
+        let span = max(fromMax - fromMin, 0.001)
+        let t = (value - fromMin) / span
+        return toMin + t * (toMax - toMin)
     }
 }
 

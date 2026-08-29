@@ -21,10 +21,10 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 
 | Item | Why | Touches |
 |------|-----|---------|
-| Aspect-aware overlay Y remap on batch 9:16→16:9 | Positions tuned for portrait feel wrong on landscape | `EditorViewModel.remapOverlays`, packs |
-| Notarized / Developer ID macOS builds | Gatekeeper friction on Releases | CI signing secrets, `build-macos.sh` |
-| CI smoke: enhance full-duration + export dry path | Catch `prefix(8)` / duration `\|\| 10` regressions | GitHub Actions, Node tests, optional XCTest |
-| Keep Xcode membership in sync for new GIF/Swift files | Silent missing burn-in / compile gaps | `project.pbxproj` checklist in PR template |
+| Aspect-aware overlay Y remap on batch 9:16→16:9→1:1 | Positions stay in chrome-safe zones | `AspectOverlayRemapper` | **Shipped** |
+| Notarized / Developer ID macOS builds | Gatekeeper friction on Releases | CI signing secrets, `build-macos.sh` | Open |
+| CI smoke: enhance full-duration + export dry path | Catch duration regressions | GitHub Actions, Node tests | **Shipped** (enhancer-smokes) |
+| Keep Xcode membership in sync for new GIF/Swift files | Silent missing burn-in / compile gaps | `project.pbxproj` checklist | Open |
 
 ### P1 — Edit surface
 
@@ -82,7 +82,7 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 | Item | Why | Touches | Status |
 |------|-----|---------|--------|
 | Iconify sync tool | Richer sticker set | `tools/iconify-sync` | **Shipped** (expand presets next) |
-| Square 1:1 batch export | IG feed | `AspectRatioPreset` | Open |
+| Square 1:1 batch export | IG feed | `AspectRatioPreset.square1x1` | **Shipped** |
 | Enhancer returns `trimSuggestions` | Single AI pass for cuts | `enhance.js` | Open |
 | Per-project brand kit snapshot | Freeze fonts/watermark with draft | `SavedProject` | Open |
 
@@ -101,12 +101,12 @@ Merge wave: [MERGE_HISTORY.md](./MERGE_HISTORY.md).
 ## Suggested implementation order
 
 ```text
-P0 aspect remap + CI smoke + signing path
-P1 undo + chess export burn-in + preview SFX polish
-P1b Stockfish categories + PGN import URLs
+P1 preview SFX polish + multi-select timeline
+P1b PGN URL import + bundle Stockfish
 P2 LUFS / music bed
 P3 trim v2 / long Speech / more Indic languages
-P4 library growth + 1:1 + enhance trim suggestions
+P4 expand Iconify presets + enhance trim suggestions
+P0 notarized Mac builds
 ```
 
 Each item should ship with: docs touch (`FEATURES` / this roadmap), smoke test
