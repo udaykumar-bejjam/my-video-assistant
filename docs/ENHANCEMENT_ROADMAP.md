@@ -1,6 +1,6 @@
 # Enhancement roadmap (agent companion)
 
-Companion to [ROADMAP.md](./ROADMAP.md). Prefer that file for product prioritization; use this for agent-oriented slices after the big merge ([MERGE_HISTORY.md](./MERGE_HISTORY.md)).
+Companion to [ROADMAP.md](./ROADMAP.md). Prefer that file for product prioritization.
 
 Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3** explore
 
@@ -11,6 +11,10 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 - Telugu + EN dual-pass ASR (`WhisperTranscriptionClient`)
 - Zoomable cross-lane timeline (`TimelineWorkspaceView`)
 - Chess Walkthrough (interactive)
+- Chess **MP4 export** (`ChessExportService`)
+- Heuristic + optional **Stockfish** eval (`ChessEvalService`)
+- Editor **undo/redo** (`EditorHistory`, ⌘Z / ⇧⌘Z)
+- Linux **enhancer smokes CI** (`.github/workflows/enhancer-smokes.yml` + `npm test`)
 - Iconify PNG sync tool
 - Documentation suites
 
@@ -22,7 +26,6 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 |----|-------------|--------------|
 | P0.1 | Sync app-local enhance heuristic with server heuristic | `CursorEnhancerClient` ↔ `libraries.js` |
 | P0.2 | `/libraries` static vs JSON route hygiene | `server.js` |
-| P0.3 | Wire `test:full-duration` into `package.json` + Linux PR CI | `package.json`, `.github/workflows` |
 | P0.4 | Aspect-aware overlay remap on batch 9:16→16:9 | `EditorViewModel` |
 | P0.5 | Notarized / Developer ID macOS builds | CI secrets, `build-macos.sh` |
 
@@ -32,20 +35,19 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 | ID | Enhancement |
 |----|-------------|
-| P1.1 | Undo / redo for timeline + captions |
 | P1.2 | Multi-select + snap guides |
-| P1.3 | Keyboard shortcuts (J/K/L, delete, nudge) |
+| P1.3 | Keyboard shortcuts (J/K/L, delete, nudge) beyond undo |
 | P1.4 | Waveform on audio lane |
 | P1.5 | Word-level caption split/merge editor |
 
 ---
 
-## P1 — Chess & export
+## P1 — Chess follow-ons
 
 | ID | Enhancement |
 |----|-------------|
-| P1.6 | **Burn chess into video export** (highest chess follow-on) |
-| P1.7 | Stockfish / cloud eval categories |
+| P1.6 | Chess board as overlay on imported project video |
+| P1.7 | Bundle Stockfish binary in app for guaranteed UCI |
 | P1.8 | Sync chess to imported game video clock |
 
 ---
@@ -76,8 +78,7 @@ Legend: **P0** correctness · **P1** high leverage · **P2** strategic · **P3**
 
 ## Suggested next slices
 
-1. **P0.3** — Linux CI for enhancer smokes on every PR.
-2. **P1.6** — Chess export burn-in vertical slice (silent board animation first).
-3. **P1.1** — Undo stack.
-4. **P0.1** — Single heuristic source of truth.
-5. **P1.7** — Stockfish once export path exists.
+1. **P1.6** — composite chess onto coach VO in `VideoExportService`.
+2. **P0.1** — single heuristic source of truth.
+3. **P1.2** — multi-select timeline.
+4. **P0.5** — notarized Mac builds.
